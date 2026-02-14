@@ -25,14 +25,14 @@ jobs:
       contents: read # Only needed for private repos. Needed to clone the repo.
       actions: read # Only needed for private repos. Needed for upload-sarif to read workflow run info.
     steps:
-      - name: Start Workflow Telemetry
-        uses: ./
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Checkout Repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      - name: Start Workflow Telemetry
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Run Zizmor
         uses: zizmorcore/zizmor-action@0dce2577a4760a2749d8cfb7a84b7d5585ebcb7d # v0.5.0
         with:
