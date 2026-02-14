@@ -1,6 +1,5 @@
 import { describe, it, beforeEach, mock } from "node:test";
 import * as assert from "node:assert/strict";
-import { Metrics } from "./metrics";
 import type { Systeminformation } from "systeminformation";
 import type { z } from "zod";
 import type {
@@ -9,16 +8,32 @@ import type {
   memoryUsageMBSchema,
 } from "../lib";
 
-// We need to dynamically import and mock systeminformation
-// Since Node's test runner doesn't support module mocking yet,
-// we'll test with the real systeminformation module
+// Mock systeminformation module
+mock.module("systeminformation", {
+  namedExports: {
+    currentLoad: async (): Promise<Systeminformation.CurrentLoadData> =>
+      Promise.resolve({
+        currentLoadUser: 25.5,
+        currentLoadSystem: 10.3,
+      } as Systeminformation.CurrentLoadData),
+    mem: async (): Promise<Systeminformation.MemData> =>
+      Promise.resolve({
+        active: 4096 * 1024 * 1024, // 4096 MB in bytes
+        available: 8192 * 1024 * 1024, // 8192 MB in bytes
+      } as Systeminformation.MemData),
+  },
+});
+
+// Import Metrics after mocking
+const { Metrics } = await import("./metrics.js");
+
 describe("Metrics", () => {
   beforeEach(() => {
     mock.restoreAll();
   });
 
   it("should return JSON string from get()", () => {
-    const metrics: Metrics = new Metrics();
+    const metrics = new Metrics();
     const result: string = metrics.get();
 
     assert.strictEqual(typeof result, "string");
@@ -28,7 +43,7 @@ describe("Metrics", () => {
   });
 
   it("should initialize with empty data arrays", () => {
-    const metrics: Metrics = new Metrics();
+    const metrics = new Metrics();
     const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
 
     assert.ok(data.cpuLoadPercentages);
@@ -40,7 +55,7 @@ describe("Metrics", () => {
   });
 
   it("should collect initial metrics on construction", async () => {
-    const metrics: Metrics = new Metrics();
+    const metrics = new Metrics();
 
     // Wait for async processing to complete
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -61,7 +76,7 @@ describe("Metrics", () => {
   });
 
   it("should have correct CPU metrics format", async () => {
-    const metrics: Metrics = new Metrics();
+    const metrics = new Metrics();
 
     // Wait for async processing to complete
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -73,13 +88,13 @@ describe("Metrics", () => {
     assert.strictEqual(typeof cpuData.unixTimeMs, "number");
     assert.strictEqual(typeof cpuData.user, "number");
     assert.strictEqual(typeof cpuData.system, "number");
-    // Don't assert specific values since we're using real systeminformation
-    assert.ok(cpuData.user >= 0);
-    assert.ok(cpuData.system >= 0);
+    // With mocks, we can assert specific values
+    assert.strictEqual(cpuData.user, 25.5);
+    assert.strictEqual(cpuData.system, 10.3);
   });
 
   it("should have correct memory metrics format and conversion", async () => {
-    const metrics: Metrics = new Metrics();
+    const metrics = new Metrics();
 
     // Wait for async processing to complete
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -92,13 +107,13 @@ describe("Metrics", () => {
     assert.strictEqual(typeof memData.used, "number");
     assert.strictEqual(typeof memData.free, "number");
 
-    // Verify values are positive numbers (MB)
-    assert.ok(memData.used > 0);
-    assert.ok(memData.free > 0);
+    // Bytes to MB conversion check (4096 MB active, 8192 MB available)
+    assert.strictEqual(memData.used, 4096);
+    assert.strictEqual(memData.free, 8192);
   });
 
   it("should accumulate metrics data over time", async () => {
-    const metrics: Metrics = new Metrics();
+    const metrics = new Metrics();
 
     // Wait for initial data collection
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -131,7 +146,7 @@ describe("Metrics", () => {
   });
 
   it("should maintain correct time intervals between data points", async () => {
-    const metrics: Metrics = new Metrics();
+    const metrics = new Metrics();
 
     // Wait for initial data collection
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -160,7 +175,7 @@ describe("Metrics", () => {
   });
 
   it("should continue accumulating data for multiple intervals", async () => {
-    const metrics: Metrics = new Metrics();
+    const metrics = new Metrics();
 
     // Wait for initial data collection
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -195,7 +210,7 @@ describe("Metrics", () => {
   });
 
   it("should add step markers when markStep is called", () => {
-    const metrics: Metrics = new Metrics();
+    const metrics = new Metrics();
 
     metrics.markStep("Build", "start");
     metrics.markStep("Test", "start");
@@ -213,7 +228,7 @@ describe("Metrics", () => {
   });
 
   it("should include timestamp for step markers", () => {
-    const metrics: Metrics = new Metrics();
+    const metrics = new Metrics();
     const beforeTime = Date.now();
 
     metrics.markStep("Deploy", "start");

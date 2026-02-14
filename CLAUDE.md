@@ -60,7 +60,7 @@ Entry points: `src/main/index.ts`, `src/main/server.ts`, `src/post/index.ts` →
 
 ## Writing Tests
 
-Uses Node.js native test runner (node:test). Call `mock.restoreAll()` in `beforeEach` for test isolation.
+Uses Node.js native test runner (node:test) with experimental module mocking enabled via `--experimental-test-module-mocks`. Call `mock.restoreAll()` in `beforeEach` for test isolation.
 
 ```typescript
 import { describe, it, beforeEach, mock } from "node:test";
@@ -74,6 +74,29 @@ describe("MyTest", () => {
 
 ### Mock Patterns
 
+**Module mocking with mock.module()**: Mock ES modules before importing them:
+
+```typescript
+// Mock the module before importing
+mock.module("systeminformation", {
+  namedExports: {
+    currentLoad: async () =>
+      Promise.resolve({
+        currentLoadUser: 25.5,
+        currentLoadSystem: 10.3,
+      }),
+    mem: async () =>
+      Promise.resolve({
+        active: 4096 * 1024 * 1024,
+        available: 8192 * 1024 * 1024,
+      }),
+  },
+});
+
+// Import after mocking
+const { Metrics } = await import("./metrics.js");
+```
+
 **globalThis functions**: Mock using simple function assignment:
 
 ```typescript
@@ -84,7 +107,7 @@ globalThis.fetch = async (): Promise<Response> =>
   }) as Response;
 ```
 
-**Note**: Node's experimental module mocking (`mock.module`) is not yet stable. Tests that need module-level mocking (like `systeminformation`) run with the real implementation, using real system calls rather than mocks.
+**Note**: Module mocking requires Node.js 24+ with `--experimental-test-module-mocks` flag and TypeScript execution via tsx/esm loader.
 
 ## Implementation Notes
 

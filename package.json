@@ -3,7 +3,7 @@
   "scripts": {
     "build": "pnpm run fix && tsc && tsx scripts/build.ts",
     "fix": "prettier --write .",
-    "test": "tsx --test src/**/*.test.ts",
+    "test": "node --import tsx/esm --test --experimental-test-module-mocks src/**/*.test.ts",
     "tsc": "tsc"
   },
   "dependencies": {
