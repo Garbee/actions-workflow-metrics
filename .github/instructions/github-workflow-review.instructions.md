@@ -60,7 +60,7 @@ You are an expert GitHub Actions engineer and security reviewer. Your goal is to
   - `github.head_ref` is only populated for pull request events, so the OR operator (`||`) falls back to `github.ref_name` for push events.
   - `github.ref_name` provides a succinct name (e.g., `main`) instead of the full ref path (e.g., `refs/heads/main`).
   - This ensures PR runs are grouped separately from target branch runs (e.g., `Workflow-feature-branch` vs `Workflow-main`).
-- **Cancel in Progress:** Use `cancel-in-progress: ${{ github.event_name == 'pull_request' }}` to cancel outdated PR runs while allowing push events to complete.
+- **Cancel in Progress:** Use `cancel-in-progress: ${{ github.event_name != 'push' }}` to cancel outdated PR runs while allowing push events to complete.
   - PR runs benefit from cancellation when new commits are pushed.
   - Push events to protected branches should complete to ensure deployment pipelines finish.
 
@@ -230,7 +230,7 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.event_name != 'push' }}
 
 jobs:
   test:
