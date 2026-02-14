@@ -148,11 +148,9 @@ ${rows}
     stepMarkers: z.TypeOf<typeof stepMarkerSchema>[],
     chartTimes: Date[],
   ): string[] {
+    // Step markers are required (github-token is required)
     if (stepMarkers.length === 0) {
-      // If no step markers, fall back to time-based labels
-      return chartTimes.map((d: Date): string =>
-        d.toLocaleTimeString("en-GB", { hour12: false }),
-      );
+      throw new Error("Step markers are required for rendering. Ensure github-token is provided.");
     }
 
     const chartTimesMs = chartTimes.map((t) => t.getTime());
@@ -205,7 +203,7 @@ ${rows}
     stepMarkers: z.TypeOf<typeof stepMarkerSchema>[],
     chartTimes: Date[],
   ): string {
-    if (stepMarkers.length === 0) {
+    if (stepMarkers.length === 0 || chartTimes.length === 0) {
       return "";
     }
 

@@ -122352,9 +122352,7 @@ ${rows}
   }
   generateXAxisLabels(stepMarkers, chartTimes) {
     if (stepMarkers.length === 0) {
-      return chartTimes.map(
-        (d) => d.toLocaleTimeString("en-GB", { hour12: false })
-      );
+      throw new Error("Step markers are required for rendering. Ensure github-token is provided.");
     }
     const chartTimesMs = chartTimes.map((t) => t.getTime());
     const labels = [];
@@ -122390,7 +122388,7 @@ ${rows}
     return labels;
   }
   generateStepAnnotations(stepMarkers, chartTimes) {
-    if (stepMarkers.length === 0) {
+    if (stepMarkers.length === 0 || chartTimes.length === 0) {
       return "";
     }
     const annotations = [];

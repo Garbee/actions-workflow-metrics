@@ -4,6 +4,20 @@ import { Renderer } from "./renderer.ts";
 
 describe("Renderer", () => {
   const testMetricsID: string = "1234567890";
+  
+  // Common step markers for tests
+  const defaultStepMarkers = [
+    {
+      unixTimeMs: new Date("2024-01-01T00:00:00Z").getTime() - 1000,
+      stepName: "Test Step",
+      status: "start" as const,
+    },
+    {
+      unixTimeMs: new Date("2024-01-01T00:00:30Z").getTime(),
+      stepName: "Test Step",
+      status: "end" as const,
+    },
+  ];
 
   it("should return only header for empty metricsInfo", () => {
     const renderer: Renderer = new Renderer();
@@ -47,6 +61,7 @@ describe("Renderer", () => {
         },
       ],
       testMetricsID,
+      defaultStepMarkers,
     );
 
     assert.ok(result);
@@ -104,6 +119,7 @@ describe("Renderer", () => {
         },
       ],
       testMetricsID,
+      defaultStepMarkers,
     );
 
     assert.ok(result);
@@ -115,10 +131,9 @@ describe("Renderer", () => {
     // Verify multiple colors are set in color palette
     assert.ok(result.includes('"plotColorPalette": "Red, Orange"'));
 
-    // Verify time axis includes multiple times
-    assert.ok(result.includes("00:00:00"));
-    assert.ok(result.includes("00:00:05"));
-    assert.ok(result.includes("00:00:10"));
+    // X-axis now shows step names instead of time values
+    assert.ok(result.includes('x-axis "Workflow Steps"'));
+    assert.ok(result.includes("Test Step"));
 
     // Verify axis settings are included
     assert.ok(result.includes('y-axis "%" 0 --> 100'));
@@ -153,6 +168,7 @@ describe("Renderer", () => {
         },
       ],
       testMetricsID,
+      defaultStepMarkers,
     );
 
     assert.ok(result);
@@ -199,6 +215,7 @@ describe("Renderer", () => {
         },
       ],
       testMetricsID,
+      defaultStepMarkers,
     );
 
     assert.ok(result);
@@ -250,6 +267,7 @@ describe("Renderer", () => {
         },
       ],
       testMetricsID,
+      defaultStepMarkers,
     );
 
     // The result should be a valid-rendered template
@@ -301,6 +319,7 @@ describe("Renderer", () => {
         },
       ],
       testMetricsID,
+      defaultStepMarkers,
     );
 
     assert.ok(result);
@@ -334,40 +353,42 @@ describe("Renderer", () => {
     assert.strictEqual(barMatches?.length, 3);
   });
 
-  it("should format times correctly in x-axis when no step markers provided", () => {
+  it("should throw error when no step markers provided", () => {
     const renderer: Renderer = new Renderer();
-    const result: string = renderer.render(
-      [
-        {
-          title: "Time Format Test",
-          metricsInfoList: [
+    
+    // Since github-token is required, step markers should always be present
+    // If they're not, it should throw an error
+    assert.throws(
+      () => {
+        renderer.render(
+          [
             {
-              color: "Blue",
-              name: "Test Metric",
-              data: [10, 20, 30],
+              title: "Time Format Test",
+              metricsInfoList: [
+                {
+                  color: "Blue",
+                  name: "Test Metric",
+                  data: [10, 20, 30],
+                },
+              ],
+              times: [
+                new Date("2024-01-01T09:15:30Z"),
+                new Date("2024-01-01T14:30:45Z"),
+                new Date("2024-01-01T23:59:59Z"),
+              ],
+              yAxis: {
+                title: "Value",
+              },
             },
           ],
-          times: [
-            new Date("2024-01-01T09:15:30Z"),
-            new Date("2024-01-01T14:30:45Z"),
-            new Date("2024-01-01T23:59:59Z"),
-          ],
-          yAxis: {
-            title: "Value",
-          },
-        },
-      ],
-      testMetricsID,
+          testMetricsID,
+        );
+      },
+      {
+        name: 'Error',
+        message: /Step markers are required/,
+      }
     );
-
-    // When no step markers provided, should fall back to time-based labels
-    // Verify times are in HH:MM:SS format
-    assert.ok(result.includes("09:15:30"));
-    assert.ok(result.includes("14:30:45"));
-    assert.ok(result.includes("23:59:59"));
-
-    // Verify x-axis definition uses "Workflow Steps"
-    assert.ok(result.includes('x-axis "Workflow Steps"'));
   });
 
   it("should include complete Mermaid chart structure", () => {
@@ -391,6 +412,7 @@ describe("Renderer", () => {
         },
       ],
       testMetricsID,
+      defaultStepMarkers,
     );
 
     // Verify Mermaid block start and end are included
@@ -435,6 +457,7 @@ describe("Renderer", () => {
         },
       ],
       testMetricsID,
+      defaultStepMarkers,
     );
 
     assert.ok(result);
@@ -526,29 +549,36 @@ describe("Renderer", () => {
 
   it("should not render step sections when no markers provided", () => {
     const renderer: Renderer = new Renderer();
-    const result: string = renderer.render(
-      [
-        {
-          title: "CPU Usage",
-          metricsInfoList: [
+    
+    // This test should now throw an error since step markers are required
+    assert.throws(
+      () => {
+        renderer.render(
+          [
             {
-              color: "Red",
-              name: "User CPU",
-              data: [10],
+              title: "CPU Usage",
+              metricsInfoList: [
+                {
+                  color: "Red",
+                  name: "User CPU",
+                  data: [10],
+                },
+              ],
+              times: [new Date("2024-01-01T00:00:00Z")],
+              yAxis: {
+                title: "Percentage",
+              },
             },
           ],
-          times: [new Date("2024-01-01T00:00:00Z")],
-          yAxis: {
-            title: "Percentage",
-          },
-        },
-      ],
-      testMetricsID,
-      [],
+          testMetricsID,
+          [],
+        );
+      },
+      {
+        name: 'Error',
+        message: /Step markers are required/,
+      }
     );
-
-    assert.ok(!result.includes("### Workflow Steps"));
-    assert.ok(!result.includes("#### Step Timeline"));
   });
 
   it("should use step names in x-axis when step markers provided", () => {
