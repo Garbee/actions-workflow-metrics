@@ -216,10 +216,10 @@ describe("Metrics", () => {
     assert.strictEqual(typeof diskData.used, "number");
     assert.strictEqual(typeof diskData.free, "number");
 
-    // Bytes to GB conversion check with 10x factor for disk metrics
-    // (30 GB + 20 GB = 50 GB used -> 5 GB, 70 GB + 30 GB = 100 GB free -> 10 GB)
-    assert.strictEqual(diskData.used, 5);
-    assert.strictEqual(diskData.free, 10);
+    // Bytes to GB conversion check
+    // (30 GB + 20 GB = 50 GB used, 70 GB + 30 GB = 100 GB free)
+    assert.strictEqual(diskData.used, 50);
+    assert.strictEqual(diskData.free, 100);
   });
 
   it("should accumulate metrics data over time", async () => {
