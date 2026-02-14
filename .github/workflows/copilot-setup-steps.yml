@@ -53,6 +53,8 @@ jobs:
         run: npm ci
       - name: Install Actionlint
         run: go install github.com/rhysd/actionlint/cmd/actionlint@latest
+      - name: Add GOPATH to PATH
+        run: echo "$HOME/go/bin" >> $GITHUB_PATH
       - name: Install Zizmor
         env:
           TMP_DIR: ${{ runner.temp }}
