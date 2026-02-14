@@ -19,7 +19,17 @@ try {
     sourcemap: "linked",
     bundle: true,
     entryNames: "[dir]/[name].bundle",
-    external: ["net", "tls", "http", "https", "stream", "zlib"],
+    external: [
+      "net",
+      "tls",
+      "http",
+      "https",
+      "stream",
+      "zlib",
+      "@actions/*",
+      "systeminformation",
+    ],
+    packages: "external",
   });
 } catch (error) {
   console.error("Build failed:", error);
