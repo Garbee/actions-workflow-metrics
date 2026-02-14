@@ -1,3 +1,4 @@
+import { createRequire } from 'module';const require = createRequire(import.meta.url);
 var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -40,8 +41,8 @@ var require_tunnel = __commonJS({
     "use strict";
     var net = __require("net");
     var tls = __require("tls");
-    var http2 = __require("http");
-    var https2 = __require("https");
+    var http = __require("http");
+    var https = __require("https");
     var events = __require("events");
     var assert2 = __require("assert");
     var util = __require("util");
@@ -51,24 +52,24 @@ var require_tunnel = __commonJS({
     exports.httpsOverHttps = httpsOverHttps2;
     function httpOverHttp2(options) {
       var agent = new TunnelingAgent(options);
-      agent.request = http2.request;
+      agent.request = http.request;
       return agent;
     }
     function httpsOverHttp2(options) {
       var agent = new TunnelingAgent(options);
-      agent.request = http2.request;
+      agent.request = http.request;
       agent.createSocket = createSecureSocket;
       agent.defaultPort = 443;
       return agent;
     }
     function httpOverHttps2(options) {
       var agent = new TunnelingAgent(options);
-      agent.request = https2.request;
+      agent.request = https.request;
       return agent;
     }
     function httpsOverHttps2(options) {
       var agent = new TunnelingAgent(options);
-      agent.request = https2.request;
+      agent.request = https.request;
       agent.createSocket = createSecureSocket;
       agent.defaultPort = 443;
       return agent;
@@ -77,7 +78,7 @@ var require_tunnel = __commonJS({
       var self = this;
       self.options = options || {};
       self.proxyOptions = self.options.proxy || {};
-      self.maxSockets = self.options.maxSockets || http2.Agent.defaultMaxSockets;
+      self.maxSockets = self.options.maxSockets || http.Agent.defaultMaxSockets;
       self.requests = [];
       self.sockets = [];
       self.on("free", function onFree(socket, host, port, localAddress) {
@@ -7374,7 +7375,7 @@ var require_client = __commonJS({
     "use strict";
     var assert2 = __require("node:assert");
     var net = __require("node:net");
-    var http2 = __require("node:http");
+    var http = __require("node:http");
     var util = require_util();
     var { channels } = require_diagnostics();
     var Request = require_request();
@@ -7561,7 +7562,7 @@ var require_client = __commonJS({
         this[kUrl] = util.parseOrigin(url2);
         this[kConnector] = connect2;
         this[kPipelining] = pipelining != null ? pipelining : 1;
-        this[kMaxHeadersSize] = maxHeaderSize || http2.maxHeaderSize;
+        this[kMaxHeadersSize] = maxHeaderSize || http.maxHeaderSize;
         this[kKeepAliveDefaultTimeout] = keepAliveTimeout == null ? 4e3 : keepAliveTimeout;
         this[kKeepAliveMaxTimeout] = keepAliveMaxTimeout == null ? 6e5 : keepAliveMaxTimeout;
         this[kKeepAliveTimeoutThreshold] = keepAliveTimeoutThreshold == null ? 2e3 : keepAliveTimeoutThreshold;
@@ -8368,7 +8369,7 @@ var require_agent = __commonJS({
     function defaultFactory(origin, opts) {
       return opts && opts.connections === 1 ? new Client(origin, opts) : new Pool(origin, opts);
     }
-    var Agent3 = class extends DispatcherBase {
+    var Agent = class extends DispatcherBase {
       constructor({ factory = defaultFactory, maxRedirections = 0, connect, ...options } = {}) {
         super();
         if (typeof factory !== "function") {
@@ -8440,7 +8441,7 @@ var require_agent = __commonJS({
         await Promise.all(destroyPromises);
       }
     };
-    module.exports = Agent3;
+    module.exports = Agent;
   }
 });
 
@@ -8450,7 +8451,7 @@ var require_proxy_agent = __commonJS({
     "use strict";
     var { kProxy, kClose, kDestroy, kDispatch, kInterceptors } = require_symbols();
     var { URL: URL2 } = __require("node:url");
-    var Agent3 = require_agent();
+    var Agent = require_agent();
     var Pool = require_pool();
     var DispatcherBase = require_dispatcher_base();
     var { InvalidArgumentError, RequestAbortedError, SecureProxyConnectionError } = require_errors();
@@ -8565,7 +8566,7 @@ var require_proxy_agent = __commonJS({
           return agentFactory(origin2, options);
         };
         this[kClient] = clientFactory(url2, { connect });
-        this[kAgent] = new Agent3({
+        this[kAgent] = new Agent({
           ...opts,
           factory,
           connect: async (opts2, callback) => {
@@ -8674,7 +8675,7 @@ var require_env_http_proxy_agent = __commonJS({
     var DispatcherBase = require_dispatcher_base();
     var { kClose, kDestroy, kClosed, kDestroyed, kDispatch, kNoProxyAgent, kHttpProxyAgent, kHttpsProxyAgent } = require_symbols();
     var ProxyAgent2 = require_proxy_agent();
-    var Agent3 = require_agent();
+    var Agent = require_agent();
     var DEFAULT_PORTS = {
       "http:": 80,
       "https:": 443
@@ -8694,7 +8695,7 @@ var require_env_http_proxy_agent = __commonJS({
           });
         }
         const { httpProxy, httpsProxy, noProxy, ...agentOpts } = opts;
-        this[kNoProxyAgent] = new Agent3(agentOpts);
+        this[kNoProxyAgent] = new Agent(agentOpts);
         const HTTP_PROXY = httpProxy ?? process.env.http_proxy ?? process.env.HTTP_PROXY;
         if (HTTP_PROXY) {
           this[kHttpProxyAgent] = new ProxyAgent2({ ...agentOpts, uri: HTTP_PROXY });
@@ -10988,7 +10989,7 @@ var require_mock_agent = __commonJS({
   "node_modules/.pnpm/undici@6.23.0/node_modules/undici/lib/mock/mock-agent.js"(exports, module) {
     "use strict";
     var { kClients } = require_symbols();
-    var Agent3 = require_agent();
+    var Agent = require_agent();
     var {
       kAgent,
       kMockAgentSet,
@@ -11015,7 +11016,7 @@ var require_mock_agent = __commonJS({
         if (opts?.agent && typeof opts.agent.dispatch !== "function") {
           throw new InvalidArgumentError("Argument opts.agent must implement Agent");
         }
-        const agent = opts?.agent ? opts.agent : new Agent3(opts);
+        const agent = opts?.agent ? opts.agent : new Agent(opts);
         this[kAgent] = agent;
         this[kClients] = agent[kClients];
         this[kOptions] = buildMockOptions(opts);
@@ -11119,9 +11120,9 @@ var require_global2 = __commonJS({
     "use strict";
     var globalDispatcher = /* @__PURE__ */ Symbol.for("undici.globalDispatcher.1");
     var { InvalidArgumentError } = require_errors();
-    var Agent3 = require_agent();
+    var Agent = require_agent();
     if (getGlobalDispatcher() === void 0) {
-      setGlobalDispatcher(new Agent3());
+      setGlobalDispatcher(new Agent());
     }
     function setGlobalDispatcher(agent) {
       if (!agent || typeof agent.dispatch !== "function") {
@@ -18387,7 +18388,7 @@ var require_undici = __commonJS({
     var Dispatcher = require_dispatcher();
     var Pool = require_pool();
     var BalancedPool = require_balanced_pool();
-    var Agent3 = require_agent();
+    var Agent = require_agent();
     var ProxyAgent2 = require_proxy_agent();
     var EnvHttpProxyAgent = require_env_http_proxy_agent();
     var RetryAgent = require_retry_agent();
@@ -18410,7 +18411,7 @@ var require_undici = __commonJS({
     module.exports.Client = Client;
     module.exports.Pool = Pool;
     module.exports.BalancedPool = BalancedPool;
-    module.exports.Agent = Agent3;
+    module.exports.Agent = Agent;
     module.exports.ProxyAgent = ProxyAgent2;
     module.exports.EnvHttpProxyAgent = EnvHttpProxyAgent;
     module.exports.RetryAgent = RetryAgent;
@@ -21042,10 +21043,10 @@ var require_util9 = __commonJS({
       };
     }
     function checkWebsite(url2, timeout = 5e3) {
-      const http2 = url2.startsWith("https:") || url2.indexOf(":443/") > 0 || url2.indexOf(":8443/") > 0 ? __require("https") : __require("http");
+      const http = url2.startsWith("https:") || url2.indexOf(":443/") > 0 || url2.indexOf(":8443/") > 0 ? __require("https") : __require("http");
       const t = Date.now();
       return new Promise((resolve) => {
-        const request = http2.get(url2, (res) => {
+        const request = http.get(url2, (res) => {
           res.on("data", () => {
           });
           res.on("end", () => {
@@ -36622,8 +36623,6 @@ function escapeProperty(s) {
 }
 
 // node_modules/.pnpm/@actions+http-client@4.0.0/node_modules/@actions/http-client/lib/index.js
-import * as http from "http";
-import * as https from "https";
 var tunnel = __toESM(require_tunnel2(), 1);
 var import_undici = __toESM(require_undici(), 1);
 var HttpCodes;

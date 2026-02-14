@@ -19,7 +19,9 @@ try {
     sourcemap: "linked",
     bundle: true,
     entryNames: "[dir]/[name].bundle",
-    external: ["net", "tls", "http", "https", "stream", "zlib"],
+    banner: {
+      js: `import { createRequire } from 'module';const require = createRequire(import.meta.url);`,
+    },
   });
 } catch (error) {
   console.error("Build failed:", error);
