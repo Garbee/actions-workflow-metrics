@@ -109,6 +109,11 @@ jobs:
       - name: CPU Intensive Activity
         run: |
           echo "Starting CPU-intensive activity for 20 seconds..."
+          echo "Creating 5GB test file to demonstrate disk usage..."
+          dd if=/dev/zero of=/tmp/test-5gb-file.bin bs=1M count=5120 status=progress
+          echo "5GB file created at /tmp/test-5gb-file.bin"
+          ls -lh /tmp/test-5gb-file.bin
+          
           node -e "
           const startTime = Date.now();
           const endTime = startTime + 20000;
@@ -121,6 +126,10 @@ jobs:
           }
           console.log('CPU-intensive activity completed. Count:', count);
           "
+          
+          echo "Removing 5GB test file..."
+          rm -f /tmp/test-5gb-file.bin
+          echo "Test file removed."
 
       - name: Memory Intensive Activity
         run: |
