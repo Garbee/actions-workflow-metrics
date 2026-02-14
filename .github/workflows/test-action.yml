@@ -86,6 +86,22 @@ jobs:
         with:
           interval_seconds: "3"
 
+      - name: Wait for Server
+        run: |
+          echo "Waiting for metrics server to be ready on port 7777..."
+          timeout=30
+          elapsed=0
+          while ! curl -s -f http://localhost:7777/metrics > /dev/null 2>&1; do
+            if [ $elapsed -ge $timeout ]; then
+              echo "Timeout waiting for server to start"
+              exit 1
+            fi
+            echo "Server not ready yet, waiting... ($elapsed/$timeout seconds)"
+            sleep 1
+            elapsed=$((elapsed + 1))
+          done
+          echo "Server is ready!"
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@3d267786b128fe76c2f16a390aa2448b815359f3 # v2.1.2
         with:
@@ -93,9 +109,6 @@ jobs:
 
       - name: Install Dependencies with Manual Markers
         run: |
-          # Wait for server to be ready
-          sleep 2
-
           curl -X POST http://localhost:7777/mark-step \
             -H "Content-Type: application/json" \
             -d '{"stepName":"Install Dependencies","status":"start"}'
