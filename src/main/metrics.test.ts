@@ -6,6 +6,7 @@ import {
   type cpuLoadPercentageSchema,
   metricsDataSchema,
   type memoryUsageMBSchema,
+  type diskUsageGBSchema,
 } from "../lib.ts";
 
 describe("Metrics", () => {
@@ -32,6 +33,29 @@ describe("Metrics", () => {
             active: 4096 * 1024 * 1024, // 4096 MB in bytes
             available: 8192 * 1024 * 1024, // 8192 MB in bytes
           } as Systeminformation.MemData),
+        fsSize: async (): Promise<Systeminformation.FsSizeData[]> =>
+          Promise.resolve([
+            {
+              fs: "/dev/root",
+              type: "ext4",
+              size: 100 * 1024 * 1024 * 1024, // 100 GB
+              used: 30 * 1024 * 1024 * 1024, // 30 GB
+              available: 70 * 1024 * 1024 * 1024, // 70 GB
+              use: 30,
+              mount: "/",
+              rw: true,
+            },
+            {
+              fs: "/dev/sda1",
+              type: "ext4",
+              size: 50 * 1024 * 1024 * 1024, // 50 GB
+              used: 20 * 1024 * 1024 * 1024, // 20 GB
+              available: 30 * 1024 * 1024 * 1024, // 30 GB
+              use: 40,
+              mount: "/data",
+              rw: true,
+            },
+          ] as Systeminformation.FsSizeData[]),
       },
     });
 
@@ -97,9 +121,11 @@ describe("Metrics", () => {
 
     assert.ok(data.cpuLoadPercentages);
     assert.ok(data.memoryUsageMBs);
+    assert.ok(data.diskUsageGBs);
     assert.ok(data.stepMarkers);
     assert.strictEqual(Array.isArray(data.cpuLoadPercentages), true);
     assert.strictEqual(Array.isArray(data.memoryUsageMBs), true);
+    assert.strictEqual(Array.isArray(data.diskUsageGBs), true);
     assert.strictEqual(Array.isArray(data.stepMarkers), true);
   });
 
@@ -125,6 +151,12 @@ describe("Metrics", () => {
     assert.strictEqual(typeof data.memoryUsageMBs[0].unixTimeMs, "number");
     assert.ok(data.memoryUsageMBs[0].used !== undefined);
     assert.ok(data.memoryUsageMBs[0].free !== undefined);
+
+    // Verify disk metrics are collected
+    assert.ok(data.diskUsageGBs.length > 0);
+    assert.strictEqual(typeof data.diskUsageGBs[0].unixTimeMs, "number");
+    assert.ok(data.diskUsageGBs[0].used !== undefined);
+    assert.ok(data.diskUsageGBs[0].free !== undefined);
   });
 
   it("should have correct CPU metrics format", async () => {
@@ -168,6 +200,27 @@ describe("Metrics", () => {
     assert.strictEqual(memData.free, 8192);
   });
 
+  it("should have correct disk metrics format and conversion", async () => {
+    const metrics = createMetrics();
+
+    // Wait for async processing to complete
+    for (let i = 0; i < 10; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
+
+    const diskData: z.TypeOf<typeof diskUsageGBSchema> = JSON.parse(
+      metrics.get(),
+    ).diskUsageGBs[0];
+
+    assert.strictEqual(typeof diskData.unixTimeMs, "number");
+    assert.strictEqual(typeof diskData.used, "number");
+    assert.strictEqual(typeof diskData.free, "number");
+
+    // Bytes to GB conversion check (30 GB + 20 GB = 50 GB used, 70 GB + 30 GB = 100 GB free)
+    assert.strictEqual(diskData.used, 50);
+    assert.strictEqual(diskData.free, 100);
+  });
+
   it("should accumulate metrics data over time", async () => {
     const metrics = createMetrics();
 
@@ -181,10 +234,12 @@ describe("Metrics", () => {
     );
     const initialCpuCount: number = initialData.cpuLoadPercentages.length;
     const initialMemCount: number = initialData.memoryUsageMBs.length;
+    const initialDiskCount: number = initialData.diskUsageGBs.length;
 
     // Verify at least one data point exists initially
     assert.ok(initialCpuCount > 0);
     assert.ok(initialMemCount > 0);
+    assert.ok(initialDiskCount > 0);
 
     // Advance time by 5 seconds to trigger next append
     await mock.timers.tick(5000);
@@ -198,12 +253,15 @@ describe("Metrics", () => {
     );
     const updatedCpuCount: number = updatedData.cpuLoadPercentages.length;
     const updatedMemCount: number = updatedData.memoryUsageMBs.length;
+    const updatedDiskCount: number = updatedData.diskUsageGBs.length;
 
     // Verify data points have increased
     assert.ok(updatedCpuCount > initialCpuCount);
     assert.ok(updatedMemCount > initialMemCount);
+    assert.ok(updatedDiskCount > initialDiskCount);
     assert.strictEqual(updatedCpuCount, initialCpuCount + 1);
     assert.strictEqual(updatedMemCount, initialMemCount + 1);
+    assert.strictEqual(updatedDiskCount, initialDiskCount + 1);
   });
 
   it("should maintain correct time intervals between data points", async () => {
@@ -225,6 +283,7 @@ describe("Metrics", () => {
     // Verify at least 2 data points exist
     assert.ok(data.cpuLoadPercentages.length >= 2);
     assert.ok(data.memoryUsageMBs.length >= 2);
+    assert.ok(data.diskUsageGBs.length >= 2);
 
     // Verify timestamp interval is exactly 5 seconds (5000ms) with mocked timers
     const cpuTimeDiff: number =
@@ -232,10 +291,13 @@ describe("Metrics", () => {
       data.cpuLoadPercentages[0].unixTimeMs;
     const memTimeDiff: number =
       data.memoryUsageMBs[1].unixTimeMs - data.memoryUsageMBs[0].unixTimeMs;
+    const diskTimeDiff: number =
+      data.diskUsageGBs[1].unixTimeMs - data.diskUsageGBs[0].unixTimeMs;
 
     // With mocked timers and Date, we get exactly 5000ms
     assert.strictEqual(cpuTimeDiff, 5000);
     assert.strictEqual(memTimeDiff, 5000);
+    assert.strictEqual(diskTimeDiff, 5000);
   });
 
   it("should continue accumulating data for multiple intervals", async () => {
@@ -278,6 +340,13 @@ describe("Metrics", () => {
       assert.ok(
         finalData.memoryUsageMBs[i].unixTimeMs >
           finalData.memoryUsageMBs[i - 1].unixTimeMs,
+      );
+    }
+
+    for (let i = 1; i < finalData.diskUsageGBs.length; i++) {
+      assert.ok(
+        finalData.diskUsageGBs[i].unixTimeMs >
+          finalData.diskUsageGBs[i - 1].unixTimeMs,
       );
     }
   });

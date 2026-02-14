@@ -1,9 +1,9 @@
 import { writeFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { setFailed } from "@actions/core";
-import { currentLoad, mem } from "systeminformation";
+import { currentLoad, mem, fsSize } from "systeminformation";
 import type { z } from "zod";
-import { metricsDataSchema, getMetricsFilePath } from "../lib.ts";
+import { metricsDataSchema, getMetricsFilePath, bytesPerMB, bytesPerGB } from "../lib.ts";
 
 export class Metrics {
   private readonly data: z.TypeOf<typeof metricsDataSchema>;
@@ -13,7 +13,7 @@ export class Metrics {
   private stopped: boolean = false;
 
   constructor() {
-    this.data = { cpuLoadPercentages: [], memoryUsageMBs: [], stepMarkers: [] };
+    this.data = { cpuLoadPercentages: [], memoryUsageMBs: [], diskUsageGBs: [], stepMarkers: [] };
     this.filePath = getMetricsFilePath();
 
     this.intervalMs = 5 * 1000;
@@ -72,13 +72,22 @@ export class Metrics {
         system: currentLoadSystem,
       });
 
-      const bytesPerMB: number = 1024 * 1024;
       const { active, available }: { active: number; available: number } =
         await mem();
       this.data.memoryUsageMBs.push({
         unixTimeMs,
         used: active / bytesPerMB,
         free: available / bytesPerMB,
+      });
+
+      const disks = await fsSize();
+      // Sum all disks to get total disk usage
+      const totalUsed = disks.reduce((sum, disk) => sum + disk.used, 0);
+      const totalAvailable = disks.reduce((sum, disk) => sum + disk.available, 0);
+      this.data.diskUsageGBs.push({
+        unixTimeMs,
+        used: totalUsed / bytesPerGB,
+        free: totalAvailable / bytesPerGB,
       });
 
       // Write to file after collecting metrics
