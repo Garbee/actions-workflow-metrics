@@ -10,12 +10,13 @@ on:
     - cron: "33 11 * * 3"
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 permissions: {}
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     permissions:
       security-events: write # To upload the results of the analysis
       packages: read # To fetch CodeQL packs from GitHub Packages, if you are using any.
@@ -28,7 +29,7 @@ jobs:
           - language: actions
           - language: javascript-typescript
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false

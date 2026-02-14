@@ -10,8 +10,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read # To clone the repository
@@ -21,8 +21,9 @@ jobs:
   test-basic:
     name: Test Basic Usage
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
@@ -46,8 +47,9 @@ jobs:
   test-custom-interval:
     name: Test Custom Interval
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
@@ -60,6 +62,7 @@ jobs:
 
       - name: Simulate Workload
         run: |
+          set -euo pipefail
           echo "Simulating CPU and memory intensive workload"
           sleep 10
           echo "Workload simulation complete"
@@ -67,8 +70,9 @@ jobs:
   test-resource-visualization:
     name: Test Resource Visualization
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
@@ -84,6 +88,7 @@ jobs:
 
       - name: CPU and Storage Intensive Activity
         run: |
+          set -euo pipefail
           echo "Starting CPU-intensive activity for 15 seconds..."
           echo "Creating 5GB test file to demonstrate disk usage..."
           dd if=/dev/zero of=/tmp/test-5gb-file.bin bs=1M count=5120 status=progress
@@ -109,6 +114,7 @@ jobs:
 
       - name: Memory Intensive Activity
         run: |
+          set -euo pipefail
           echo "Starting memory-intensive activity for 15 seconds..."
           node -e "
           const arrays = [];
@@ -138,6 +144,7 @@ jobs:
 
       - name: Idle Activity
         run: |
+          set -euo pipefail
           echo "Starting idle period for 5 seconds..."
           sleep 5
           echo "Idle period completed."
