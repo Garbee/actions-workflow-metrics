@@ -1,119 +1,159 @@
-import { describe, expect, it, beforeEach, vi } from "vitest";
-import { Metrics } from "./metrics";
+import { describe, it, beforeEach, mock, before, after, afterEach } from "node:test";
+import * as assert from "node:assert/strict";
 import type { Systeminformation } from "systeminformation";
 import type { z } from "zod";
-import type {
-  cpuLoadPercentageSchema,
+import {
+  type cpuLoadPercentageSchema,
   metricsDataSchema,
-  memoryUsageMBSchema,
-} from "../lib";
-
-// Mock systeminformation
-vi.mock("systeminformation", () => ({
-  currentLoad: vi.fn(
-    async (): Promise<Systeminformation.CurrentLoadData> =>
-      Promise.resolve({
-        currentLoadUser: 25.5,
-        currentLoadSystem: 10.3,
-      } as Systeminformation.CurrentLoadData),
-  ),
-  mem: vi.fn(
-    async (): Promise<Systeminformation.MemData> =>
-      Promise.resolve({
-        active: 4096 * 1024 * 1024, // 4096 MB in bytes
-        available: 8192 * 1024 * 1024, // 8192 MB in bytes
-      } as Systeminformation.MemData),
-  ),
-}));
+  type memoryUsageMBSchema,
+} from "../lib.ts";
 
 describe("Metrics", () => {
-  // Clear timers
-  beforeEach(() => vi.restoreAllMocks());
+  let Metrics;
+  let mockModule;
+  const metricsInstances: any[] = [];
+
+  before(async () => {
+    // Enable timer mocking BEFORE importing the module
+    mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+
+    // Mock systeminformation module
+    mockModule = mock.module("systeminformation", {
+      namedExports: {
+        currentLoad: async (): Promise<Systeminformation.CurrentLoadData> =>
+          Promise.resolve({
+            currentLoadUser: 25.5,
+            currentLoadSystem: 10.3,
+          } as Systeminformation.CurrentLoadData),
+        mem: async (): Promise<Systeminformation.MemData> =>
+          Promise.resolve({
+            active: 4096 * 1024 * 1024, // 4096 MB in bytes
+            available: 8192 * 1024 * 1024, // 8192 MB in bytes
+          } as Systeminformation.MemData),
+      },
+    });
+
+    ({ Metrics } = await import("./metrics.ts"));
+  })
+
+  beforeEach(() => {
+    // Don't restore mocks - keep timer and module mocks active
+  });
+
+  afterEach(() => {
+    // Clean up all Metrics instances to prevent hanging
+    for (const instance of metricsInstances) {
+      instance.stop();
+    }
+    metricsInstances.length = 0;
+  });
+
+  after(() => {
+    mockModule.restore();
+    mock.timers.reset();
+  })
+
+  // Helper function to create and track Metrics instances
+  function createMetrics() {
+    const instance = new Metrics();
+    metricsInstances.push(instance);
+    return instance;
+  }
 
   it("should return JSON string from get()", () => {
-    const metrics: Metrics = new Metrics();
+    const metrics = createMetrics();
     const result: string = metrics.get();
 
-    expect(typeof result).toBe("string");
-    expect(
-      (): z.TypeOf<typeof metricsDataSchema> => JSON.parse(result),
-    ).not.toThrow();
+    assert.strictEqual(typeof result, "string");
+    assert.doesNotThrow(() => {
+      JSON.parse(result);
+    });
   });
 
   it("should initialize with empty data arrays", () => {
-    const metrics: Metrics = new Metrics();
+    const metrics = createMetrics();
     const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
 
-    expect(data).toHaveProperty("cpuLoadPercentages");
-    expect(data).toHaveProperty("memoryUsageMBs");
-    expect(data).toHaveProperty("stepMarkers");
-    expect(Array.isArray(data.cpuLoadPercentages)).toBe(true);
-    expect(Array.isArray(data.memoryUsageMBs)).toBe(true);
-    expect(Array.isArray(data.stepMarkers)).toBe(true);
+    assert.ok(data.cpuLoadPercentages);
+    assert.ok(data.memoryUsageMBs);
+    assert.ok(data.stepMarkers);
+    assert.strictEqual(Array.isArray(data.cpuLoadPercentages), true);
+    assert.strictEqual(Array.isArray(data.memoryUsageMBs), true);
+    assert.strictEqual(Array.isArray(data.stepMarkers), true);
   });
 
   it("should collect initial metrics on construction", async () => {
-    const metrics: Metrics = new Metrics();
+    const metrics = createMetrics();
 
-    // Wait for async processing to complete
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    // Wait for the async append() to complete
+    // Need to flush microtask queue for promises to resolve
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
 
     const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
 
     // Verify CPU metrics are collected
-    expect(data.cpuLoadPercentages.length).toBeGreaterThan(0);
-    expect(data.cpuLoadPercentages[0]).toHaveProperty("unixTimeMs");
-    expect(data.cpuLoadPercentages[0]).toHaveProperty("user");
-    expect(data.cpuLoadPercentages[0]).toHaveProperty("system");
+    assert.ok(data.cpuLoadPercentages.length > 0);
+    assert.strictEqual(typeof data.cpuLoadPercentages[0].unixTimeMs, "number");
+    assert.ok(data.cpuLoadPercentages[0].user !== undefined);
+    assert.ok(data.cpuLoadPercentages[0].system !== undefined);
 
     // Verify memory metrics are collected
-    expect(data.memoryUsageMBs.length).toBeGreaterThan(0);
-    expect(data.memoryUsageMBs[0]).toHaveProperty("unixTimeMs");
-    expect(data.memoryUsageMBs[0]).toHaveProperty("used");
-    expect(data.memoryUsageMBs[0]).toHaveProperty("free");
+    assert.ok(data.memoryUsageMBs.length > 0);
+    assert.strictEqual(typeof data.memoryUsageMBs[0].unixTimeMs, "number");
+    assert.ok(data.memoryUsageMBs[0].used !== undefined);
+    assert.ok(data.memoryUsageMBs[0].free !== undefined);
   });
 
   it("should have correct CPU metrics format", async () => {
-    const metrics: Metrics = new Metrics();
+    const metrics = createMetrics();
 
     // Wait for async processing to complete
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
 
     const cpuData: z.TypeOf<typeof cpuLoadPercentageSchema> = JSON.parse(
       metrics.get(),
     ).cpuLoadPercentages[0];
 
-    expect(typeof cpuData.unixTimeMs).toBe("number");
-    expect(typeof cpuData.user).toBe("number");
-    expect(typeof cpuData.system).toBe("number");
-    expect(cpuData.user).toBe(25.5);
-    expect(cpuData.system).toBe(10.3);
+    assert.strictEqual(typeof cpuData.unixTimeMs, "number");
+    assert.strictEqual(typeof cpuData.user, "number");
+    assert.strictEqual(typeof cpuData.system, "number");
+    // With mocks, we can assert specific values
+    assert.strictEqual(cpuData.user, 25.5);
+    assert.strictEqual(cpuData.system, 10.3);
   });
 
   it("should have correct memory metrics format and conversion", async () => {
-    const metrics: Metrics = new Metrics();
+    const metrics = createMetrics();
 
     // Wait for async processing to complete
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
 
     const memData: z.TypeOf<typeof memoryUsageMBSchema> = JSON.parse(
       metrics.get(),
     ).memoryUsageMBs[0];
 
-    expect(typeof memData.unixTimeMs).toBe("number");
-    expect(typeof memData.used).toBe("number");
-    expect(typeof memData.free).toBe("number");
+    assert.strictEqual(typeof memData.unixTimeMs, "number");
+    assert.strictEqual(typeof memData.used, "number");
+    assert.strictEqual(typeof memData.free, "number");
 
     // Bytes to MB conversion check (4096 MB active, 8192 MB available)
-    expect(memData.used).toBe(4096);
-    expect(memData.free).toBe(8192);
+    assert.strictEqual(memData.used, 4096);
+    assert.strictEqual(memData.free, 8192);
   });
 
   it("should accumulate metrics data over time", async () => {
-    const metrics: Metrics = new Metrics();
+    const metrics = createMetrics();
 
     // Wait for initial data collection
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
 
     const initialData: z.TypeOf<typeof metricsDataSchema> = JSON.parse(
       metrics.get(),
@@ -122,12 +162,15 @@ describe("Metrics", () => {
     const initialMemCount: number = initialData.memoryUsageMBs.length;
 
     // Verify at least one data point exists initially
-    expect(initialCpuCount).toBeGreaterThan(0);
-    expect(initialMemCount).toBeGreaterThan(0);
+    assert.ok(initialCpuCount > 0);
+    assert.ok(initialMemCount > 0);
 
-    // Verify new data points are added after 5 seconds
-    // append is called at 5-second intervals
-    await new Promise((resolve) => setTimeout(resolve, 5100));
+    // Advance time by 5 seconds to trigger next append
+    await mock.timers.tick(5000);
+    // Wait for promises to resolve
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
 
     const updatedData: z.TypeOf<typeof metricsDataSchema> = JSON.parse(
       metrics.get(),
@@ -136,76 +179,90 @@ describe("Metrics", () => {
     const updatedMemCount: number = updatedData.memoryUsageMBs.length;
 
     // Verify data points have increased
-    expect(updatedCpuCount).toBeGreaterThan(initialCpuCount);
-    expect(updatedMemCount).toBeGreaterThan(initialMemCount);
-    expect(updatedCpuCount).toBe(initialCpuCount + 1);
-    expect(updatedMemCount).toBe(initialMemCount + 1);
-  }, 10000); // Set test timeout to 10 seconds
+    assert.ok(updatedCpuCount > initialCpuCount);
+    assert.ok(updatedMemCount > initialMemCount);
+    assert.strictEqual(updatedCpuCount, initialCpuCount + 1);
+    assert.strictEqual(updatedMemCount, initialMemCount + 1);
+  });
 
   it("should maintain correct time intervals between data points", async () => {
-    const metrics: Metrics = new Metrics();
+    const metrics = createMetrics();
 
     // Wait for initial data collection
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
 
-    // Wait for second data point to be added after 5 seconds
-    await new Promise((resolve) => setTimeout(resolve, 5100));
+    // Advance time by 5 seconds to trigger second data point
+    await mock.timers.tick(5000);
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
 
     const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
 
     // Verify at least 2 data points exist
-    expect(data.cpuLoadPercentages.length).toBeGreaterThanOrEqual(2);
-    expect(data.memoryUsageMBs.length).toBeGreaterThanOrEqual(2);
+    assert.ok(data.cpuLoadPercentages.length >= 2);
+    assert.ok(data.memoryUsageMBs.length >= 2);
 
-    // Verify timestamp interval is approximately 5 seconds (5000ms)
+    // Verify timestamp interval is exactly 5 seconds (5000ms) with mocked timers
     const cpuTimeDiff: number =
       data.cpuLoadPercentages[1].unixTimeMs -
       data.cpuLoadPercentages[0].unixTimeMs;
     const memTimeDiff: number =
       data.memoryUsageMBs[1].unixTimeMs - data.memoryUsageMBs[0].unixTimeMs;
 
-    // Verify close to 5 seconds (5000ms) with ±200ms tolerance
-    expect(cpuTimeDiff).toBeGreaterThanOrEqual(4800);
-    expect(cpuTimeDiff).toBeLessThanOrEqual(5200);
-    expect(memTimeDiff).toBeGreaterThanOrEqual(4800);
-    expect(memTimeDiff).toBeLessThanOrEqual(5200);
-  }, 10000); // Set test timeout to 10 seconds
+    // With mocked timers and Date, we get exactly 5000ms
+    assert.strictEqual(cpuTimeDiff, 5000);
+    assert.strictEqual(memTimeDiff, 5000);
+  });
 
   it("should continue accumulating data for multiple intervals", async () => {
-    const metrics: Metrics = new Metrics();
+    const metrics = createMetrics();
 
     // Wait for initial data collection
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
 
     const initialCount: number = JSON.parse(metrics.get()).cpuLoadPercentages
       .length;
 
-    // Verify data increases after 10 seconds (2 append calls)
-    await new Promise((resolve) => setTimeout(resolve, 10100));
+    // Advance time by 10 seconds (2 intervals)
+    await mock.timers.tick(5000);
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
+    await mock.timers.tick(5000);
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
 
     const finalData: z.TypeOf<typeof metricsDataSchema> = JSON.parse(
       metrics.get(),
     );
 
     // Verify 2 data points have been added
-    expect(finalData.cpuLoadPercentages.length).toBe(initialCount + 2);
+    assert.strictEqual(finalData.cpuLoadPercentages.length, initialCount + 2);
 
     // Verify all timestamps are in ascending order
     for (let i = 1; i < finalData.cpuLoadPercentages.length; i++) {
-      expect(finalData.cpuLoadPercentages[i].unixTimeMs).toBeGreaterThan(
-        finalData.cpuLoadPercentages[i - 1].unixTimeMs,
+      assert.ok(
+        finalData.cpuLoadPercentages[i].unixTimeMs >
+          finalData.cpuLoadPercentages[i - 1].unixTimeMs,
       );
     }
 
     for (let i = 1; i < finalData.memoryUsageMBs.length; i++) {
-      expect(finalData.memoryUsageMBs[i].unixTimeMs).toBeGreaterThan(
-        finalData.memoryUsageMBs[i - 1].unixTimeMs,
+      assert.ok(
+        finalData.memoryUsageMBs[i].unixTimeMs >
+          finalData.memoryUsageMBs[i - 1].unixTimeMs,
       );
     }
-  }, 15000); // Set test timeout to 15 seconds
+  });
 
   it("should add step markers when markStep is called", () => {
-    const metrics: Metrics = new Metrics();
+    const metrics = createMetrics();
 
     metrics.markStep("Build", "start");
     metrics.markStep("Test", "start");
@@ -213,17 +270,17 @@ describe("Metrics", () => {
 
     const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
 
-    expect(data.stepMarkers.length).toBe(3);
-    expect(data.stepMarkers[0].stepName).toBe("Build");
-    expect(data.stepMarkers[0].status).toBe("start");
-    expect(data.stepMarkers[1].stepName).toBe("Test");
-    expect(data.stepMarkers[1].status).toBe("start");
-    expect(data.stepMarkers[2].stepName).toBe("Build");
-    expect(data.stepMarkers[2].status).toBe("end");
+    assert.strictEqual(data.stepMarkers.length, 3);
+    assert.strictEqual(data.stepMarkers[0].stepName, "Build");
+    assert.strictEqual(data.stepMarkers[0].status, "start");
+    assert.strictEqual(data.stepMarkers[1].stepName, "Test");
+    assert.strictEqual(data.stepMarkers[1].status, "start");
+    assert.strictEqual(data.stepMarkers[2].stepName, "Build");
+    assert.strictEqual(data.stepMarkers[2].status, "end");
   });
 
   it("should include timestamp for step markers", () => {
-    const metrics: Metrics = new Metrics();
+    const metrics = createMetrics();
     const beforeTime = Date.now();
 
     metrics.markStep("Deploy", "start");
@@ -231,8 +288,8 @@ describe("Metrics", () => {
     const afterTime = Date.now();
     const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
 
-    expect(data.stepMarkers.length).toBe(1);
-    expect(data.stepMarkers[0].unixTimeMs).toBeGreaterThanOrEqual(beforeTime);
-    expect(data.stepMarkers[0].unixTimeMs).toBeLessThanOrEqual(afterTime);
+    assert.strictEqual(data.stepMarkers.length, 1);
+    assert.ok(data.stepMarkers[0].unixTimeMs >= beforeTime);
+    assert.ok(data.stepMarkers[0].unixTimeMs <= afterTime);
   });
 });

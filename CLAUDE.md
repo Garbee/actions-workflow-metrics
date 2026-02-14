@@ -16,15 +16,11 @@ When updating one, update the other accordingly. Note that action.yml's descript
 
 ## Development Commands
 
-Requires Node.js 24.x and pnpm.
+Requires Node.js 24.x.
 
 ```bash
-pnpm install                         # Install dependencies
-pnpm run build                       # Type check + bundle to dist/
-pnpm run fix                         # Auto-format with Prettier
-pnpm test                            # Run all tests
-pnpm test src/main/metrics.test.ts   # Run specific test file
-pnpm test --coverage                 # Show coverage
+npm ci                         # Install dependencies
+npm test                       # Run all tests
 ```
 
 ## Architecture
@@ -60,40 +56,79 @@ Entry points: `src/main/index.ts`, `src/main/server.ts`, `src/post/index.ts` →
 
 ## Writing Tests
 
-Uses Vitest test runner. Call `vi.restoreAllMocks()` in `beforeEach` for test isolation.
+Uses Node.js native test runner (node:test) with experimental module mocking and timer mocking enabled via `--experimental-test-module-mocks`. Timer mocking speeds up tests from 21+ seconds to ~400ms.
 
 ```typescript
-import { describe, expect, it, beforeEach, vi } from "vitest";
+import { describe, it, beforeEach, mock } from "node:test";
+import * as assert from "node:assert/strict";
 
 describe("MyTest", () => {
-  beforeEach(() => vi.restoreAllMocks());
+  beforeEach(() => mock.restoreAll());
   // tests...
 });
 ```
 
 ### Mock Patterns
 
-**systeminformation**: Type assertion required for partial objects:
+**Timer mocking**: Enable before module import for tests involving timers:
 
 ```typescript
-vi.mock("systeminformation", () => ({
-  currentLoad: vi.fn(
-    async () =>
-      ({
+before(async () => {
+  // Enable timer mocking BEFORE importing the module
+  mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+
+  // Mock other modules
+  mockModule = mock.module("systeminformation", { /* ... */ });
+
+  // Import after mocking
+  ({ Metrics } = await import("./metrics.ts"));
+});
+
+// In tests, advance time and flush microtasks
+await mock.timers.tick(5000);  // Advance time by 5 seconds
+for (let i = 0; i < 5; i++) {
+  await new Promise(resolve => queueMicrotask(resolve));  // Flush promises
+}
+```
+
+**Module mocking with mock.module()**: Mock ES modules before importing them:
+
+```typescript
+// Mock the module before importing
+mock.module("systeminformation", {
+  namedExports: {
+    currentLoad: async () =>
+      Promise.resolve({
         currentLoadUser: 25.5,
         currentLoadSystem: 10.3,
-      }) as Systeminformation.CurrentLoadData,
-  ),
-}));
+      }),
+    mem: async () =>
+      Promise.resolve({
+        active: 4096 * 1024 * 1024,
+        available: 8192 * 1024 * 1024,
+      }),
+  },
+});
+
+// Import after mocking
+const { Metrics } = await import("./metrics.js");
 ```
 
-**fetch**: Double type assertion required:
+**globalThis functions**: Mock using simple function assignment:
 
 ```typescript
-globalThis.fetch = vi.fn(
-  async () => ({ ok: true, json: () => Promise.resolve({}) }) as Response,
-) as unknown as typeof fetch;
+globalThis.fetch = async (): Promise<Response> =>
+  ({
+    ok: true,
+    json: () => Promise.resolve({}),
+  }) as Response;
 ```
+
+**Important notes**:
+- Module mocking requires Node.js 24+ with `--experimental-test-module-mocks` flag
+- Timer mocking must be enabled BEFORE importing modules that use timers
+- Use `queueMicrotask()` to flush promise microtasks after `tick()`
+- With mocked Date, timestamps start at 0 and advance with `tick()`
 
 ## Implementation Notes
 

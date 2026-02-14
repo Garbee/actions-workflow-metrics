@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import { setFailed } from "@actions/core";
-import { Metrics } from "./metrics";
-import { serverPort } from "../lib";
+import { Metrics } from "./metrics.js";
+import { serverPort } from "../lib.js";
 import type { ServerResponse, IncomingMessage } from "node:http";
 
 async function server(): Promise<void> {
