@@ -23,8 +23,11 @@ export class Renderer {
         metricsInfoList: z.TypeOf<typeof metricsInfoListSchema>;
       }): boolean => metricsInfoList.length > 0,
     );
-    const firstChartTimes = filteredParams.length > 0 ? filteredParams[0].times : [];
-    const stepAnnotations = this.generateStepAnnotations(stepMarkers, firstChartTimes);
+    
+    // Generate step annotations only if there are charts with data
+    const stepAnnotations = filteredParams.length > 0 
+      ? this.generateStepAnnotations(stepMarkers, filteredParams[0].times)
+      : '';
     
     return `## Workflow Metrics
 

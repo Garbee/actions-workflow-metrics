@@ -122265,8 +122265,7 @@ var Renderer = class {
         metricsInfoList
       }) => metricsInfoList.length > 0
     );
-    const firstChartTimes = filteredParams.length > 0 ? filteredParams[0].times : [];
-    const stepAnnotations = this.generateStepAnnotations(stepMarkers, firstChartTimes);
+    const stepAnnotations = filteredParams.length > 0 ? this.generateStepAnnotations(stepMarkers, filteredParams[0].times) : "";
     return `## Workflow Metrics
 
 ### Metrics ID
