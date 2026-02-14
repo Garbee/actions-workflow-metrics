@@ -7,8 +7,9 @@ A GitHub Actions for collecting system metrics during workflows and outputting M
 ## Features
 
 - **System Metrics Collection**: Collects CPU load and memory usage in real-time during workflow execution
-- **Mermaid Chart Generation**: Visualizes collected metrics as Mermaid stacked bar charts
-- **Job Summary Output**: Automatically displays charts in GitHub Actions job summary
+- **Step-Level Visualization**: Track and visualize metrics for individual workflow steps
+- **Mermaid Chart Generation**: Visualizes collected metrics as Mermaid stacked bar charts with step annotations
+- **Job Summary Output**: Automatically displays charts and step timeline in GitHub Actions job summary
 
 ## Output Example
 
@@ -36,6 +37,8 @@ JSON data of CPU Loads and Memory Usages.
 
 This action is designed to be executed at the **beginning** of a workflow.
 
+### Basic Usage
+
 ```yaml
 name: Example Workflow
 
@@ -59,11 +62,69 @@ jobs:
       # ... other steps
 ```
 
+### Advanced Usage: Step-Level Tracking
+
+#### Option 1: Automatic Step Detection (Recommended)
+
+Provide a GitHub token to automatically fetch step information from the GitHub API:
+
+```yaml
+- name: Start Workflow Telemetry
+  uses: dev-hato/actions-workflow-metrics@v1
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+This will automatically correlate metrics with workflow steps and show:
+
+- Step summary table with start/end times and durations
+- Step timeline annotations on charts
+
+#### Option 2: Manual Step Markers
+
+For more precise control, manually mark step boundaries:
+
+```yaml
+- name: Start Workflow Telemetry
+  uses: dev-hato/actions-workflow-metrics@v1
+
+- name: Build Project
+  run: |
+    curl -X POST http://localhost:7777/mark-step \
+      -H "Content-Type: application/json" \
+      -d '{"stepName":"Build Project","status":"start"}'
+
+    npm run build
+
+    curl -X POST http://localhost:7777/mark-step \
+      -H "Content-Type: application/json" \
+      -d '{"stepName":"Build Project","status":"end"}'
+
+- name: Run Tests
+  run: |
+    curl -X POST http://localhost:7777/mark-step \
+      -H "Content-Type: application/json" \
+      -d '{"stepName":"Run Tests","status":"start"}'
+
+    npm test
+
+    curl -X POST http://localhost:7777/mark-step \
+      -H "Content-Type: application/json" \
+      -d '{"stepName":"Run Tests","status":"end"}'
+```
+
+### Configuration Options
+
+| Input              | Description                                         | Required | Default |
+| ------------------ | --------------------------------------------------- | -------- | ------- |
+| `interval_seconds` | Interval between metrics collection in seconds      | No       | `5`     |
+| `github-token`     | GitHub token for fetching workflow step information | No       | -       |
+
 ### Execution Flow
 
 1. **main** (workflow start): Starts metrics collection server in the background
 2. **Workflow steps**: Execute normally while metrics are collected in the background
-3. **post** (workflow end): Renders collected metrics as Mermaid charts and outputs to job summary
+3. **post** (workflow end): Fetches step information (if token provided), renders collected metrics as Mermaid charts with step annotations, and outputs to job summary
 
 ## Tech Stack
 
@@ -74,6 +135,7 @@ jobs:
   - `systeminformation`: System metrics collection
   - `zod`: Schema validation
   - `@actions/core`: GitHub Actions integration
+  - `@actions/github`: GitHub API integration for step information
 
 ## Development Setup
 
@@ -138,15 +200,22 @@ src/
 
 1. `src/main/index.ts` is executed
 2. Node.js spawns `src/main/server.ts` as a detached process
-3. Server starts serving metrics JSON at `localhost:7777`
+3. Server starts serving metrics JSON at `localhost:7777` with endpoints:
+   - `GET /metrics`: Returns collected metrics data
+   - `POST /mark-step`: Accepts manual step markers
+   - `GET /finish`: Shuts down the server
 4. `Metrics` class collects CPU/memory information every 5 seconds using `systeminformation` library
 
 ### post Execution
 
 1. `src/post/index.ts` is executed
 2. Fetches metrics JSON from `localhost:7777` (timeout: 10 seconds)
-3. `Renderer` class generates Mermaid charts
-4. Outputs to job summary using `@actions/core` `summary` API
+3. Optionally fetches workflow step information from GitHub API (if token provided)
+4. Merges API-based step information with manual markers (manual markers take precedence)
+5. `Renderer` class generates Mermaid charts with step annotations
+6. Outputs to job summary using `@actions/core` `summary` API, including:
+   - Step summary table with durations
+   - CPU and Memory charts with step timeline annotations
 
 ## License
 

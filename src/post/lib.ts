@@ -1,6 +1,8 @@
 import { z } from "zod";
+import { getInput } from "@actions/core";
+import { context, getOctokit } from "@actions/github";
 import { Renderer } from "./renderer";
-import { metricsDataSchema, serverPort } from "../lib";
+import { metricsDataSchema, serverPort, stepMarkerSchema } from "../lib";
 
 export const metricsInfoSchema = z.object({
   color: z.string(),
@@ -41,6 +43,53 @@ export async function getMetricsData(): Promise<
     return metricsDataSchema.parse(await res.json());
   } finally {
     clearTimeout(timer);
+  }
+}
+
+export async function fetchWorkflowSteps(): Promise<
+  z.TypeOf<typeof stepMarkerSchema>[]
+> {
+  const token = getInput("github-token");
+  if (!token) {
+    return [];
+  }
+
+  try {
+    const octokit = getOctokit(token);
+    const { owner, repo } = context.repo;
+    const runId = context.runId;
+
+    const { data: jobs } = await octokit.rest.actions.listJobsForWorkflowRun({
+      owner,
+      repo,
+      run_id: runId,
+    });
+
+    const stepMarkers: z.TypeOf<typeof stepMarkerSchema>[] = [];
+
+    for (const job of jobs.jobs) {
+      for (const step of job.steps || []) {
+        if (step.started_at) {
+          stepMarkers.push({
+            unixTimeMs: new Date(step.started_at).getTime(),
+            stepName: step.name,
+            status: "start" as const,
+          });
+        }
+        if (step.completed_at) {
+          stepMarkers.push({
+            unixTimeMs: new Date(step.completed_at).getTime(),
+            stepName: step.name,
+            status: "end" as const,
+          });
+        }
+      }
+    }
+
+    return stepMarkers.sort((a, b) => a.unixTimeMs - b.unixTimeMs);
+  } catch (error) {
+    // Silently fail if GitHub API is unavailable
+    return [];
   }
 }
 
@@ -104,5 +153,6 @@ export function render(
       },
     ]),
     metricsID,
+    metricsData.stepMarkers,
   );
 }

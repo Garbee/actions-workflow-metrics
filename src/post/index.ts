@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import { DefaultArtifactClient } from "@actions/artifact";
 import { info, setFailed, summary } from "@actions/core";
-import { getMetricsData, render } from "./lib";
+import { getMetricsData, render, fetchWorkflowSteps } from "./lib";
 import { serverPort } from "../lib";
 import type { z } from "zod";
 import type { metricsDataSchema } from "../lib";
@@ -28,6 +28,14 @@ async function index(): Promise<void> {
   }
 
   try {
+    // Fetch workflow steps from GitHub API and merge with manual markers
+    const apiSteps = await fetchWorkflowSteps();
+
+    // Merge API steps with manual markers (manual markers take precedence)
+    if (apiSteps.length > 0 && metricsData.stepMarkers.length === 0) {
+      metricsData.stepMarkers = apiSteps;
+    }
+
     const fileBaseName: string = "workflow_metrics";
     const fileName: string = `${fileBaseName}.json`;
     await fs.writeFile(fileName, JSON.stringify(metricsData));

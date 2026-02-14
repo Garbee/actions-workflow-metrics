@@ -46,8 +46,10 @@ describe("Metrics", () => {
 
     expect(data).toHaveProperty("cpuLoadPercentages");
     expect(data).toHaveProperty("memoryUsageMBs");
+    expect(data).toHaveProperty("stepMarkers");
     expect(Array.isArray(data.cpuLoadPercentages)).toBe(true);
     expect(Array.isArray(data.memoryUsageMBs)).toBe(true);
+    expect(Array.isArray(data.stepMarkers)).toBe(true);
   });
 
   it("should collect initial metrics on construction", async () => {
@@ -201,4 +203,36 @@ describe("Metrics", () => {
       );
     }
   }, 15000); // Set test timeout to 15 seconds
+
+  it("should add step markers when markStep is called", () => {
+    const metrics: Metrics = new Metrics();
+
+    metrics.markStep("Build", "start");
+    metrics.markStep("Test", "start");
+    metrics.markStep("Build", "end");
+
+    const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
+
+    expect(data.stepMarkers.length).toBe(3);
+    expect(data.stepMarkers[0].stepName).toBe("Build");
+    expect(data.stepMarkers[0].status).toBe("start");
+    expect(data.stepMarkers[1].stepName).toBe("Test");
+    expect(data.stepMarkers[1].status).toBe("start");
+    expect(data.stepMarkers[2].stepName).toBe("Build");
+    expect(data.stepMarkers[2].status).toBe("end");
+  });
+
+  it("should include timestamp for step markers", () => {
+    const metrics: Metrics = new Metrics();
+    const beforeTime = Date.now();
+
+    metrics.markStep("Deploy", "start");
+
+    const afterTime = Date.now();
+    const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
+
+    expect(data.stepMarkers.length).toBe(1);
+    expect(data.stepMarkers[0].unixTimeMs).toBeGreaterThanOrEqual(beforeTime);
+    expect(data.stepMarkers[0].unixTimeMs).toBeLessThanOrEqual(afterTime);
+  });
 });
