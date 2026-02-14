@@ -50864,14 +50864,17 @@ var Metrics = class {
       clearTimeout(this.timeoutId);
       this.timeoutId = null;
     }
+    this.saveState();
+  }
+  get() {
+    return JSON.stringify(this.data);
+  }
+  saveState() {
     try {
       saveState("metrics_data", JSON.stringify(this.data));
     } catch (error49) {
       console.warn("Failed to save metrics state:", error49);
     }
-  }
-  get() {
-    return JSON.stringify(this.data);
   }
   async append(unixTimeMs) {
     try {
@@ -50902,6 +50905,7 @@ var Metrics = class {
       } else {
         console.warn("Root filesystem not found in disk list. Disk metrics will be incomplete.");
       }
+      this.saveState();
     } catch (error49) {
       setFailed(error49);
     } finally {
@@ -50928,6 +50932,9 @@ async function collector() {
     process.on("SIGINT", () => {
       metrics?.stop();
       process.exit(0);
+    });
+    process.on("beforeExit", () => {
+      metrics?.stop();
     });
   } catch (error49) {
     setFailed(error49);

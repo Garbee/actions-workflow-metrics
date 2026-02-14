@@ -17,6 +17,10 @@ async function collector(): Promise<void> {
       metrics?.stop();
       process.exit(0);
     });
+    process.on("beforeExit", () => {
+      // Ensure state is saved before process exits
+      metrics?.stop();
+    });
   } catch (error) {
     setFailed(error);
     process.exit(1);

@@ -39,15 +39,19 @@ export class Metrics {
       this.timeoutId = null;
     }
     // Save final state to GitHub Actions state for post action
+    this.saveState();
+  }
+
+  get(): string {
+    return JSON.stringify(this.data);
+  }
+
+  private saveState(): void {
     try {
       saveState("metrics_data", JSON.stringify(this.data));
     } catch (error) {
       console.warn("Failed to save metrics state:", error);
     }
-  }
-
-  get(): string {
-    return JSON.stringify(this.data);
   }
 
   private async append(unixTimeMs: number): Promise<void> {
@@ -84,6 +88,9 @@ export class Metrics {
       } else {
         console.warn('Root filesystem not found in disk list. Disk metrics will be incomplete.');
       }
+
+      // Save state after each collection to ensure it's available even if process is killed
+      this.saveState();
     } catch (error) {
       setFailed(error);
     } finally {
