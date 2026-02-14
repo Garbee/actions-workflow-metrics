@@ -1,4 +1,3 @@
-import { setTimeout } from "node:timers/promises";
 import { describe, it, beforeEach, mock, before, after, afterEach } from "node:test";
 import * as assert from "node:assert/strict";
 import type { Systeminformation } from "systeminformation";
@@ -15,6 +14,9 @@ describe("Metrics", () => {
   const metricsInstances: any[] = [];
 
   before(async () => {
+    // Enable timer mocking BEFORE importing the module
+    mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+
     // Mock systeminformation module
     mockModule = mock.module("systeminformation", {
       namedExports: {
@@ -35,7 +37,7 @@ describe("Metrics", () => {
   })
 
   beforeEach(() => {
-    mock.restoreAll();
+    // Don't restore mocks - keep timer and module mocks active
   });
 
   afterEach(() => {
@@ -48,6 +50,7 @@ describe("Metrics", () => {
 
   after(() => {
     mockModule.restore();
+    mock.timers.reset();
   })
 
   // Helper function to create and track Metrics instances
@@ -82,20 +85,23 @@ describe("Metrics", () => {
   it("should collect initial metrics on construction", async () => {
     const metrics = createMetrics();
 
-    // Wait for async processing to complete
-    await setTimeout(100);
+    // Wait for the async append() to complete
+    // Need to flush microtask queue for promises to resolve
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
 
     const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
 
     // Verify CPU metrics are collected
     assert.ok(data.cpuLoadPercentages.length > 0);
-    assert.ok(data.cpuLoadPercentages[0].unixTimeMs);
+    assert.strictEqual(typeof data.cpuLoadPercentages[0].unixTimeMs, "number");
     assert.ok(data.cpuLoadPercentages[0].user !== undefined);
     assert.ok(data.cpuLoadPercentages[0].system !== undefined);
 
     // Verify memory metrics are collected
     assert.ok(data.memoryUsageMBs.length > 0);
-    assert.ok(data.memoryUsageMBs[0].unixTimeMs);
+    assert.strictEqual(typeof data.memoryUsageMBs[0].unixTimeMs, "number");
     assert.ok(data.memoryUsageMBs[0].used !== undefined);
     assert.ok(data.memoryUsageMBs[0].free !== undefined);
   });
@@ -104,7 +110,9 @@ describe("Metrics", () => {
     const metrics = createMetrics();
 
     // Wait for async processing to complete
-    await setTimeout(100);
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
 
     const cpuData: z.TypeOf<typeof cpuLoadPercentageSchema> = JSON.parse(
       metrics.get(),
@@ -122,7 +130,9 @@ describe("Metrics", () => {
     const metrics = createMetrics();
 
     // Wait for async processing to complete
-    await setTimeout(100);
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
 
     const memData: z.TypeOf<typeof memoryUsageMBSchema> = JSON.parse(
       metrics.get(),
@@ -141,7 +151,9 @@ describe("Metrics", () => {
     const metrics = createMetrics();
 
     // Wait for initial data collection
-    await setTimeout(100);
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
 
     const initialData: z.TypeOf<typeof metricsDataSchema> = JSON.parse(
       metrics.get(),
@@ -153,9 +165,12 @@ describe("Metrics", () => {
     assert.ok(initialCpuCount > 0);
     assert.ok(initialMemCount > 0);
 
-    // Verify new data points are added after 5 seconds
-    // append is called at 5-second intervals
-    await setTimeout(5100);
+    // Advance time by 5 seconds to trigger next append
+    await mock.timers.tick(5000);
+    // Wait for promises to resolve
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
 
     const updatedData: z.TypeOf<typeof metricsDataSchema> = JSON.parse(
       metrics.get(),
@@ -174,10 +189,15 @@ describe("Metrics", () => {
     const metrics = createMetrics();
 
     // Wait for initial data collection
-    await setTimeout(100);
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
 
-    // Wait for second data point to be added after 5 seconds
-    await setTimeout(5100);
+    // Advance time by 5 seconds to trigger second data point
+    await mock.timers.tick(5000);
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
 
     const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
 
@@ -185,31 +205,38 @@ describe("Metrics", () => {
     assert.ok(data.cpuLoadPercentages.length >= 2);
     assert.ok(data.memoryUsageMBs.length >= 2);
 
-    // Verify timestamp interval is approximately 5 seconds (5000ms)
+    // Verify timestamp interval is exactly 5 seconds (5000ms) with mocked timers
     const cpuTimeDiff: number =
       data.cpuLoadPercentages[1].unixTimeMs -
       data.cpuLoadPercentages[0].unixTimeMs;
     const memTimeDiff: number =
       data.memoryUsageMBs[1].unixTimeMs - data.memoryUsageMBs[0].unixTimeMs;
 
-    // Verify close to 5 seconds (5000ms) with ±200ms tolerance
-    assert.ok(cpuTimeDiff >= 4800);
-    assert.ok(cpuTimeDiff <= 5200);
-    assert.ok(memTimeDiff >= 4800);
-    assert.ok(memTimeDiff <= 5200);
+    // With mocked timers and Date, we get exactly 5000ms
+    assert.strictEqual(cpuTimeDiff, 5000);
+    assert.strictEqual(memTimeDiff, 5000);
   });
 
   it("should continue accumulating data for multiple intervals", async () => {
     const metrics = createMetrics();
 
     // Wait for initial data collection
-    await setTimeout(100);
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
 
     const initialCount: number = JSON.parse(metrics.get()).cpuLoadPercentages
       .length;
 
-    // Verify data increases after 10 seconds (2 append calls)
-    await setTimeout(10100);
+    // Advance time by 10 seconds (2 intervals)
+    await mock.timers.tick(5000);
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
+    await mock.timers.tick(5000);
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
 
     const finalData: z.TypeOf<typeof metricsDataSchema> = JSON.parse(
       metrics.get(),
