@@ -2,6 +2,8 @@
 
 A GitHub Action for collecting system metrics during workflows.
 
+> **Note**: This is a fork of [dev-hato/actions-workflow-metrics](https://github.com/dev-hato/actions-workflow-metrics) with improvements focused on accessibility and reliability. This fork improves accessibility by presenting data in clear tables instead of relying on Mermaid graphs to convey information. It also improves handling by not running a server in the background, making it less likely to conflict with operations under examination.
+
 ## Features
 
 - **System Metrics Collection**: Collects CPU load, memory usage, and disk usage in real-time during workflow execution
@@ -60,6 +62,7 @@ jobs:
 ```
 
 The action will automatically:
+
 - Collect CPU load, memory usage, and disk usage metrics
 - Fetch workflow step information from the GitHub API
 - Correlate metrics with workflow steps
