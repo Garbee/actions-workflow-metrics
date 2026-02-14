@@ -50798,6 +50798,14 @@ var metricsDataSchema = external_exports.object({
   diskUsageGBs: diskUsageGBsSchema,
   stepMarkers: stepMarkersSchema
 });
+var alertSchema = external_exports.object({
+  type: external_exports.enum(["memory", "cpu", "disk"]),
+  message: external_exports.string(),
+  step: external_exports.string().optional(),
+  steps: external_exports.array(external_exports.string()).optional(),
+  value: external_exports.number(),
+  threshold: external_exports.number()
+});
 function getMetricsFilePath() {
   const runId = process.env.GITHUB_RUN_ID || "local";
   const job = process.env.GITHUB_JOB || "default";

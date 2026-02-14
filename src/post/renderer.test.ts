@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import * as assert from "node:assert/strict";
 import { Renderer } from "./renderer.ts";
+import type { Alert } from "../lib.ts";
 
 describe("Renderer", () => {
   const testMetricsID: string = "1234567890";
@@ -638,5 +639,233 @@ describe("Renderer", () => {
     // Verify step names appear in the chart labels
     assert.ok(result.includes("Build"));
     assert.ok(result.includes("Test"));
+  });
+
+  it("should not render alerts section when no alerts provided", () => {
+    const renderer: Renderer = new Renderer();
+    const result: string = renderer.render(
+      [
+        {
+          title: "CPU Usage",
+          metricsInfoList: [
+            {
+              color: "Red",
+              name: "User CPU",
+              data: [10, 20, 30],
+            },
+          ],
+          times: [new Date("2024-01-01T00:00:00Z")],
+          yAxis: {
+            title: "Percentage",
+            range: "0 --> 100",
+          },
+        },
+      ],
+      testMetricsID,
+      defaultStepMarkers,
+      [],
+    );
+
+    assert.ok(!result.includes("### Alerts"));
+  });
+
+  it("should render alerts section when alerts provided", () => {
+    const renderer: Renderer = new Renderer();
+    const alerts: Alert[] = [
+      {
+        type: "memory",
+        message: "Memory utilization exceeded 80%",
+        step: "Memory Heavy Step",
+        value: 85.5,
+        threshold: 80,
+      },
+    ];
+
+    const result: string = renderer.render(
+      [
+        {
+          title: "CPU Usage",
+          metricsInfoList: [
+            {
+              color: "Red",
+              name: "User CPU",
+              data: [10, 20, 30],
+            },
+          ],
+          times: [new Date("2024-01-01T00:00:00Z")],
+          yAxis: {
+            title: "Percentage",
+            range: "0 --> 100",
+          },
+        },
+      ],
+      testMetricsID,
+      defaultStepMarkers,
+      alerts,
+    );
+
+    assert.ok(result.includes("### Alerts"));
+    assert.ok(result.includes("> [!WARNING]"));
+    assert.ok(result.includes("Memory utilization exceeded 80%"));
+    assert.ok(result.includes("Memory Heavy Step"));
+    assert.ok(result.includes("85.5%"));
+    assert.ok(result.includes("⚠️"));
+  });
+
+  it("should render multiple alerts", () => {
+    const renderer: Renderer = new Renderer();
+    const alerts: Alert[] = [
+      {
+        type: "memory",
+        message: "Memory utilization exceeded 80%",
+        step: "Memory Step",
+        value: 85.5,
+        threshold: 80,
+      },
+      {
+        type: "cpu",
+        message: "Sustained CPU usage above 85% for more than 60 seconds",
+        steps: ["CPU Step 1", "CPU Step 2"],
+        value: 92.3,
+        threshold: 85,
+      },
+      {
+        type: "disk",
+        message: "Disk usage exceeded 90%",
+        step: "Disk Heavy Step",
+        value: 94.7,
+        threshold: 90,
+      },
+    ];
+
+    const result: string = renderer.render(
+      [
+        {
+          title: "CPU Usage",
+          metricsInfoList: [
+            {
+              color: "Red",
+              name: "User CPU",
+              data: [10, 20, 30],
+            },
+          ],
+          times: [new Date("2024-01-01T00:00:00Z")],
+          yAxis: {
+            title: "Percentage",
+            range: "0 --> 100",
+          },
+        },
+      ],
+      testMetricsID,
+      defaultStepMarkers,
+      alerts,
+    );
+
+    assert.ok(result.includes("### Alerts"));
+    assert.ok(result.includes("> [!WARNING]"));
+
+    // Memory alert
+    assert.ok(result.includes("Memory utilization exceeded 80%"));
+    assert.ok(result.includes("Memory Step"));
+    assert.ok(result.includes("85.5%"));
+    assert.ok(result.includes("⚠️"));
+
+    // CPU alert
+    assert.ok(result.includes("Sustained CPU usage above 85%"));
+    assert.ok(result.includes("CPU Step 1"));
+    assert.ok(result.includes("CPU Step 2"));
+    assert.ok(result.includes("92.3%"));
+    assert.ok(result.includes("🔥"));
+
+    // Disk alert
+    assert.ok(result.includes("Disk usage exceeded 90%"));
+    assert.ok(result.includes("Disk Heavy Step"));
+    assert.ok(result.includes("94.7%"));
+    assert.ok(result.includes("💾"));
+  });
+
+  it("should render alerts before workflow steps", () => {
+    const renderer: Renderer = new Renderer();
+    const alerts: Alert[] = [
+      {
+        type: "memory",
+        message: "Memory utilization exceeded 80%",
+        step: "Test Step",
+        value: 85.5,
+        threshold: 80,
+      },
+    ];
+
+    const result: string = renderer.render(
+      [
+        {
+          title: "CPU Usage",
+          metricsInfoList: [
+            {
+              color: "Red",
+              name: "User CPU",
+              data: [10],
+            },
+          ],
+          times: [new Date("2024-01-01T00:00:00Z")],
+          yAxis: {
+            title: "Percentage",
+            range: "0 --> 100",
+          },
+        },
+      ],
+      testMetricsID,
+      defaultStepMarkers,
+      alerts,
+    );
+
+    // Alerts should come before Workflow Steps
+    const alertsIndex = result.indexOf("### Alerts");
+    const stepsIndex = result.indexOf("### Workflow Steps");
+
+    assert.ok(alertsIndex > 0);
+    assert.ok(stepsIndex > 0);
+    assert.ok(alertsIndex < stepsIndex);
+  });
+
+  it("should handle alert without step information", () => {
+    const renderer: Renderer = new Renderer();
+    const alerts: Alert[] = [
+      {
+        type: "memory",
+        message: "Memory utilization exceeded 80%",
+        value: 85.5,
+        threshold: 80,
+      },
+    ];
+
+    const result: string = renderer.render(
+      [
+        {
+          title: "CPU Usage",
+          metricsInfoList: [
+            {
+              color: "Red",
+              name: "User CPU",
+              data: [10],
+            },
+          ],
+          times: [new Date("2024-01-01T00:00:00Z")],
+          yAxis: {
+            title: "Percentage",
+            range: "0 --> 100",
+          },
+        },
+      ],
+      testMetricsID,
+      defaultStepMarkers,
+      alerts,
+    );
+
+    assert.ok(result.includes("### Alerts"));
+    assert.ok(result.includes("Memory utilization exceeded 80%"));
+    assert.ok(result.includes("85.5%"));
+    // Should not include "in step" since no step was provided
+    assert.ok(!result.includes("in step"));
   });
 });

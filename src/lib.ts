@@ -36,6 +36,17 @@ export const metricsDataSchema = z.object({
   stepMarkers: stepMarkersSchema,
 });
 
+export const alertSchema = z.object({
+  type: z.enum(["memory", "cpu", "disk"]),
+  message: z.string(),
+  step: z.string().optional(),
+  steps: z.array(z.string()).optional(),
+  value: z.number(),
+  threshold: z.number(),
+});
+
+export type Alert = z.infer<typeof alertSchema>;
+
 /**
  * Gets the path to the metrics file in the temporary directory.
  * Uses GITHUB_RUN_ID and GITHUB_JOB to ensure uniqueness across runs and jobs.

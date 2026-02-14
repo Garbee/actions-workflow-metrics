@@ -5,16 +5,18 @@ import type {
   metricsInfoListSchema,
   metricsInfoSchema,
 } from "./lib.js";
-import type { stepMarkerSchema } from "../lib.js";
+import type { stepMarkerSchema, Alert } from "../lib.js";
 
 export class Renderer {
   render(
     renderParamsList: z.TypeOf<typeof renderParamsListSchema>,
     metricsID: string,
     stepMarkers: z.TypeOf<typeof stepMarkerSchema>[] = [],
+    alerts: Alert[] = [],
   ): string {
     const stepSummary = this.generateStepSummary(stepMarkers);
-    
+    const alertsSection = this.generateAlertsSection(alerts);
+
     // Get times from the first chart for step annotations
     const filteredParams = renderParamsList.filter(
       ({
@@ -23,19 +25,19 @@ export class Renderer {
         metricsInfoList: z.TypeOf<typeof metricsInfoListSchema>;
       }): boolean => metricsInfoList.length > 0,
     );
-    
+
     // Generate step annotations only if there are charts with data
-    const stepAnnotations = filteredParams.length > 0 
+    const stepAnnotations = filteredParams.length > 0
       ? this.generateStepAnnotations(stepMarkers, filteredParams[0].times)
       : '';
-    
+
     return `## Workflow Metrics
 
 ### Metrics ID
 
 ${metricsID}
 
-${stepSummary}${filteredParams
+${alertsSection}${stepSummary}${filteredParams
       .map((p: z.TypeOf<typeof renderParamsSchema>): string => {
         const colors: string[] = p.metricsInfoList.map(
           ({ color }: { color: string }): string => color,
@@ -254,5 +256,30 @@ ${rows}
     }
 
     return `\n<details>\n<summary>Step Timeline</summary>\n\n${annotations.join("\n")}\n</details>`;
+  }
+
+  private generateAlertsSection(alerts: Alert[]): string {
+    if (alerts.length === 0) {
+      return "";
+    }
+
+    const alertItems = alerts.map((alert) => {
+      let stepInfo = "";
+      if (alert.step) {
+        stepInfo = ` in step **${alert.step}**`;
+      } else if (alert.steps && alert.steps.length > 0) {
+        stepInfo = ` in steps: ${alert.steps.map(s => `**${s}**`).join(", ")}`;
+      }
+
+      const icon = alert.type === "memory" ? "⚠️" : alert.type === "cpu" ? "🔥" : "💾";
+      return `> ${icon} ${alert.message}${stepInfo} (${alert.value.toFixed(1)}%)`;
+    });
+
+    return `### Alerts
+
+> [!WARNING]
+${alertItems.join("\n")}
+
+`;
   }
 }
