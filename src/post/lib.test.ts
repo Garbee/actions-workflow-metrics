@@ -1,4 +1,4 @@
-import { describe, it, before, after, mock } from "node:test";
+import { describe, it, before, after, mock, beforeEach } from "node:test";
 import * as assert from "node:assert/strict";
 import type { z } from "zod";
 import type { metricsDataSchema } from "../lib.js";
@@ -25,23 +25,35 @@ const sampleMetricsData: z.TypeOf<typeof metricsDataSchema> = {
   ],
 };
 
-describe("render", () => {
-  let render;
-  const testMetricsID: string = "1234567890";
+// Shared state for mocking
+const savedStates: Map<string, string> = new Map();
+let render;
+let getMetricsData;
 
-  before(async () => {
-    // Mock @actions/core module for render function
-    mock.module("@actions/core", {
-      namedExports: {
-        getInput: () => "",
-        getState: () => "",
+before(async () => {
+  // Mock @actions/core module once for all tests
+  mock.module("@actions/core", {
+    namedExports: {
+      getInput: () => "",
+      getState: (name: string) => {
+        return savedStates.get(name) || "";
       },
-    });
-
-    // Import after mocking
-    const lib = await import("./lib.ts");
-    render = lib.render;
+    },
   });
+
+  // Import after mocking
+  const lib = await import("./lib.ts");
+  render = lib.render;
+  getMetricsData = lib.getMetricsData;
+});
+
+beforeEach(() => {
+  // Clear saved states between tests
+  savedStates.clear();
+});
+
+describe("render", () => {
+  const testMetricsID: string = "1234567890";
 
   it("should render charts with valid metrics data", () => {
     const result: string = render(sampleMetricsData, testMetricsID);
@@ -122,30 +134,6 @@ describe("render", () => {
 });
 
 describe("getMetricsData", () => {
-  let mockCoreModule;
-  let getMetricsData;
-  const savedStates: Map<string, string> = new Map();
-
-  before(async () => {
-    // Mock @actions/core module BEFORE importing
-    mockCoreModule = mock.module("@actions/core", {
-      namedExports: {
-        getState: (name: string) => {
-          return savedStates.get(name) || "";
-        },
-        getInput: () => "",
-      },
-    });
-
-    // Import after mocking
-    const lib = await import("./lib.ts");
-    getMetricsData = lib.getMetricsData;
-  });
-
-  after(() => {
-    mockCoreModule.restore();
-  });
-
   it("should read metrics data from state", async () => {
     // Set test data in state
     savedStates.set("metrics_data", JSON.stringify(sampleMetricsData));
