@@ -122423,9 +122423,11 @@ ${rows}
       );
     }
     return `
-#### Step Timeline
+<details>
+<summary>Step Timeline</summary>
 
-${annotations.join("\n")}`;
+${annotations.join("\n")}
+</details>`;
   }
 };
 

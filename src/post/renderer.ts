@@ -251,6 +251,6 @@ ${rows}
       );
     }
 
-    return `\n#### Step Timeline\n\n${annotations.join("\n")}`;
+    return `\n<details>\n<summary>Step Timeline</summary>\n\n${annotations.join("\n")}\n</details>`;
   }
 }
