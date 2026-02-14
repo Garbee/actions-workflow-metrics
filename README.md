@@ -20,13 +20,31 @@ The action outputs the following tables:
 
 Shows CPU utilization for each workflow step with threshold exceeded indicators.
 
+| Step | Total | Used | Available | Available % | Threshold Exceeded |
+|------|-------|------|-----------|-------------|-------------------|
+| Initialization | 100.00% | 3.22% | 96.78% | 96.78% |  |
+| CPU and Storage Intensive Activity | 100.00% | 3.22% | 96.78% | 96.78% | Yes |
+| Memory Intensive Activity | 100.00% | 27.00% | 73.00% | 73.00% | Yes |
+
 ### Memory Usage
 
 Shows memory utilization for each workflow step with threshold exceeded indicators.
 
+| Step | Total | Used | Available | Available % | Threshold Exceeded |
+|------|-------|------|-----------|-------------|-------------------|
+| Initialization | 15990.48 MB | 917.74 MB | 15072.74 MB | 94.26% | Yes |
+| CPU and Storage Intensive Activity | 15990.48 MB | 917.74 MB | 15072.74 MB | 94.26% | Yes |
+| Memory Intensive Activity | 15990.48 MB | 5064.51 MB | 10925.97 MB | 68.33% |  |
+
 ### Disk Usage
 
 Shows disk usage for each workflow step with threshold exceeded indicators.
+
+| Step | Total Size | Used | Available | Available % | Threshold Exceeded |
+|------|------------|------|-----------|-------------|-------------------|
+| Initialization | 144.26 GB | 57.73 GB | 86.51 GB | 59.97% | Yes |
+| CPU and Storage Intensive Activity | 144.26 GB | 57.73 GB | 86.51 GB | 59.97% | Yes |
+| Memory Intensive Activity | 144.26 GB | 52.81 GB | 91.43 GB | 63.38% |  |
 
 ## Usage
 
@@ -53,7 +71,7 @@ jobs:
 
       # Subsequent regular steps
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Run tests
         run: npm test
