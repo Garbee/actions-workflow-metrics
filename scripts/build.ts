@@ -5,7 +5,6 @@ import * as esbuild from "esbuild";
 const entrypoints: { dirName: string; baseFileName: string }[] = [
   { dirName: "main", baseFileName: "index" },
   { dirName: "main", baseFileName: "collector" },
-  { dirName: "main", baseFileName: "mark-step" },
   { dirName: "post", baseFileName: "index" },
 ];
 

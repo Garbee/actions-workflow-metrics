@@ -1,4 +1,4 @@
-import { writeFile, readFile, mkdir } from "node:fs/promises";
+import { writeFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { setFailed } from "@actions/core";
 import { currentLoad, mem } from "systeminformation";
@@ -52,37 +52,6 @@ export class Metrics {
 
   get(): string {
     return JSON.stringify(this.data);
-  }
-
-  async markStep(stepName: string, status: "start" | "end"): Promise<void> {
-    // Note: This method has a race condition when called concurrently.
-    // However, manual step markers are deprecated in favor of automatic
-    // step detection via GitHub API. This method is kept for backward
-    // compatibility but should not be used in production.
-    
-    // Read current data from file to get latest state
-    await this.readData();
-    
-    this.data.stepMarkers.push({
-      unixTimeMs: Date.now(),
-      stepName,
-      status,
-    });
-    
-    // Write updated data back to file
-    await this.writeData();
-  }
-
-  private async readData(): Promise<void> {
-    try {
-      const content = await readFile(this.filePath, "utf-8");
-      const parsed = metricsDataSchema.parse(JSON.parse(content));
-      this.data.cpuLoadPercentages = parsed.cpuLoadPercentages;
-      this.data.memoryUsageMBs = parsed.memoryUsageMBs;
-      this.data.stepMarkers = parsed.stepMarkers;
-    } catch (error) {
-      // If file doesn't exist or is invalid, keep current data
-    }
   }
 
   private async writeData(): Promise<void> {

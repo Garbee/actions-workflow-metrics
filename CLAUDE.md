@@ -53,7 +53,7 @@ npm test                       # Run all tests
 
 ### Build Process
 
-Entry points: `src/main/index.ts`, `src/main/collector.ts`, `src/main/mark-step.ts`, `src/post/index.ts` → bundled to `dist/`
+Entry points: `src/main/index.ts`, `src/main/collector.ts`, `src/post/index.ts` → bundled to `dist/`
 
 **Critical**: dist/ directory must be committed. All dependencies are bundled into dist files.
 

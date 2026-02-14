@@ -104412,7 +104412,7 @@ async function getMetricsData() {
 async function fetchWorkflowSteps() {
   const token = getInput("github-token");
   if (!token) {
-    return [];
+    throw new Error("GitHub token is required for workflow step tracking");
   }
   try {
     const octokit = getOctokit(token);
@@ -104444,7 +104444,9 @@ async function fetchWorkflowSteps() {
     }
     return stepMarkers.sort((a, b) => a.unixTimeMs - b.unixTimeMs);
   } catch (error49) {
-    return [];
+    throw new Error(
+      `Failed to fetch workflow steps: ${error49 instanceof Error ? error49.message : String(error49)}`
+    );
   }
 }
 function render(metricsData, metricsID) {
@@ -104525,9 +104527,7 @@ async function index() {
   }
   try {
     const apiSteps = await fetchWorkflowSteps();
-    if (apiSteps.length > 0 && metricsData.stepMarkers.length === 0) {
-      metricsData.stepMarkers = apiSteps;
-    }
+    metricsData.stepMarkers = apiSteps;
     const fileBaseName = "workflow_metrics";
     const fileName = `${fileBaseName}.json`;
     await fs5.writeFile(fileName, JSON.stringify(metricsData));

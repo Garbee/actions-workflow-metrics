@@ -42,7 +42,7 @@ export async function fetchWorkflowSteps(): Promise<
 > {
   const token = getInput("github-token");
   if (!token) {
-    return [];
+    throw new Error("GitHub token is required for workflow step tracking");
   }
 
   try {
@@ -79,8 +79,9 @@ export async function fetchWorkflowSteps(): Promise<
 
     return stepMarkers.sort((a, b) => a.unixTimeMs - b.unixTimeMs);
   } catch (error) {
-    // Silently fail if GitHub API is unavailable
-    return [];
+    throw new Error(
+      `Failed to fetch workflow steps: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }
 

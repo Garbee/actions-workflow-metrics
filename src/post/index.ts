@@ -28,13 +28,9 @@ async function index(): Promise<void> {
   }
 
   try {
-    // Fetch workflow steps from GitHub API and merge with manual markers
+    // Fetch workflow steps from GitHub API (required)
     const apiSteps = await fetchWorkflowSteps();
-
-    // Merge API steps with manual markers (manual markers take precedence)
-    if (apiSteps.length > 0 && metricsData.stepMarkers.length === 0) {
-      metricsData.stepMarkers = apiSteps;
-    }
+    metricsData.stepMarkers = apiSteps;
 
     const fileBaseName: string = "workflow_metrics";
     const fileName: string = `${fileBaseName}.json`;

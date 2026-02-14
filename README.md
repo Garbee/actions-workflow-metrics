@@ -37,6 +37,8 @@ This action is designed to be executed at the **beginning** of a workflow.
 
 ### Basic Usage
 
+A GitHub token is required to automatically track workflow steps and correlate metrics with each step.
+
 ```yaml
 name: Example Workflow
 
@@ -49,6 +51,8 @@ jobs:
       # Run actions-workflow-metrics at the beginning of the workflow
       - name: Start Workflow Telemetry
         uses: garbee/actions-workflow-metrics@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # Subsequent regular steps
       - name: Checkout
@@ -60,51 +64,19 @@ jobs:
       # ... other steps
 ```
 
-### Advanced Usage: Step-Level Tracking
-
-#### Option 1: Automatic Step Detection (Recommended)
-
-Provide a GitHub token to automatically fetch step information from the GitHub API:
-
-```yaml
-- name: Start Workflow Telemetry
-  uses: garbee/actions-workflow-metrics@v1
-  with:
-    github-token: ${{ secrets.GITHUB_TOKEN }}
-```
-
-This will automatically correlate metrics with workflow steps and show:
-
-- Step summary table with start/end times and durations
-- Step timeline annotations on charts
-
-#### Option 2: Manual Step Markers
-
-Manual step markers require direct interaction with the metrics file. This is an advanced feature for users who need precise control over step boundaries:
-
-```yaml
-- name: Start Workflow Telemetry
-  uses: garbee/actions-workflow-metrics@v1
-
-- name: Build Project
-  run: |
-    # Manual marking requires file manipulation - advanced users only
-    # For most use cases, use automatic step detection with github-token instead
-    npm run build
-
-- name: Run Tests
-  run: |
-    npm test
-```
-
-> **Note**: Manual step markers in the file-based architecture require direct file manipulation. For most use cases, we recommend using **automatic step detection** (Option 1) with a GitHub token instead.
+The action will automatically:
+- Collect CPU load and memory usage metrics
+- Fetch workflow step information from the GitHub API
+- Correlate metrics with workflow steps
+- Generate step summary table with start/end times and durations
+- Create step timeline annotations on charts
 
 ### Configuration Options
 
 | Input              | Description                                         | Required | Default |
 | ------------------ | --------------------------------------------------- | -------- | ------- |
 | `interval_seconds` | Interval between metrics collection in seconds      | No       | `5`     |
-| `github-token`     | GitHub token for fetching workflow step information | No       | -       |
+| `github-token`     | GitHub token for fetching workflow step information | Yes      | -       |
 
 ### Execution Flow
 

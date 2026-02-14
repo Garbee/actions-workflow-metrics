@@ -10,8 +10,8 @@ inputs:
     default: "5"
     required: false
   github-token:
-    description: "GitHub token for fetching workflow step information (optional)"
-    required: false
+    description: "GitHub token for fetching workflow step information"
+    required: true
 runs:
   using: node24
   main: dist/main/index.bundle.js

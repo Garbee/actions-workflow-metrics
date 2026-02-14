@@ -22,6 +22,8 @@ jobs:
 
       - name: Start Workflow Telemetry
         uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
@@ -58,34 +60,6 @@ jobs:
 
       - name: Run Tests
         run: npm test
-
-  test-manual-step-markers:
-    name: Test Manual Step Markers (Deprecated)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-
-      - name: Start Workflow Telemetry
-        uses: ./
-        with:
-          interval_seconds: "3"
-
-      - name: Setup Node.js
-        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
-        with:
-          node-version: "24"
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Run Tests
-        run: npm test
-
-      # Note: Manual step markers via file manipulation are complex
-      # Use automatic step tracking with github-token instead
 
   test-custom-interval:
     name: Test Custom Interval

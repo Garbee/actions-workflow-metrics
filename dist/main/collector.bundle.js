@@ -36989,7 +36989,7 @@ function error(message, properties = {}) {
 }
 
 // src/main/metrics.ts
-import { writeFile as writeFile2, readFile, mkdir as mkdir2 } from "node:fs/promises";
+import { writeFile as writeFile2, mkdir as mkdir2 } from "node:fs/promises";
 import { dirname } from "node:path";
 var import_systeminformation = __toESM(require_lib(), 1);
 
@@ -50833,25 +50833,6 @@ var Metrics = class {
   }
   get() {
     return JSON.stringify(this.data);
-  }
-  async markStep(stepName, status) {
-    await this.readData();
-    this.data.stepMarkers.push({
-      unixTimeMs: Date.now(),
-      stepName,
-      status
-    });
-    await this.writeData();
-  }
-  async readData() {
-    try {
-      const content = await readFile(this.filePath, "utf-8");
-      const parsed = metricsDataSchema.parse(JSON.parse(content));
-      this.data.cpuLoadPercentages = parsed.cpuLoadPercentages;
-      this.data.memoryUsageMBs = parsed.memoryUsageMBs;
-      this.data.stepMarkers = parsed.stepMarkers;
-    } catch (error49) {
-    }
   }
   async writeData() {
     const content = JSON.stringify(this.data);

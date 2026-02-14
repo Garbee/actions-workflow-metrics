@@ -281,47 +281,4 @@ describe("Metrics", () => {
       );
     }
   });
-
-  it("should add step markers when markStep is called", async () => {
-    const metrics = createMetrics();
-
-    // Wait for initialization
-    for (let i = 0; i < 10; i++) {
-      await new Promise(resolve => queueMicrotask(resolve));
-    }
-
-    await metrics.markStep("Build", "start");
-    await metrics.markStep("Test", "start");
-    await metrics.markStep("Build", "end");
-
-    const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
-
-    assert.strictEqual(data.stepMarkers.length, 3);
-    assert.strictEqual(data.stepMarkers[0].stepName, "Build");
-    assert.strictEqual(data.stepMarkers[0].status, "start");
-    assert.strictEqual(data.stepMarkers[1].stepName, "Test");
-    assert.strictEqual(data.stepMarkers[1].status, "start");
-    assert.strictEqual(data.stepMarkers[2].stepName, "Build");
-    assert.strictEqual(data.stepMarkers[2].status, "end");
-  });
-
-  it("should include timestamp for step markers", async () => {
-    const metrics = createMetrics();
-    
-    // Wait for initialization
-    for (let i = 0; i < 10; i++) {
-      await new Promise(resolve => queueMicrotask(resolve));
-    }
-    
-    const beforeTime = Date.now();
-
-    await metrics.markStep("Deploy", "start");
-
-    const afterTime = Date.now();
-    const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
-
-    assert.strictEqual(data.stepMarkers.length, 1);
-    assert.ok(data.stepMarkers[0].unixTimeMs >= beforeTime);
-    assert.ok(data.stepMarkers[0].unixTimeMs <= afterTime);
-  });
 });
