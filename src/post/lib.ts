@@ -1,8 +1,9 @@
+import { readFile } from "node:fs/promises";
 import { z } from "zod";
 import { getInput } from "@actions/core";
 import { context, getOctokit } from "@actions/github";
 import { Renderer } from "./renderer.ts";
-import { metricsDataSchema, serverPort, stepMarkerSchema } from "../lib.ts";
+import { metricsDataSchema, getMetricsFilePath, stepMarkerSchema } from "../lib.ts";
 
 export const metricsInfoSchema = z.object({
   color: z.string(),
@@ -24,25 +25,15 @@ export const renderParamsListSchema = z.array(renderParamsSchema);
 export async function getMetricsData(): Promise<
   z.TypeOf<typeof metricsDataSchema>
 > {
-  const controller: AbortController = new AbortController();
-  const timer: NodeJS.Timeout = setTimeout(() => controller.abort(), 10 * 1000); // 10 seconds
+  const filePath = getMetricsFilePath();
+  
   try {
-    const res: Response = await fetch(
-      `http://localhost:${serverPort}/metrics`,
-      {
-        signal: controller.signal,
-      },
+    const content = await readFile(filePath, "utf-8");
+    return metricsDataSchema.parse(JSON.parse(content));
+  } catch (error) {
+    throw new Error(
+      `Failed to read metrics file at ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
     );
-
-    if (!res.ok) {
-      throw new Error(
-        `Failed to fetch metrics: ${res.status} ${res.statusText}`,
-      );
-    }
-
-    return metricsDataSchema.parse(await res.json());
-  } finally {
-    clearTimeout(timer);
   }
 }
 

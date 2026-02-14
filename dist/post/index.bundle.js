@@ -13304,7 +13304,7 @@ var require_fetch = __commonJS({
     function handleFetchDone(response) {
       finalizeAndReportTiming(response, "fetch");
     }
-    function fetch3(input, init = void 0) {
+    function fetch2(input, init = void 0) {
       webidl.argumentLengthCheck(arguments, 1, "globalThis.fetch");
       let p = createDeferredPromise();
       let requestObject;
@@ -14261,7 +14261,7 @@ var require_fetch = __commonJS({
       }
     }
     module.exports = {
-      fetch: fetch3,
+      fetch: fetch2,
       Fetch,
       fetching,
       finalizeAndReportTiming
@@ -18473,7 +18473,7 @@ var require_undici = __commonJS({
     module.exports.setGlobalDispatcher = setGlobalDispatcher;
     module.exports.getGlobalDispatcher = getGlobalDispatcher;
     var fetchImpl = require_fetch().fetch;
-    module.exports.fetch = async function fetch3(init, options = void 0) {
+    module.exports.fetch = async function fetch2(init, options = void 0) {
       try {
         return await fetchImpl(init, options);
       } catch (err) {
@@ -27458,8 +27458,8 @@ var require_graceful_fs = __commonJS({
       fs7.createReadStream = createReadStream;
       fs7.createWriteStream = createWriteStream2;
       var fs$readFile = fs7.readFile;
-      fs7.readFile = readFile;
-      function readFile(path2, options, cb) {
+      fs7.readFile = readFile2;
+      function readFile2(path2, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$readFile(path2, options, cb);
@@ -28037,7 +28037,7 @@ var require_BufferList = __commonJS({
         this.head = this.tail = null;
         this.length = 0;
       };
-      BufferList.prototype.join = function join2(s) {
+      BufferList.prototype.join = function join3(s) {
         if (this.length === 0) return "";
         var p = this.head;
         var ret = "" + p.data;
@@ -53201,7 +53201,6 @@ var require_light = __commonJS({
 // src/post/index.ts
 import fs5 from "node:fs/promises";
 import { setTimeout as setTimeout2 } from "node:timers/promises";
-import { setTimeout as setTimeoutCallback } from "node:timers";
 
 // node_modules/@actions/core/lib/command.js
 import * as os from "os";
@@ -86624,8 +86623,8 @@ function isPlainObject2(value) {
 }
 var noop = () => "";
 async function fetchWrapper(requestOptions) {
-  const fetch3 = requestOptions.request?.fetch || globalThis.fetch;
-  if (!fetch3) {
+  const fetch2 = requestOptions.request?.fetch || globalThis.fetch;
+  if (!fetch2) {
     throw new Error(
       "fetch is not set. Please pass a fetch implementation as new Octokit({ request: { fetch }}). Learn more at https://github.com/octokit/octokit.js/#fetch-missing"
     );
@@ -86641,7 +86640,7 @@ async function fetchWrapper(requestOptions) {
   );
   let fetchResponse;
   try {
-    fetchResponse = await fetch3(requestOptions.url, {
+    fetchResponse = await fetch2(requestOptions.url, {
       method: requestOptions.method,
       body: body2,
       redirect: requestOptions.request?.redirect,
@@ -90456,6 +90455,9 @@ If the error persists, please check whether Actions and API requests are operati
 
 // node_modules/@actions/artifact/lib/artifact.js
 var client = new DefaultArtifactClient();
+
+// src/post/lib.ts
+import { readFile } from "node:fs/promises";
 
 // node_modules/zod/v4/classic/external.js
 var external_exports = {};
@@ -104348,6 +104350,8 @@ ${annotations.join("\n")}`;
 };
 
 // src/lib.ts
+import { tmpdir } from "node:os";
+import { join as join2 } from "node:path";
 var cpuLoadPercentageSchema = external_exports.object({
   unixTimeMs: external_exports.number(),
   user: external_exports.number().nonnegative().max(100),
@@ -104371,7 +104375,11 @@ var metricsDataSchema = external_exports.object({
   memoryUsageMBs: memoryUsageMBsSchema,
   stepMarkers: stepMarkersSchema
 });
-var serverPort = 7777;
+function getMetricsFilePath() {
+  const runId = process.env.GITHUB_RUN_ID || "local";
+  const job = process.env.GITHUB_JOB || "default";
+  return join2(tmpdir(), `metrics-${runId}-${job}.json`);
+}
 
 // src/post/lib.ts
 var metricsInfoSchema = external_exports.object({
@@ -104391,23 +104399,14 @@ var renderParamsSchema = external_exports.object({
 });
 var renderParamsListSchema = external_exports.array(renderParamsSchema);
 async function getMetricsData() {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10 * 1e3);
+  const filePath = getMetricsFilePath();
   try {
-    const res = await fetch(
-      `http://localhost:${serverPort}/metrics`,
-      {
-        signal: controller.signal
-      }
+    const content = await readFile(filePath, "utf-8");
+    return metricsDataSchema.parse(JSON.parse(content));
+  } catch (error49) {
+    throw new Error(
+      `Failed to read metrics file at ${filePath}: ${error49 instanceof Error ? error49.message : String(error49)}`
     );
-    if (!res.ok) {
-      throw new Error(
-        `Failed to fetch metrics: ${res.status} ${res.statusText}`
-      );
-    }
-    return metricsDataSchema.parse(await res.json());
-  } finally {
-    clearTimeout(timer);
   }
 }
 async function fetchWorkflowSteps() {
@@ -104518,7 +104517,7 @@ async function index() {
       metricsData = await getMetricsData();
       break;
     } catch (error49) {
-      if (maxRetryCount - 2 < i || !(error49 instanceof TypeError) || error49.message !== "fetch failed") {
+      if (maxRetryCount - 2 < i || !(error49 instanceof Error) || !error49.message.includes("Failed to read metrics file")) {
         setFailed(error49);
       }
     }
@@ -104553,26 +104552,9 @@ async function index() {
       await setTimeout2(1e3);
     }
     await summary.addRaw(render(metricsData, metricsID)).write();
+    info("Metrics collection completed successfully");
   } catch (error49) {
     setFailed(error49);
-  } finally {
-    const controller = new AbortController();
-    const timer = setTimeoutCallback(() => controller.abort(), 10 * 1e3);
-    try {
-      const res = await fetch(
-        `http://localhost:${serverPort}/finish`,
-        {
-          signal: controller.signal
-        }
-      );
-      if (res.ok) {
-        info("Server finished");
-      } else {
-        setFailed(`Failed to finish server: ${res.status} ${res.statusText}`);
-      }
-    } finally {
-      clearTimeout(timer);
-    }
   }
 }
 await index();

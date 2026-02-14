@@ -18904,9 +18904,9 @@ function info(message) {
 // src/main/index.ts
 var __dirname = dirname(fileURLToPath(import.meta.url));
 async function index() {
-  const serverProcess = spawn(
+  const collectorProcess = spawn(
     "node",
-    [join(__dirname, "server.bundle.js")],
+    [join(__dirname, "collector.bundle.js")],
     {
       detached: true,
       stdio: "ignore",
@@ -18916,8 +18916,8 @@ async function index() {
       }
     }
   );
-  serverProcess.unref();
-  info(`Server started with PID: ${serverProcess.pid}`);
+  collectorProcess.unref();
+  info(`Metrics collector started with PID: ${collectorProcess.pid}`);
 }
 await index();
 /*! Bundled license information:

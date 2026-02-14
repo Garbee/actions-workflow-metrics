@@ -7,10 +7,10 @@ import type { ChildProcess } from "node:child_process";
 const __dirname: string = dirname(fileURLToPath(import.meta.url));
 
 async function index(): Promise<void> {
-  // Start server in background with interval passed via environment variable
-  const serverProcess: ChildProcess = spawn(
+  // Start collector in background with interval passed via environment variable
+  const collectorProcess: ChildProcess = spawn(
     "node",
-    [join(__dirname, "server.bundle.js")],
+    [join(__dirname, "collector.bundle.js")],
     {
       detached: true,
       stdio: "ignore",
@@ -22,9 +22,9 @@ async function index(): Promise<void> {
   );
 
   // Unref to allow parent process to exit
-  serverProcess.unref();
+  collectorProcess.unref();
 
-  info(`Server started with PID: ${serverProcess.pid}`);
+  info(`Metrics collector started with PID: ${collectorProcess.pid}`);
 }
 
 await index();
