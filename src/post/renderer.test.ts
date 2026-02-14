@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import * as assert from "node:assert/strict";
-import { Renderer } from "./renderer";
+import { Renderer } from "./renderer.ts";
 
 describe("Renderer", () => {
   const testMetricsID: string = "1234567890";

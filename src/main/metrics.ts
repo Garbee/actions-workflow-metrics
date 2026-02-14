@@ -1,7 +1,7 @@
 import { setFailed } from "@actions/core";
 import { currentLoad, mem } from "systeminformation";
 import type { z } from "zod";
-import type { metricsDataSchema } from "../lib";
+import type { metricsDataSchema } from "../lib.ts";
 
 export class Metrics {
   private readonly data: z.TypeOf<typeof metricsDataSchema>;

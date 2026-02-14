@@ -1,3 +1,4 @@
+import getPort from "get-port";
 import { z } from "zod";
 
 export const cpuLoadPercentageSchema = z.object({
@@ -24,4 +25,6 @@ export const metricsDataSchema = z.object({
   stepMarkers: stepMarkersSchema,
 });
 
-export const serverPort: number = 7777;
+export const serverPort: number = await getPort({
+  port: 7777,
+});

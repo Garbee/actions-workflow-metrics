@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { getInput } from "@actions/core";
 import { context, getOctokit } from "@actions/github";
-import { Renderer } from "./renderer";
-import { metricsDataSchema, serverPort, stepMarkerSchema } from "../lib";
+import { Renderer } from "./renderer.ts";
+import { metricsDataSchema, serverPort, stepMarkerSchema } from "../lib.ts";
 
 export const metricsInfoSchema = z.object({
   color: z.string(),

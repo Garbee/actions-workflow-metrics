@@ -1,36 +1,45 @@
-import { describe, it, beforeEach, mock } from "node:test";
+import { setTimeout } from "node:timers/promises";
+import { describe, it, beforeEach, mock, before, after } from "node:test";
 import * as assert from "node:assert/strict";
 import type { Systeminformation } from "systeminformation";
 import type { z } from "zod";
-import type {
-  cpuLoadPercentageSchema,
+import {
+  type cpuLoadPercentageSchema,
   metricsDataSchema,
-  memoryUsageMBSchema,
-} from "../lib";
-
-// Mock systeminformation module
-mock.module("systeminformation", {
-  namedExports: {
-    currentLoad: async (): Promise<Systeminformation.CurrentLoadData> =>
-      Promise.resolve({
-        currentLoadUser: 25.5,
-        currentLoadSystem: 10.3,
-      } as Systeminformation.CurrentLoadData),
-    mem: async (): Promise<Systeminformation.MemData> =>
-      Promise.resolve({
-        active: 4096 * 1024 * 1024, // 4096 MB in bytes
-        available: 8192 * 1024 * 1024, // 8192 MB in bytes
-      } as Systeminformation.MemData),
-  },
-});
-
-// Import Metrics after mocking
-const { Metrics } = await import("./metrics.js");
+  type memoryUsageMBSchema,
+} from "../lib.ts";
 
 describe("Metrics", () => {
+  let Metrics;
+  let mockModule;
+
+  before(async () => {
+    // Mock systeminformation module
+    mockModule = mock.module("systeminformation", {
+      namedExports: {
+        currentLoad: async (): Promise<Systeminformation.CurrentLoadData> =>
+          Promise.resolve({
+            currentLoadUser: 25.5,
+            currentLoadSystem: 10.3,
+          } as Systeminformation.CurrentLoadData),
+        mem: async (): Promise<Systeminformation.MemData> =>
+          Promise.resolve({
+            active: 4096 * 1024 * 1024, // 4096 MB in bytes
+            available: 8192 * 1024 * 1024, // 8192 MB in bytes
+          } as Systeminformation.MemData),
+      },
+    });
+
+    ({ Metrics } = await import("./metrics.ts"));
+  })
+
   beforeEach(() => {
     mock.restoreAll();
   });
+
+  after(() => {
+    mockModule.restore();
+  })
 
   it("should return JSON string from get()", () => {
     const metrics = new Metrics();
@@ -58,7 +67,7 @@ describe("Metrics", () => {
     const metrics = new Metrics();
 
     // Wait for async processing to complete
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await setTimeout(100);
 
     const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
 
@@ -79,7 +88,7 @@ describe("Metrics", () => {
     const metrics = new Metrics();
 
     // Wait for async processing to complete
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await setTimeout(100);
 
     const cpuData: z.TypeOf<typeof cpuLoadPercentageSchema> = JSON.parse(
       metrics.get(),
@@ -97,7 +106,7 @@ describe("Metrics", () => {
     const metrics = new Metrics();
 
     // Wait for async processing to complete
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await setTimeout(100);
 
     const memData: z.TypeOf<typeof memoryUsageMBSchema> = JSON.parse(
       metrics.get(),
@@ -116,7 +125,7 @@ describe("Metrics", () => {
     const metrics = new Metrics();
 
     // Wait for initial data collection
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await setTimeout(100);
 
     const initialData: z.TypeOf<typeof metricsDataSchema> = JSON.parse(
       metrics.get(),
@@ -130,7 +139,7 @@ describe("Metrics", () => {
 
     // Verify new data points are added after 5 seconds
     // append is called at 5-second intervals
-    await new Promise((resolve) => setTimeout(resolve, 5100));
+    await setTimeout(5100);
 
     const updatedData: z.TypeOf<typeof metricsDataSchema> = JSON.parse(
       metrics.get(),
@@ -149,10 +158,10 @@ describe("Metrics", () => {
     const metrics = new Metrics();
 
     // Wait for initial data collection
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await setTimeout(100);
 
     // Wait for second data point to be added after 5 seconds
-    await new Promise((resolve) => setTimeout(resolve, 5100));
+    await setTimeout(5100);
 
     const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
 
@@ -178,13 +187,13 @@ describe("Metrics", () => {
     const metrics = new Metrics();
 
     // Wait for initial data collection
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await setTimeout(100);
 
     const initialCount: number = JSON.parse(metrics.get()).cpuLoadPercentages
       .length;
 
     // Verify data increases after 10 seconds (2 append calls)
-    await new Promise((resolve) => setTimeout(resolve, 10100));
+    await setTimeout(10100);
 
     const finalData: z.TypeOf<typeof metricsDataSchema> = JSON.parse(
       metrics.get(),

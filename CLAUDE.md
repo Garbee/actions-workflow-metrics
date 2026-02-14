@@ -16,15 +16,11 @@ When updating one, update the other accordingly. Note that action.yml's descript
 
 ## Development Commands
 
-Requires Node.js 24.x and pnpm.
+Requires Node.js 24.x.
 
 ```bash
-pnpm install                         # Install dependencies
-pnpm run build                       # Type check + bundle to dist/
-pnpm run fix                         # Auto-format with Prettier
-pnpm test                            # Run all tests
-pnpm test src/main/metrics.test.ts   # Run specific test file
-pnpm test --coverage                 # Show coverage
+npm ci                         # Install dependencies
+npm test                       # Run all tests
 ```
 
 ## Architecture

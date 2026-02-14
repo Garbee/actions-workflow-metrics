@@ -4,8 +4,8 @@ import type {
   renderParamsSchema,
   metricsInfoListSchema,
   metricsInfoSchema,
-} from "./lib";
-import type { stepMarkerSchema } from "../lib";
+} from "./lib.js";
+import type { stepMarkerSchema } from "../lib.js";
 
 export class Renderer {
   render(

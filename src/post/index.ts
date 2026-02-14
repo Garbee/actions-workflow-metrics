@@ -1,10 +1,11 @@
-import { promises as fs } from "node:fs";
+import fs from "node:fs/promises";
+import { setTimeout } from "node:timers/promises";
 import { DefaultArtifactClient } from "@actions/artifact";
 import { info, setFailed, summary } from "@actions/core";
-import { getMetricsData, render, fetchWorkflowSteps } from "./lib";
-import { serverPort } from "../lib";
+import { getMetricsData, render, fetchWorkflowSteps } from "./lib.ts";
+import { serverPort } from "../lib.ts";
 import type { z } from "zod";
-import type { metricsDataSchema } from "../lib";
+import type { metricsDataSchema } from "../lib.ts";
 
 async function index(): Promise<void> {
   const maxRetryCount: number = 10;
@@ -24,7 +25,7 @@ async function index(): Promise<void> {
       }
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await setTimeout(1000);
   }
 
   try {
@@ -64,7 +65,7 @@ async function index(): Promise<void> {
         }
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await setTimeout(1000);
     }
 
     // Render metrics
@@ -73,10 +74,14 @@ async function index(): Promise<void> {
     setFailed(error);
   } finally {
     const controller: AbortController = new AbortController();
-    const timer: NodeJS.Timeout = setTimeout(
-      () => controller.abort(),
+    const clearTimerController = new AbortController();
+    const timer = setTimeout(
       10 * 1000,
-    ); // 10 seconds
+      () => controller.abort(),
+      {
+        signal: clearTimerController.signal,
+      }
+    );
 
     // Stop the metrics server
     try {
@@ -93,7 +98,7 @@ async function index(): Promise<void> {
         setFailed(`Failed to finish server: ${res.status} ${res.statusText}`);
       }
     } finally {
-      clearTimeout(timer);
+      clearTimerController.abort();
     }
   }
 }

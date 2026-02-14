@@ -1,8 +1,8 @@
 import { describe, it, beforeEach, mock } from "node:test";
 import * as assert from "node:assert/strict";
-import { getMetricsData, render } from "./lib";
+import { getMetricsData, render } from "./lib.ts";
 import type { z } from "zod";
-import type { metricsDataSchema } from "../lib";
+import type { metricsDataSchema } from "../lib.js";
 
 /**
  * Sample metrics data for testing.

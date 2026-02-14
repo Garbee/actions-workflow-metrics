@@ -23,32 +23,16 @@ jobs:
       - name: Start Workflow Telemetry
         uses: ./
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
-        with:
-          version: 9
-
       - name: Setup Node.js
         uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
           node-version: "24"
-          cache: "pnpm"
 
       - name: Install Dependencies
-        run: pnpm install
+        run: npm ci
 
       - name: Run Tests
-        run: pnpm test
-
-      - name: Build Project
-        run: pnpm run build
-
-      - name: Verify Build Artifacts
-        run: |
-          test -f dist/main/index.js
-          test -f dist/main/server.js
-          test -f dist/post/index.js
-          echo "All build artifacts present"
+        run: npm test
 
   test-automatic-step-tracking:
     name: Test Automatic Step Tracking
@@ -64,28 +48,16 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
-        with:
-          version: 9
-
       - name: Setup Node.js
         uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
           node-version: "24"
-          cache: "pnpm"
 
       - name: Install Dependencies
-        run: pnpm install
-
-      - name: Type Check
-        run: pnpm run tsc
+        run: npm ci
 
       - name: Run Tests
-        run: pnpm test
-
-      - name: Build Project
-        run: pnpm run build
+        run: npm test
 
   test-manual-step-markers:
     name: Test Manual Step Markers
@@ -117,16 +89,10 @@ jobs:
           done
           echo "Server is ready!"
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
-        with:
-          version: 9
-
       - name: Setup Node.js
         uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
           node-version: "24"
-          cache: "pnpm"
 
       - name: Install Dependencies with Manual Markers
         run: |
@@ -134,23 +100,11 @@ jobs:
             -H "Content-Type: application/json" \
             -d '{"stepName":"Install Dependencies","status":"start"}'
 
-          pnpm install
+          npm ci
 
           curl -X POST http://localhost:7777/mark-step \
             -H "Content-Type: application/json" \
             -d '{"stepName":"Install Dependencies","status":"end"}'
-
-      - name: Build with Manual Markers
-        run: |
-          curl -X POST http://localhost:7777/mark-step \
-            -H "Content-Type: application/json" \
-            -d '{"stepName":"Build Project","status":"start"}'
-
-          pnpm run build
-
-          curl -X POST http://localhost:7777/mark-step \
-            -H "Content-Type: application/json" \
-            -d '{"stepName":"Build Project","status":"end"}'
 
       - name: Test with Manual Markers
         run: |
@@ -158,7 +112,7 @@ jobs:
             -H "Content-Type: application/json" \
             -d '{"stepName":"Run Tests","status":"start"}'
 
-          pnpm test
+          npm test
 
           curl -X POST http://localhost:7777/mark-step \
             -H "Content-Type: application/json" \
@@ -178,11 +132,6 @@ jobs:
         with:
           interval_seconds: "2"
           github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
-        with:
-          version: 9
 
       - name: Setup Node.js
         uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0

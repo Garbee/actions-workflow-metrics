@@ -10,7 +10,7 @@ async function index(): Promise<void> {
   // Start server in background with interval passed via environment variable
   const serverProcess: ChildProcess = spawn(
     "node",
-    [join(__dirname, "server.js")],
+    [join(__dirname, "server.ts")],
     {
       detached: true,
       stdio: "ignore",

@@ -1,10 +1,14 @@
 {
   "compilerOptions": {
     "lib": ["esnext"],
+    "types": ["node"],
     "skipLibCheck": true,
     "noEmit": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "target": "ES2017"
+    "erasableSyntaxOnly": true,
+    "rewriteRelativeImportExtensions": true,
+    "verbatimModuleSyntax": true,
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "target": "esnext"
   }
 }
