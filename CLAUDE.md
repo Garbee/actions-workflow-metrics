@@ -9,6 +9,24 @@ A custom GitHub Action for workflow telemetry collection.
 Periodically collects CPU load and memory usage during workflow execution.
 Visualizes them as Mermaid charts and outputs to GitHub Actions summary.
 
+## PR Title Format
+
+**REQUIRED**: All PR titles MUST follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
+
+```
+<type>(<scope>): <description>
+```
+
+Common types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`, `build`, `perf`, `style`
+
+Examples:
+- `feat(metrics): add memory pressure tracking`
+- `fix(collector): prevent memory leak in long-running processes`
+- `docs(readme): update installation instructions`
+- `chore(deps): update systeminformation to v5.22.0`
+
+See `.github/copilot-instructions.md` for complete guidelines.
+
 ## Documentation
 
 **Important**: README.md's description (line 5) must match action.yml's `description` field.
