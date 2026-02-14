@@ -51,24 +51,26 @@ npm test                       # Run all tests
    └─ Spawns collector as detached process and exits immediately
        └─ dist/main/collector.js (runs in background)
            └─ Creates Metrics instance, collects metrics every 5 seconds
-           └─ Writes metrics to temporary file in system temp directory
+           └─ Stores metrics in memory only
 
 2. Other workflow steps execute
-   (Collector continues running in background, writing metrics every 5 seconds)
+   (Collector continues running in background, collecting metrics in memory)
 
 3. post execution: dist/post/index.js (after all steps complete)
-   └─ Reads metrics from temporary file, renders tables, outputs to summary
+   └─ Collector saves state via GitHub Actions saveState()
+   └─ Post action reads metrics from state, renders tables, outputs to summary
 ```
 
 ### Key Components
 
-- **src/lib.ts**: Shared utilities including `getMetricsFilePath()` which generates unique temp file paths using GITHUB_RUN_ID and GITHUB_JOB.
+- **src/lib.ts**: Shared utilities and data schemas for metrics collection.
 - **src/main/metrics.ts**: Collects CPU (user/system 0-100%) and memory (active/available in MB).
   Uses `systeminformation`. Starts collection in constructor with drift-compensated `setTimeout`.
-  Writes data to file after each collection cycle.
+  Stores data in memory only; calls `saveState()` on stop.
 - **src/main/collector.ts**: Simple background process that creates a Metrics instance and keeps running.
+  Ensures `stop()` is called on SIGTERM/SIGINT to save metrics state.
 - **src/post/renderer.ts**: Generates tables with step-by-step metrics. Includes threshold exceeded indicators for each metric type.
-- **src/post/lib.ts**: Reads metrics from file, fetches workflow steps from GitHub API, and renders charts.
+- **src/post/lib.ts**: Reads metrics from GitHub Actions state, fetches workflow steps from GitHub API, and renders tables.
 
 ### Build Process
 
@@ -157,7 +159,7 @@ globalThis.fetch = async (): Promise<Response> =>
 
 - **Immediate async start**: `Metrics` class starts async collection in constructor without `await`.
   Uses `.catch()` for error handling.
-- **File-based storage**: Metrics are written to temporary file after each collection cycle. File path is unique per workflow run/job using GITHUB_RUN_ID and GITHUB_JOB.
+- **In-memory storage**: Metrics are stored in memory only during collection. On process termination (SIGTERM/SIGINT), metrics are saved to GitHub Actions state via `saveState()` for retrieval by the post action.
 - **Drift-compensated timers**: Uses `Math.max(0, nextUNIXTimeMs - Date.now())` for precise intervals.
 - **Node.js compatibility**: Uses `import.meta.url` with `dirname(fileURLToPath())`.
   Avoids Bun-specific `import.meta.dir`.

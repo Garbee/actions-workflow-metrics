@@ -101,9 +101,9 @@ The action will automatically:
 
 ### Execution Flow
 
-1. **main** (workflow start): Starts metrics collection as a background process that writes to a temporary file
+1. **main** (workflow start): Starts metrics collection as a background process that stores metrics in memory
 2. **Workflow steps**: Execute normally while metrics are collected in the background
-3. **post** (workflow end): Reads collected metrics from file, fetches step information (if token provided), renders metrics as tables with threshold indicators, and outputs to job summary
+3. **post** (workflow end): Collector saves state to GitHub Actions, post action reads metrics from state, fetches step information (if token provided), renders metrics as tables with threshold indicators, and outputs to job summary
 
 ## Development Setup
 
@@ -152,13 +152,13 @@ src/
 1. `src/main/index.ts` is executed
 2. Node.js spawns `src/main/collector.ts` as a detached background process
 3. `Metrics` class collects CPU/memory/disk information every 5 seconds using `systeminformation` library
-4. Metrics data is continuously written to a temporary file in the system temp directory
-5. File path is unique per workflow run and job using `GITHUB_RUN_ID` and `GITHUB_JOB` environment variables
+4. Metrics data is stored in memory only (no disk writes during collection)
+5. On process termination (SIGTERM/SIGINT), metrics are saved to GitHub Actions state
 
 ### post Execution
 
 1. `src/post/index.ts` is executed
-2. Reads metrics data from the temporary file
+2. Reads metrics data from GitHub Actions state via `getState()`
 3. Fetches workflow step information from GitHub API (token required)
 4. Detects threshold violations and generates alerts
 5. `Renderer` class generates tables with step-by-step metrics and threshold indicators
