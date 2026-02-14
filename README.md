@@ -1,7 +1,5 @@
 # actions-workflow-metrics
 
-English | [日本語](README.ja.md)
-
 A GitHub Actions for collecting system metrics during workflows and outputting Mermaid charts.
 
 ## Features
@@ -50,7 +48,7 @@ jobs:
     steps:
       # Run actions-workflow-metrics at the beginning of the workflow
       - name: Start Workflow Telemetry
-        uses: dev-hato/actions-workflow-metrics@v1
+        uses: garbee/actions-workflow-metrics@v1
 
       # Subsequent regular steps
       - name: Checkout
@@ -70,7 +68,7 @@ Provide a GitHub token to automatically fetch step information from the GitHub A
 
 ```yaml
 - name: Start Workflow Telemetry
-  uses: dev-hato/actions-workflow-metrics@v1
+  uses: garbee/actions-workflow-metrics@v1
   with:
     github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -86,7 +84,7 @@ For more precise control, manually mark step boundaries:
 
 ```yaml
 - name: Start Workflow Telemetry
-  uses: dev-hato/actions-workflow-metrics@v1
+  uses: garbee/actions-workflow-metrics@v1
 
 - name: Build Project
   run: |

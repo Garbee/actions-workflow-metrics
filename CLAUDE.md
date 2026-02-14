@@ -11,33 +11,8 @@ Visualizes them as Mermaid charts and outputs to GitHub Actions summary.
 
 ## Documentation
 
-This project maintains bilingual documentation:
-
-- **README.md** - English documentation
-- **README.ja.md** - Japanese documentation
-
-**Important**: When updating either readme file, the other must be updated accordingly.
-Keep both files synchronized with the same content in the appropriate language.
-
 **Important**: README.md's description (line 5) must match action.yml's `description` field.
 When updating one, update the other accordingly. Note that action.yml's description should not have a trailing period.
-
-## Setup
-
-### Install pre-commit (Recommended)
-
-Automatically runs gitleaks on commit to prevent sensitive information leakage.
-
-```bash
-# macOS
-brew install pre-commit
-
-# or using pip
-pip install pre-commit
-
-# Install pre-commit hooks
-pre-commit install
-```
 
 ## Development Commands
 
