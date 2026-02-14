@@ -146,9 +146,20 @@ describe("render", () => {
 
 describe("getMetricsData", () => {
   it("should read metrics data from state file", async () => {
-    // Set test data in file map (simulating RUNNER_TEMP file)
-    const runnerTemp = process.env.RUNNER_TEMP || process.env.TMPDIR || '/tmp';
-    const stateFile = join(runnerTemp, 'metrics-state-local-default.json');
+    // Compute the same path that the implementation would use
+    const githubStateFile = process.env.GITHUB_STATE;
+    const runId = process.env.GITHUB_RUN_ID || "local";
+    const job = process.env.GITHUB_JOB || "default";
+    
+    let stateFile: string;
+    if (githubStateFile) {
+      const stateDir = join(githubStateFile, '..');
+      stateFile = join(stateDir, `metrics-state-${runId}-${job}.json`);
+    } else {
+      const runnerTemp = process.env.RUNNER_TEMP || process.env.TMPDIR || '/tmp';
+      stateFile = join(runnerTemp, `metrics-state-${runId}-${job}.json`);
+    }
+    
     fileReads.set(stateFile, JSON.stringify(sampleMetricsData));
 
     const result = await getMetricsData();
@@ -157,9 +168,20 @@ describe("getMetricsData", () => {
   });
 
   it("should throw error for invalid metrics data", async () => {
-    // Set invalid data
-    const runnerTemp = process.env.RUNNER_TEMP || process.env.TMPDIR || '/tmp';
-    const stateFile = join(runnerTemp, 'metrics-state-local-default.json');
+    // Compute the same path that the implementation would use
+    const githubStateFile = process.env.GITHUB_STATE;
+    const runId = process.env.GITHUB_RUN_ID || "local";
+    const job = process.env.GITHUB_JOB || "default";
+    
+    let stateFile: string;
+    if (githubStateFile) {
+      const stateDir = join(githubStateFile, '..');
+      stateFile = join(stateDir, `metrics-state-${runId}-${job}.json`);
+    } else {
+      const runnerTemp = process.env.RUNNER_TEMP || process.env.TMPDIR || '/tmp';
+      stateFile = join(runnerTemp, `metrics-state-${runId}-${job}.json`);
+    }
+    
     fileReads.set(stateFile, JSON.stringify({
       cpuLoadPercentages: "not an array",
       memoryUsageMBs: [],
@@ -178,9 +200,20 @@ describe("getMetricsData", () => {
   });
 
   it("should throw error when JSON is invalid", async () => {
-    // Set invalid JSON
-    const runnerTemp = process.env.RUNNER_TEMP || process.env.TMPDIR || '/tmp';
-    const stateFile = join(runnerTemp, 'metrics-state-local-default.json');
+    // Compute the same path that the implementation would use
+    const githubStateFile = process.env.GITHUB_STATE;
+    const runId = process.env.GITHUB_RUN_ID || "local";
+    const job = process.env.GITHUB_JOB || "default";
+    
+    let stateFile: string;
+    if (githubStateFile) {
+      const stateDir = join(githubStateFile, '..');
+      stateFile = join(stateDir, `metrics-state-${runId}-${job}.json`);
+    } else {
+      const runnerTemp = process.env.RUNNER_TEMP || process.env.TMPDIR || '/tmp';
+      stateFile = join(runnerTemp, `metrics-state-${runId}-${job}.json`);
+    }
+    
     fileReads.set(stateFile, "invalid json{");
 
     await assert.rejects(getMetricsData(), {
