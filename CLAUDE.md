@@ -20,6 +20,7 @@ Displays them as clear tables and outputs to GitHub Actions summary.
 Common types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`, `build`, `perf`, `style`
 
 Examples:
+
 - `feat(metrics): add memory pressure tracking`
 - `fix(collector): prevent memory leak in long-running processes`
 - `docs(readme): update installation instructions`
@@ -63,7 +64,7 @@ npm test                       # Run all tests
 
 - **src/lib.ts**: Shared utilities including `getMetricsFilePath()` which generates unique temp file paths using GITHUB_RUN_ID and GITHUB_JOB.
 - **src/main/metrics.ts**: Collects CPU (user/system 0-100%) and memory (active/available in MB).
-  Uses `systeminformation`. Starts collection in constructor with drift-compensated `setTimeout`. 
+  Uses `systeminformation`. Starts collection in constructor with drift-compensated `setTimeout`.
   Writes data to file after each collection cycle.
 - **src/main/collector.ts**: Simple background process that creates a Metrics instance and keeps running.
 - **src/post/renderer.ts**: Generates tables with step-by-step metrics. Includes threshold exceeded indicators for each metric type.
@@ -146,6 +147,7 @@ globalThis.fetch = async (): Promise<Response> =>
 ```
 
 **Important notes**:
+
 - Module mocking requires Node.js 24+ with `--experimental-test-module-mocks` flag
 - Timer mocking must be enabled BEFORE importing modules that use timers
 - Use `queueMicrotask()` to flush promise microtasks after `tick()`
