@@ -1,37 +1,20 @@
 import type { z } from "zod";
-import type {
-  renderParamsListSchema,
-  renderParamsSchema,
-  metricsInfoListSchema,
-  metricsInfoSchema,
-} from "./lib.js";
 import type { stepMarkerSchema, Alert, diskUsageGBSchema } from "../lib.js";
 
 export class Renderer {
   render(
-    renderParamsList: z.TypeOf<typeof renderParamsListSchema>,
     metricsID: string,
     stepMarkers: z.TypeOf<typeof stepMarkerSchema>[] = [],
     alerts: Alert[] = [],
+    cpuLoadPercentages: Array<{ unixTimeMs: number; user: number; system: number }> = [],
+    memoryUsageMBs: Array<{ unixTimeMs: number; used: number; free: number }> = [],
     diskUsageGBs: z.TypeOf<typeof diskUsageGBSchema>[] = [],
   ): string {
     const stepSummary = this.generateStepSummary(stepMarkers);
     const alertsSection = this.generateAlertsSection(alerts);
+    const cpuUsageSection = this.generateCPUUsageSection(cpuLoadPercentages, stepMarkers);
+    const memoryUsageSection = this.generateMemoryUsageSection(memoryUsageMBs, stepMarkers);
     const diskUsageSection = this.generateDiskUsageSection(diskUsageGBs, stepMarkers);
-
-    // Get times from the first chart for step annotations
-    const filteredParams = renderParamsList.filter(
-      ({
-        metricsInfoList,
-      }: {
-        metricsInfoList: z.TypeOf<typeof metricsInfoListSchema>;
-      }): boolean => metricsInfoList.length > 0,
-    );
-
-    // Generate step annotations only if there are charts with data
-    const stepAnnotations = filteredParams.length > 0
-      ? this.generateStepAnnotations(stepMarkers, filteredParams[0].times)
-      : '';
 
     return `## Workflow Metrics
 
@@ -39,63 +22,7 @@ export class Renderer {
 
 ${metricsID}
 
-${alertsSection}${stepSummary}${diskUsageSection}${filteredParams
-      .map((p: z.TypeOf<typeof renderParamsSchema>): string => {
-        const colors: string[] = p.metricsInfoList.map(
-          ({ color }: { color: string }): string => color,
-        );
-        const stackedDatum: number[][] = p.metricsInfoList
-          .toReversed()
-          .reduce(
-            (
-              prev: number[][],
-              { data }: { data: number[] },
-              i: number,
-            ): number[][] => {
-              prev.push(
-                data.map((d: number, j: number): number => d + prev[i][j]),
-              );
-              return prev;
-            },
-            [p.metricsInfoList[0].data.map((): number => 0)],
-          )
-          .slice(1)
-          .toReversed();
-        
-        // Generate X-axis labels based on step markers
-        const xAxisLabels = this.generateXAxisLabels(stepMarkers, p.times);
-
-        return `### ${p.title}
-
-#### Legends
-
-${p.metricsInfoList
-  .map(
-    (i: z.TypeOf<typeof metricsInfoSchema>): string =>
-      `* $\${\\color{${i.color}} \\verb|${i.color}: ${i.name}|}$$`,
-  )
-  .join("\n")}
-
-#### Chart
-
-\`\`\`mermaid
-%%{
-  init: {
-    "themeVariables": {
-      "xyChart": {
-        "plotColorPalette": "${colors.join(", ")}"
-      }
-    }
-  }
-}%%
-xychart
-
-x-axis "Workflow Steps" ${JSON.stringify(xAxisLabels)}
-y-axis "${p.yAxis.title}"${p.yAxis.range ? ` ${p.yAxis.range}` : ""}
-${stackedDatum.map((d: number[]): string => `bar ${JSON.stringify(d)}`).join("\n")}
-\`\`\``;
-      })
-      .join("\n\n")}${stepAnnotations}`;
+${alertsSection}${stepSummary}${cpuUsageSection}${memoryUsageSection}${diskUsageSection}`;
   }
 
   private generateStepSummary(
@@ -150,116 +77,6 @@ ${rows}
 `;
   }
 
-  private generateXAxisLabels(
-    stepMarkers: z.TypeOf<typeof stepMarkerSchema>[],
-    chartTimes: Date[],
-  ): string[] {
-    // Step markers are required (github-token is required)
-    if (stepMarkers.length === 0) {
-      throw new Error("Step markers are required for rendering. Ensure github-token is provided.");
-    }
-
-    const chartTimesMs = chartTimes.map((t) => t.getTime());
-    const labels: string[] = [];
-
-    // Create a map of time ranges for each step
-    const stepRanges: { start: number; end: number; name: string }[] = [];
-    const stepStarts = new Map<string, number>();
-    const stepEnds = new Map<string, number>();
-
-    for (const marker of stepMarkers) {
-      if (marker.status === "start") {
-        stepStarts.set(marker.stepName, marker.unixTimeMs);
-      } else if (marker.status === "end") {
-        stepEnds.set(marker.stepName, marker.unixTimeMs);
-      }
-    }
-
-    // Build step ranges
-    for (const [stepName, startTime] of stepStarts.entries()) {
-      const endTime = stepEnds.get(stepName);
-      if (endTime) {
-        stepRanges.push({ start: startTime, end: endTime, name: stepName });
-      }
-    }
-
-    // Sort step ranges by start time
-    stepRanges.sort((a, b) => a.start - b.start);
-
-    // For each chart time, find which step it belongs to
-    for (const timeMs of chartTimesMs) {
-      let label = "Pre-workflow";
-      let foundStep = false;
-      
-      for (let i = 0; i < stepRanges.length; i++) {
-        const range = stepRanges[i];
-        
-        if (timeMs >= range.start && timeMs < range.end) {
-          label = range.name;
-          foundStep = true;
-          break;
-        }
-        
-        // Check if time is between current step and next step
-        if (timeMs >= range.end) {
-          if (i < stepRanges.length - 1) {
-            const nextRange = stepRanges[i + 1];
-            if (timeMs < nextRange.start) {
-              label = `Between ${range.name} and ${nextRange.name}`;
-              foundStep = true;
-              break;
-            }
-          }
-        }
-      }
-      
-      // If not found within any step or between steps, check if it's after all steps
-      if (!foundStep && stepRanges.length > 0) {
-        const lastStep = stepRanges[stepRanges.length - 1];
-        if (timeMs >= lastStep.end) {
-          label = "Post-workflow";
-        }
-      }
-
-      labels.push(label);
-    }
-
-    return labels;
-  }
-
-  private generateStepAnnotations(
-    stepMarkers: z.TypeOf<typeof stepMarkerSchema>[],
-    chartTimes: Date[],
-  ): string {
-    if (stepMarkers.length === 0 || chartTimes.length === 0) {
-      return "";
-    }
-
-    // Find step boundaries that align with chart times
-    const annotations: string[] = [];
-    const chartTimesMs = chartTimes.map((t) => t.getTime());
-
-    for (const marker of stepMarkers) {
-      // Find the closest chart time to this marker
-      const closestIndex = chartTimesMs.reduce((prev, curr, idx) => {
-        return Math.abs(curr - marker.unixTimeMs) <
-          Math.abs(chartTimesMs[prev] - marker.unixTimeMs)
-          ? idx
-          : prev;
-      }, 0);
-
-      const timeStr = chartTimes[closestIndex].toLocaleTimeString("en-GB", {
-        hour12: false,
-      });
-      const prefix = marker.status === "start" ? "▶" : "◼";
-      annotations.push(
-        `* ${prefix} **${marker.stepName}** ${marker.status} at ${timeStr}`,
-      );
-    }
-
-    return `\n<details>\n<summary>Step Timeline</summary>\n\n${annotations.join("\n")}\n</details>`;
-  }
-
   private generateAlertsSection(alerts: Alert[]): string {
     if (alerts.length === 0) {
       return "";
@@ -281,6 +98,158 @@ ${rows}
 
 > [!WARNING]
 ${alertItems.join("\n")}
+
+`;
+  }
+
+  private generateCPUUsageSection(
+    cpuLoadPercentages: Array<{ unixTimeMs: number; user: number; system: number }>,
+    stepMarkers: z.TypeOf<typeof stepMarkerSchema>[],
+  ): string {
+    if (cpuLoadPercentages.length === 0) {
+      return "";
+    }
+
+    // Get initial CPU metrics
+    const initialCPU = cpuLoadPercentages[0];
+    
+    // Create a map of step names to their CPU metrics
+    const stepCPUMap = new Map<string, { unixTimeMs: number; user: number; system: number }>();
+    
+    // Build step ranges
+    const stepRanges: { start: number; end: number; name: string }[] = [];
+    const stepStarts = new Map<string, number>();
+    const stepEnds = new Map<string, number>();
+
+    for (const marker of stepMarkers) {
+      if (marker.status === "start") {
+        stepStarts.set(marker.stepName, marker.unixTimeMs);
+      } else if (marker.status === "end") {
+        stepEnds.set(marker.stepName, marker.unixTimeMs);
+      }
+    }
+
+    for (const [stepName, startTime] of stepStarts.entries()) {
+      const endTime = stepEnds.get(stepName);
+      if (endTime) {
+        stepRanges.push({ start: startTime, end: endTime, name: stepName });
+      }
+    }
+
+    // Map CPU metrics to steps
+    for (const cpu of cpuLoadPercentages) {
+      for (const range of stepRanges) {
+        if (cpu.unixTimeMs >= range.start && cpu.unixTimeMs < range.end) {
+          // Use the first metric that falls within the step
+          if (!stepCPUMap.has(range.name)) {
+            stepCPUMap.set(range.name, cpu);
+          }
+          break;
+        }
+      }
+    }
+
+    // Generate the CPU usage table
+    const rows: string[] = [];
+    
+    // For CPU, total is always 100%, used is user+system, available is 100-(user+system)
+    const initTotal = 100;
+    const initUsed = initialCPU.user + initialCPU.system;
+    const initAvailable = 100 - initUsed;
+    const initAvailablePercent = initAvailable.toFixed(2);
+    rows.push(`| Initialization | ${initTotal.toFixed(2)}% | ${initUsed.toFixed(2)}% | ${initAvailable.toFixed(2)}% | ${initAvailablePercent}% |`);
+    
+    // Add rows for each step that has CPU metrics
+    for (const range of stepRanges) {
+      const cpu = stepCPUMap.get(range.name);
+      if (cpu) {
+        const total = 100;
+        const used = cpu.user + cpu.system;
+        const available = 100 - used;
+        const availablePercent = available.toFixed(2);
+        rows.push(`| ${range.name} | ${total.toFixed(2)}% | ${used.toFixed(2)}% | ${available.toFixed(2)}% | ${availablePercent}% |`);
+      }
+    }
+
+    return `### CPU Usage
+
+| Step | Total | Used | Available | Available % |
+|------|-------|------|-----------|-------------|
+${rows.join("\n")}
+
+`;
+  }
+
+  private generateMemoryUsageSection(
+    memoryUsageMBs: Array<{ unixTimeMs: number; used: number; free: number }>,
+    stepMarkers: z.TypeOf<typeof stepMarkerSchema>[],
+  ): string {
+    if (memoryUsageMBs.length === 0) {
+      return "";
+    }
+
+    // Get initial memory metrics
+    const initialMemory = memoryUsageMBs[0];
+    
+    // Create a map of step names to their memory metrics
+    const stepMemoryMap = new Map<string, { unixTimeMs: number; used: number; free: number }>();
+    
+    // Build step ranges
+    const stepRanges: { start: number; end: number; name: string }[] = [];
+    const stepStarts = new Map<string, number>();
+    const stepEnds = new Map<string, number>();
+
+    for (const marker of stepMarkers) {
+      if (marker.status === "start") {
+        stepStarts.set(marker.stepName, marker.unixTimeMs);
+      } else if (marker.status === "end") {
+        stepEnds.set(marker.stepName, marker.unixTimeMs);
+      }
+    }
+
+    for (const [stepName, startTime] of stepStarts.entries()) {
+      const endTime = stepEnds.get(stepName);
+      if (endTime) {
+        stepRanges.push({ start: startTime, end: endTime, name: stepName });
+      }
+    }
+
+    // Map memory metrics to steps
+    for (const memory of memoryUsageMBs) {
+      for (const range of stepRanges) {
+        if (memory.unixTimeMs >= range.start && memory.unixTimeMs < range.end) {
+          // Use the first metric that falls within the step
+          if (!stepMemoryMap.has(range.name)) {
+            stepMemoryMap.set(range.name, memory);
+          }
+          break;
+        }
+      }
+    }
+
+    // Generate the memory usage table
+    const rows: string[] = [];
+    
+    // Add initialization row
+    const initTotal = initialMemory.used + initialMemory.free;
+    const initAvailablePercent = (initialMemory.free / initTotal * 100).toFixed(2);
+    rows.push(`| Initialization | ${initTotal.toFixed(2)} MB | ${initialMemory.used.toFixed(2)} MB | ${initialMemory.free.toFixed(2)} MB | ${initAvailablePercent}% |`);
+    
+    // Add rows for each step that has memory metrics
+    for (const range of stepRanges) {
+      const memory = stepMemoryMap.get(range.name);
+      if (memory) {
+        const total = memory.used + memory.free;
+        const availablePercent = (memory.free / total * 100).toFixed(2);
+        rows.push(`| ${range.name} | ${total.toFixed(2)} MB | ${memory.used.toFixed(2)} MB | ${memory.free.toFixed(2)} MB | ${availablePercent}% |`);
+      }
+    }
+
+    return `### Memory Usage
+
+| Step | Total | Used | Available | Available % |
+|------|-------|------|-----------|-------------|
+${rows.join("\n")}
 
 `;
   }
@@ -336,20 +305,22 @@ ${alertItems.join("\n")}
     const rows: string[] = [];
     
     // Add initialization row
-    rows.push(`| Initialization | ${initialDisk.size.toFixed(2)} GB | ${initialDisk.used.toFixed(2)} GB | ${initialDisk.available.toFixed(2)} GB |`);
+    const initAvailablePercent = (initialDisk.available / initialDisk.size * 100).toFixed(2);
+    rows.push(`| Initialization | ${initialDisk.size.toFixed(2)} GB | ${initialDisk.used.toFixed(2)} GB | ${initialDisk.available.toFixed(2)} GB | ${initAvailablePercent}% |`);
     
     // Add rows for each step that has disk metrics
     for (const range of stepRanges) {
       const disk = stepDiskMap.get(range.name);
       if (disk) {
-        rows.push(`| ${range.name} | ${disk.size.toFixed(2)} GB | ${disk.used.toFixed(2)} GB | ${disk.available.toFixed(2)} GB |`);
+        const availablePercent = (disk.available / disk.size * 100).toFixed(2);
+        rows.push(`| ${range.name} | ${disk.size.toFixed(2)} GB | ${disk.used.toFixed(2)} GB | ${disk.available.toFixed(2)} GB | ${availablePercent}% |`);
       }
     }
 
     return `### Disk Usage
 
-| Step | Total Size | Used | Available |
-|------|------------|------|-----------|
+| Step | Total Size | Used | Available | Available % |
+|------|------------|------|-----------|-------------|
 ${rows.join("\n")}
 
 `;

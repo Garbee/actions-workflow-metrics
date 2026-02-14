@@ -38,8 +38,8 @@ describe("render", () => {
     assert.ok(result.length > 0);
 
     // Verify rendered result contains expected content
-    assert.ok(result.includes("CPU Loads"));
-    assert.ok(result.includes("Memory Usages"));
+    assert.ok(result.includes("CPU Usage"));
+    assert.ok(result.includes("Memory Usage"));
     assert.ok(result.includes("Disk Usage"));
   });
 

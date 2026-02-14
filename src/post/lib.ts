@@ -6,23 +6,6 @@ import { currentLoad, mem, fsSize } from "systeminformation";
 import { Renderer } from "./renderer.ts";
 import { metricsDataSchema, getMetricsFilePath, stepMarkerSchema, bytesPerMB, bytesPerGB, type Alert } from "../lib.ts";
 
-export const metricsInfoSchema = z.object({
-  color: z.string(),
-  name: z.string(),
-  data: z.array(z.number()),
-});
-export const metricsInfoListSchema = z.array(metricsInfoSchema);
-export const renderParamsSchema = z.object({
-  title: z.string(),
-  metricsInfoList: metricsInfoListSchema,
-  times: z.array(z.coerce.date()),
-  yAxis: z.object({
-    title: z.string(),
-    range: z.string().optional(),
-  }),
-});
-export const renderParamsListSchema = z.array(renderParamsSchema);
-
 export async function getMetricsData(): Promise<
   z.TypeOf<typeof metricsDataSchema>
 > {
@@ -280,62 +263,11 @@ export function render(
 ): string {
   const renderer: Renderer = new Renderer();
   return renderer.render(
-    renderParamsListSchema.parse([
-      {
-        title: "CPU Loads",
-        metricsInfoList: [
-          {
-            color: "Orange",
-            name: "System",
-            data: metricsData.cpuLoadPercentages.map(
-              ({ system }: { system: number }): number => system,
-            ),
-          },
-          {
-            color: "Red",
-            name: "User",
-            data: metricsData.cpuLoadPercentages.map(
-              ({ user }: { user: number }): number => user,
-            ),
-          },
-        ],
-        times: metricsData.cpuLoadPercentages.map(
-          ({ unixTimeMs }: { unixTimeMs: number }): number => unixTimeMs,
-        ),
-        yAxis: {
-          title: "%",
-          range: "0 --> 100",
-        },
-      },
-      {
-        title: "Memory Usages",
-        metricsInfoList: [
-          {
-            color: "Green",
-            name: "Free",
-            data: metricsData.memoryUsageMBs.map(
-              ({ free }: { free: number }): number => free,
-            ),
-          },
-          {
-            color: "Blue",
-            name: "Used",
-            data: metricsData.memoryUsageMBs.map(
-              ({ used }: { used: number }): number => used,
-            ),
-          },
-        ],
-        times: metricsData.memoryUsageMBs.map(
-          ({ unixTimeMs }: { unixTimeMs: number }): number => unixTimeMs,
-        ),
-        yAxis: {
-          title: "MB",
-        },
-      },
-    ]),
     metricsID,
     metricsData.stepMarkers,
     alerts,
+    metricsData.cpuLoadPercentages,
+    metricsData.memoryUsageMBs,
     metricsData.diskUsageGBs,
   );
 }

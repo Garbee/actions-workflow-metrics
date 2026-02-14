@@ -122258,63 +122258,19 @@ var import_systeminformation = __toESM(require_lib3(), 1);
 
 // src/post/renderer.ts
 var Renderer = class {
-  render(renderParamsList, metricsID, stepMarkers = [], alerts = [], diskUsageGBs = []) {
+  render(metricsID, stepMarkers = [], alerts = [], cpuLoadPercentages = [], memoryUsageMBs = [], diskUsageGBs = []) {
     const stepSummary = this.generateStepSummary(stepMarkers);
     const alertsSection = this.generateAlertsSection(alerts);
+    const cpuUsageSection = this.generateCPUUsageSection(cpuLoadPercentages, stepMarkers);
+    const memoryUsageSection = this.generateMemoryUsageSection(memoryUsageMBs, stepMarkers);
     const diskUsageSection = this.generateDiskUsageSection(diskUsageGBs, stepMarkers);
-    const filteredParams = renderParamsList.filter(
-      ({
-        metricsInfoList
-      }) => metricsInfoList.length > 0
-    );
-    const stepAnnotations = filteredParams.length > 0 ? this.generateStepAnnotations(stepMarkers, filteredParams[0].times) : "";
     return `## Workflow Metrics
 
 ### Metrics ID
 
 ${metricsID}
 
-${alertsSection}${stepSummary}${diskUsageSection}${filteredParams.map((p) => {
-      const colors = p.metricsInfoList.map(
-        ({ color }) => color
-      );
-      const stackedDatum = p.metricsInfoList.toReversed().reduce(
-        (prev, { data }, i) => {
-          prev.push(
-            data.map((d, j) => d + prev[i][j])
-          );
-          return prev;
-        },
-        [p.metricsInfoList[0].data.map(() => 0)]
-      ).slice(1).toReversed();
-      const xAxisLabels = this.generateXAxisLabels(stepMarkers, p.times);
-      return `### ${p.title}
-
-#### Legends
-
-${p.metricsInfoList.map(
-        (i) => `* $\${\\color{${i.color}} \\verb|${i.color}: ${i.name}|}$$`
-      ).join("\n")}
-
-#### Chart
-
-\`\`\`mermaid
-%%{
-  init: {
-    "themeVariables": {
-      "xyChart": {
-        "plotColorPalette": "${colors.join(", ")}"
-      }
-    }
-  }
-}%%
-xychart
-
-x-axis "Workflow Steps" ${JSON.stringify(xAxisLabels)}
-y-axis "${p.yAxis.title}"${p.yAxis.range ? ` ${p.yAxis.range}` : ""}
-${stackedDatum.map((d) => `bar ${JSON.stringify(d)}`).join("\n")}
-\`\`\``;
-    }).join("\n\n")}${stepAnnotations}`;
+${alertsSection}${stepSummary}${cpuUsageSection}${memoryUsageSection}${diskUsageSection}`;
   }
   generateStepSummary(stepMarkers) {
     if (stepMarkers.length === 0) {
@@ -122349,85 +122305,6 @@ ${rows}
 
 `;
   }
-  generateXAxisLabels(stepMarkers, chartTimes) {
-    if (stepMarkers.length === 0) {
-      throw new Error("Step markers are required for rendering. Ensure github-token is provided.");
-    }
-    const chartTimesMs = chartTimes.map((t) => t.getTime());
-    const labels = [];
-    const stepRanges = [];
-    const stepStarts = /* @__PURE__ */ new Map();
-    const stepEnds = /* @__PURE__ */ new Map();
-    for (const marker2 of stepMarkers) {
-      if (marker2.status === "start") {
-        stepStarts.set(marker2.stepName, marker2.unixTimeMs);
-      } else if (marker2.status === "end") {
-        stepEnds.set(marker2.stepName, marker2.unixTimeMs);
-      }
-    }
-    for (const [stepName, startTime] of stepStarts.entries()) {
-      const endTime = stepEnds.get(stepName);
-      if (endTime) {
-        stepRanges.push({ start: startTime, end: endTime, name: stepName });
-      }
-    }
-    stepRanges.sort((a, b) => a.start - b.start);
-    for (const timeMs of chartTimesMs) {
-      let label = "Pre-workflow";
-      let foundStep = false;
-      for (let i = 0; i < stepRanges.length; i++) {
-        const range2 = stepRanges[i];
-        if (timeMs >= range2.start && timeMs < range2.end) {
-          label = range2.name;
-          foundStep = true;
-          break;
-        }
-        if (timeMs >= range2.end) {
-          if (i < stepRanges.length - 1) {
-            const nextRange = stepRanges[i + 1];
-            if (timeMs < nextRange.start) {
-              label = `Between ${range2.name} and ${nextRange.name}`;
-              foundStep = true;
-              break;
-            }
-          }
-        }
-      }
-      if (!foundStep && stepRanges.length > 0) {
-        const lastStep = stepRanges[stepRanges.length - 1];
-        if (timeMs >= lastStep.end) {
-          label = "Post-workflow";
-        }
-      }
-      labels.push(label);
-    }
-    return labels;
-  }
-  generateStepAnnotations(stepMarkers, chartTimes) {
-    if (stepMarkers.length === 0 || chartTimes.length === 0) {
-      return "";
-    }
-    const annotations = [];
-    const chartTimesMs = chartTimes.map((t) => t.getTime());
-    for (const marker2 of stepMarkers) {
-      const closestIndex = chartTimesMs.reduce((prev, curr, idx) => {
-        return Math.abs(curr - marker2.unixTimeMs) < Math.abs(chartTimesMs[prev] - marker2.unixTimeMs) ? idx : prev;
-      }, 0);
-      const timeStr = chartTimes[closestIndex].toLocaleTimeString("en-GB", {
-        hour12: false
-      });
-      const prefix2 = marker2.status === "start" ? "\u25B6" : "\u25FC";
-      annotations.push(
-        `* ${prefix2} **${marker2.stepName}** ${marker2.status} at ${timeStr}`
-      );
-    }
-    return `
-<details>
-<summary>Step Timeline</summary>
-
-${annotations.join("\n")}
-</details>`;
-  }
   generateAlertsSection(alerts) {
     if (alerts.length === 0) {
       return "";
@@ -122446,6 +122323,114 @@ ${annotations.join("\n")}
 
 > [!WARNING]
 ${alertItems.join("\n")}
+
+`;
+  }
+  generateCPUUsageSection(cpuLoadPercentages, stepMarkers) {
+    if (cpuLoadPercentages.length === 0) {
+      return "";
+    }
+    const initialCPU = cpuLoadPercentages[0];
+    const stepCPUMap = /* @__PURE__ */ new Map();
+    const stepRanges = [];
+    const stepStarts = /* @__PURE__ */ new Map();
+    const stepEnds = /* @__PURE__ */ new Map();
+    for (const marker2 of stepMarkers) {
+      if (marker2.status === "start") {
+        stepStarts.set(marker2.stepName, marker2.unixTimeMs);
+      } else if (marker2.status === "end") {
+        stepEnds.set(marker2.stepName, marker2.unixTimeMs);
+      }
+    }
+    for (const [stepName, startTime] of stepStarts.entries()) {
+      const endTime = stepEnds.get(stepName);
+      if (endTime) {
+        stepRanges.push({ start: startTime, end: endTime, name: stepName });
+      }
+    }
+    for (const cpu of cpuLoadPercentages) {
+      for (const range2 of stepRanges) {
+        if (cpu.unixTimeMs >= range2.start && cpu.unixTimeMs < range2.end) {
+          if (!stepCPUMap.has(range2.name)) {
+            stepCPUMap.set(range2.name, cpu);
+          }
+          break;
+        }
+      }
+    }
+    const rows = [];
+    const initTotal = 100;
+    const initUsed = initialCPU.user + initialCPU.system;
+    const initAvailable = 100 - initUsed;
+    const initAvailablePercent = initAvailable.toFixed(2);
+    rows.push(`| Initialization | ${initTotal.toFixed(2)}% | ${initUsed.toFixed(2)}% | ${initAvailable.toFixed(2)}% | ${initAvailablePercent}% |`);
+    for (const range2 of stepRanges) {
+      const cpu = stepCPUMap.get(range2.name);
+      if (cpu) {
+        const total = 100;
+        const used = cpu.user + cpu.system;
+        const available = 100 - used;
+        const availablePercent = available.toFixed(2);
+        rows.push(`| ${range2.name} | ${total.toFixed(2)}% | ${used.toFixed(2)}% | ${available.toFixed(2)}% | ${availablePercent}% |`);
+      }
+    }
+    return `### CPU Usage
+
+| Step | Total | Used | Available | Available % |
+|------|-------|------|-----------|-------------|
+${rows.join("\n")}
+
+`;
+  }
+  generateMemoryUsageSection(memoryUsageMBs, stepMarkers) {
+    if (memoryUsageMBs.length === 0) {
+      return "";
+    }
+    const initialMemory = memoryUsageMBs[0];
+    const stepMemoryMap = /* @__PURE__ */ new Map();
+    const stepRanges = [];
+    const stepStarts = /* @__PURE__ */ new Map();
+    const stepEnds = /* @__PURE__ */ new Map();
+    for (const marker2 of stepMarkers) {
+      if (marker2.status === "start") {
+        stepStarts.set(marker2.stepName, marker2.unixTimeMs);
+      } else if (marker2.status === "end") {
+        stepEnds.set(marker2.stepName, marker2.unixTimeMs);
+      }
+    }
+    for (const [stepName, startTime] of stepStarts.entries()) {
+      const endTime = stepEnds.get(stepName);
+      if (endTime) {
+        stepRanges.push({ start: startTime, end: endTime, name: stepName });
+      }
+    }
+    for (const memory of memoryUsageMBs) {
+      for (const range2 of stepRanges) {
+        if (memory.unixTimeMs >= range2.start && memory.unixTimeMs < range2.end) {
+          if (!stepMemoryMap.has(range2.name)) {
+            stepMemoryMap.set(range2.name, memory);
+          }
+          break;
+        }
+      }
+    }
+    const rows = [];
+    const initTotal = initialMemory.used + initialMemory.free;
+    const initAvailablePercent = (initialMemory.free / initTotal * 100).toFixed(2);
+    rows.push(`| Initialization | ${initTotal.toFixed(2)} MB | ${initialMemory.used.toFixed(2)} MB | ${initialMemory.free.toFixed(2)} MB | ${initAvailablePercent}% |`);
+    for (const range2 of stepRanges) {
+      const memory = stepMemoryMap.get(range2.name);
+      if (memory) {
+        const total = memory.used + memory.free;
+        const availablePercent = (memory.free / total * 100).toFixed(2);
+        rows.push(`| ${range2.name} | ${total.toFixed(2)} MB | ${memory.used.toFixed(2)} MB | ${memory.free.toFixed(2)} MB | ${availablePercent}% |`);
+      }
+    }
+    return `### Memory Usage
+
+| Step | Total | Used | Available | Available % |
+|------|-------|------|-----------|-------------|
+${rows.join("\n")}
 
 `;
   }
@@ -122482,17 +122467,19 @@ ${alertItems.join("\n")}
       }
     }
     const rows = [];
-    rows.push(`| Initialization | ${initialDisk.size.toFixed(2)} GB | ${initialDisk.used.toFixed(2)} GB | ${initialDisk.available.toFixed(2)} GB |`);
+    const initAvailablePercent = (initialDisk.available / initialDisk.size * 100).toFixed(2);
+    rows.push(`| Initialization | ${initialDisk.size.toFixed(2)} GB | ${initialDisk.used.toFixed(2)} GB | ${initialDisk.available.toFixed(2)} GB | ${initAvailablePercent}% |`);
     for (const range2 of stepRanges) {
       const disk = stepDiskMap.get(range2.name);
       if (disk) {
-        rows.push(`| ${range2.name} | ${disk.size.toFixed(2)} GB | ${disk.used.toFixed(2)} GB | ${disk.available.toFixed(2)} GB |`);
+        const availablePercent = (disk.available / disk.size * 100).toFixed(2);
+        rows.push(`| ${range2.name} | ${disk.size.toFixed(2)} GB | ${disk.used.toFixed(2)} GB | ${disk.available.toFixed(2)} GB | ${availablePercent}% |`);
       }
     }
     return `### Disk Usage
 
-| Step | Total Size | Used | Available |
-|------|------------|------|-----------|
+| Step | Total Size | Used | Available | Available % |
+|------|------------|------|-----------|-------------|
 ${rows.join("\n")}
 
 `;
@@ -122550,22 +122537,6 @@ function getMetricsFilePath() {
 }
 
 // src/post/lib.ts
-var metricsInfoSchema = external_exports.object({
-  color: external_exports.string(),
-  name: external_exports.string(),
-  data: external_exports.array(external_exports.number())
-});
-var metricsInfoListSchema = external_exports.array(metricsInfoSchema);
-var renderParamsSchema = external_exports.object({
-  title: external_exports.string(),
-  metricsInfoList: metricsInfoListSchema,
-  times: external_exports.array(external_exports.coerce.date()),
-  yAxis: external_exports.object({
-    title: external_exports.string(),
-    range: external_exports.string().optional()
-  })
-});
-var renderParamsListSchema = external_exports.array(renderParamsSchema);
 async function getMetricsData() {
   const filePath = getMetricsFilePath();
   try {
@@ -122758,62 +122729,11 @@ function detectAlerts(metricsData) {
 function render(metricsData, metricsID, alerts = []) {
   const renderer = new Renderer();
   return renderer.render(
-    renderParamsListSchema.parse([
-      {
-        title: "CPU Loads",
-        metricsInfoList: [
-          {
-            color: "Orange",
-            name: "System",
-            data: metricsData.cpuLoadPercentages.map(
-              ({ system }) => system
-            )
-          },
-          {
-            color: "Red",
-            name: "User",
-            data: metricsData.cpuLoadPercentages.map(
-              ({ user }) => user
-            )
-          }
-        ],
-        times: metricsData.cpuLoadPercentages.map(
-          ({ unixTimeMs }) => unixTimeMs
-        ),
-        yAxis: {
-          title: "%",
-          range: "0 --> 100"
-        }
-      },
-      {
-        title: "Memory Usages",
-        metricsInfoList: [
-          {
-            color: "Green",
-            name: "Free",
-            data: metricsData.memoryUsageMBs.map(
-              ({ free }) => free
-            )
-          },
-          {
-            color: "Blue",
-            name: "Used",
-            data: metricsData.memoryUsageMBs.map(
-              ({ used }) => used
-            )
-          }
-        ],
-        times: metricsData.memoryUsageMBs.map(
-          ({ unixTimeMs }) => unixTimeMs
-        ),
-        yAxis: {
-          title: "MB"
-        }
-      }
-    ]),
     metricsID,
     metricsData.stepMarkers,
     alerts,
+    metricsData.cpuLoadPercentages,
+    metricsData.memoryUsageMBs,
     metricsData.diskUsageGBs
   );
 }
