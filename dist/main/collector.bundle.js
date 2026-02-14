@@ -50880,6 +50880,8 @@ var Metrics = class {
           used: rootDisk.used / bytesPerGB,
           free: rootDisk.available / bytesPerGB
         });
+      } else {
+        console.warn("Root filesystem not found in disk list. Disk metrics will be incomplete.");
       }
       await this.writeData();
     } catch (error49) {

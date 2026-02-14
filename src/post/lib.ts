@@ -77,6 +77,8 @@ export async function collectFinalMetrics(): Promise<void> {
         used: rootDisk.used / bytesPerGB,
         free: rootDisk.available / bytesPerGB,
       });
+    } else {
+      console.warn('Root filesystem not found in final metrics collection. Disk metrics will be incomplete.');
     }
     
     // Write updated metrics back to file

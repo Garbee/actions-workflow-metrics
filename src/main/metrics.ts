@@ -89,6 +89,8 @@ export class Metrics {
           used: rootDisk.used / bytesPerGB,
           free: rootDisk.available / bytesPerGB,
         });
+      } else {
+        console.warn('Root filesystem not found in disk list. Disk metrics will be incomplete.');
       }
 
       // Write to file after collecting metrics

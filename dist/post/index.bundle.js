@@ -122556,6 +122556,8 @@ async function collectFinalMetrics() {
         used: rootDisk.used / bytesPerGB,
         free: rootDisk.available / bytesPerGB
       });
+    } else {
+      console.warn("Root filesystem not found in final metrics collection. Disk metrics will be incomplete.");
     }
     await writeFile2(filePath, JSON.stringify(metricsData, null, 2), "utf-8");
   } catch (error49) {
