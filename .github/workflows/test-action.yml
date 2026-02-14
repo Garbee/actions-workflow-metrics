@@ -166,6 +166,88 @@ jobs:
           sleep 20
           echo "Idle period completed."
 
+  test-alerts-e2e:
+    name: Test Alerts E2E
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Start Workflow Telemetry with Low Alert Thresholds
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          memory_alert_threshold: "5"
+          cpu_alert_threshold: "10"
+          cpu_alert_duration: "10"
+          disk_alert_threshold: "10"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: "24"
+
+      - name: Trigger CPU Alert
+        run: |
+          echo "Starting CPU-intensive activity to trigger CPU alert (>10% for 10+ seconds)..."
+          node -e "
+          const startTime = Date.now();
+          const endTime = startTime + 15000; // Run for 15 seconds
+          let count = 0;
+          while (Date.now() < endTime) {
+            // CPU-intensive calculation to exceed 10% threshold
+            for (let i = 0; i < 1000000; i++) {
+              count += Math.sqrt(i);
+            }
+          }
+          console.log('CPU-intensive activity completed. Count:', count);
+          "
+          echo "CPU alert should be triggered."
+
+      - name: Trigger Memory Alert
+        run: |
+          echo "Starting memory allocation to trigger memory alert (>5% utilization)..."
+          node -e "
+          const arrays = [];
+
+          // Allocate memory to exceed 5% threshold
+          // On GitHub Actions runners with ~7GB RAM, 5% is ~350MB
+          console.log('Allocating memory...');
+          for (let i = 0; i < 40; i++) {
+            arrays.push(new Array(10 * 1024 * 1024).fill(Math.random()));
+          }
+          console.log('Memory allocated:', arrays.length, 'arrays (~400MB)');
+
+          // Hold memory for a moment
+          const startTime = Date.now();
+          while (Date.now() - startTime < 5000) {
+            if (arrays.length > 0) {
+              arrays[0][0] = Math.random();
+            }
+          }
+
+          console.log('Memory alert should be triggered.');
+          arrays.length = 0;
+          "
+
+      - name: Trigger Disk Alert
+        run: |
+          echo "Creating large file to trigger disk alert (>10% usage)..."
+          # GitHub Actions runners typically have ~14GB free space
+          # 10% would be ~1.4GB, so we'll create a 2GB file to be safe
+          echo "Creating 2GB test file..."
+          dd if=/dev/zero of=/tmp/alert-test-file.bin bs=1M count=2048 status=progress
+          echo "2GB file created"
+          ls -lh /tmp/alert-test-file.bin
+          df -h /tmp
+          echo "Disk alert should be triggered."
+          sleep 2
+          echo "Cleaning up test file..."
+          rm -f /tmp/alert-test-file.bin
+          echo "Test file removed."
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
