@@ -2,16 +2,19 @@ import { setFailed } from "@actions/core";
 import { Metrics } from "./metrics.js";
 
 async function collector(): Promise<void> {
+  let metrics: Metrics | null = null;
   try {
-    // Create metrics collector - it will run in background and write to file
-    new Metrics();
+    // Create metrics collector - it will run in background and keep data in memory
+    metrics = new Metrics();
 
     // Keep process alive - it will be terminated by the post action
     // or when the workflow completes
     process.on("SIGTERM", () => {
+      metrics?.stop();
       process.exit(0);
     });
     process.on("SIGINT", () => {
+      metrics?.stop();
       process.exit(0);
     });
   } catch (error) {

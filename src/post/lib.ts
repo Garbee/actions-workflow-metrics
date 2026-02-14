@@ -1,33 +1,30 @@
-import { readFile, writeFile } from "node:fs/promises";
 import { z } from "zod";
-import { getInput } from "@actions/core";
+import { getInput, getState } from "@actions/core";
 import { context, getOctokit } from "@actions/github";
 import { currentLoad, mem, fsSize } from "systeminformation";
 import { Renderer } from "./renderer.ts";
-import { metricsDataSchema, getMetricsFilePath, stepMarkerSchema, bytesPerMB, bytesPerGB, type Alert } from "../lib.ts";
+import { metricsDataSchema, stepMarkerSchema, bytesPerMB, bytesPerGB, type Alert } from "../lib.ts";
 
 export async function getMetricsData(): Promise<
   z.TypeOf<typeof metricsDataSchema>
 > {
-  const filePath = getMetricsFilePath();
-  
   try {
-    const content = await readFile(filePath, "utf-8");
-    return metricsDataSchema.parse(JSON.parse(content));
+    const stateData = getState("metrics_data");
+    if (!stateData) {
+      throw new Error("No metrics data found in state");
+    }
+    return metricsDataSchema.parse(JSON.parse(stateData));
   } catch (error) {
     throw new Error(
-      `Failed to read metrics file at ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
+      `Failed to read metrics from state: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }
 
-export async function collectFinalMetrics(): Promise<void> {
-  const filePath = getMetricsFilePath();
-  
+export async function collectFinalMetrics(): Promise<z.TypeOf<typeof metricsDataSchema>> {
   try {
-    // Read existing metrics
-    const content = await readFile(filePath, "utf-8");
-    const metricsData = metricsDataSchema.parse(JSON.parse(content));
+    // Read existing metrics from state
+    const metricsData = await getMetricsData();
     
     // Collect one final set of metrics
     const unixTimeMs = Date.now();
@@ -65,12 +62,13 @@ export async function collectFinalMetrics(): Promise<void> {
       console.warn('Root filesystem not found in final metrics collection. Disk metrics will be incomplete.');
     }
     
-    // Write updated metrics back to file
-    await writeFile(filePath, JSON.stringify(metricsData, null, 2), "utf-8");
+    return metricsData;
   } catch (error) {
     // If we can't collect final metrics, log but don't fail
     // The action should still work with the metrics collected so far
     console.warn(`Failed to collect final metrics: ${error instanceof Error ? error.message : String(error)}`);
+    // Return existing data without final metrics
+    return getMetricsData();
   }
 }
 

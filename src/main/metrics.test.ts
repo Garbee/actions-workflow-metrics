@@ -12,9 +12,9 @@ import {
 describe("Metrics", () => {
   let Metrics;
   let mockModule;
-  let mockFsModule;
+  let mockCoreModule;
   const metricsInstances: any[] = [];
-  const fileWrites: string[] = [];
+  const savedStates: Map<string, string> = new Map();
 
   before(async () => {
     // Enable timer mocking BEFORE importing the module
@@ -59,20 +59,18 @@ describe("Metrics", () => {
       },
     });
 
-    // Mock node:fs/promises module
-    mockFsModule = mock.module("node:fs/promises", {
+    // Mock @actions/core module
+    mockCoreModule = mock.module("@actions/core", {
       namedExports: {
-        writeFile: async (path: string, content: string): Promise<void> => {
-          fileWrites.push(content);
-          return Promise.resolve();
+        setFailed: (error: any) => {
+          console.error("setFailed:", error);
         },
-        readFile: async (path: string): Promise<string> => {
-          if (fileWrites.length > 0) {
-            return Promise.resolve(fileWrites[fileWrites.length - 1]);
-          }
-          throw new Error("ENOENT: no such file or directory");
+        saveState: (name: string, value: any) => {
+          savedStates.set(name, String(value));
         },
-        mkdir: async (): Promise<void> => Promise.resolve(),
+        getState: (name: string) => {
+          return savedStates.get(name) || "";
+        },
       },
     });
 
@@ -80,8 +78,8 @@ describe("Metrics", () => {
   })
 
   beforeEach(() => {
-    // Clear file writes between tests
-    fileWrites.length = 0;
+    // Clear saved states between tests
+    savedStates.clear();
   });
 
   afterEach(() => {
@@ -94,7 +92,7 @@ describe("Metrics", () => {
 
   after(() => {
     mockModule.restore();
-    mockFsModule.restore();
+    mockCoreModule.restore();
     mock.timers.reset();
   })
 

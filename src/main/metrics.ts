@@ -1,20 +1,16 @@
-import { writeFile, mkdir } from "node:fs/promises";
-import { dirname } from "node:path";
-import { setFailed } from "@actions/core";
+import { setFailed, saveState } from "@actions/core";
 import { currentLoad, mem, fsSize } from "systeminformation";
 import type { z } from "zod";
-import { metricsDataSchema, getMetricsFilePath, bytesPerMB, bytesPerGB } from "../lib.ts";
+import { metricsDataSchema, bytesPerMB, bytesPerGB } from "../lib.ts";
 
 export class Metrics {
   private readonly data: z.TypeOf<typeof metricsDataSchema>;
   private readonly intervalMs: number;
-  private readonly filePath: string;
   private timeoutId: NodeJS.Timeout | null = null;
   private stopped: boolean = false;
 
   constructor() {
     this.data = { cpuLoadPercentages: [], memoryUsageMBs: [], diskUsageGBs: [], stepMarkers: [] };
-    this.filePath = getMetricsFilePath();
 
     this.intervalMs = 5 * 1000;
     const intervalSecondsInput: string | undefined =
@@ -27,18 +23,12 @@ export class Metrics {
       }
     }
 
-    // Ensure directory exists and start async processing
+    // Start async processing
     this.initialize().catch(setFailed);
   }
 
   private async initialize(): Promise<void> {
-    try {
-      await mkdir(dirname(this.filePath), { recursive: true });
-      await this.writeData();
-    } catch (error) {
-      setFailed(error);
-    }
-    // Start collection after initialization
+    // Start collection
     this.append(Date.now()).catch(setFailed);
   }
 
@@ -48,15 +38,16 @@ export class Metrics {
       clearTimeout(this.timeoutId);
       this.timeoutId = null;
     }
+    // Save final state to GitHub Actions state for post action
+    try {
+      saveState("metrics_data", JSON.stringify(this.data));
+    } catch (error) {
+      console.warn("Failed to save metrics state:", error);
+    }
   }
 
   get(): string {
     return JSON.stringify(this.data);
-  }
-
-  private async writeData(): Promise<void> {
-    const content = JSON.stringify(this.data);
-    await writeFile(this.filePath, content, "utf-8");
   }
 
   private async append(unixTimeMs: number): Promise<void> {
@@ -93,9 +84,6 @@ export class Metrics {
       } else {
         console.warn('Root filesystem not found in disk list. Disk metrics will be incomplete.');
       }
-
-      // Write to file after collecting metrics
-      await this.writeData();
     } catch (error) {
       setFailed(error);
     } finally {
