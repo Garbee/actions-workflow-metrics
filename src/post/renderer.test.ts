@@ -62,8 +62,8 @@ describe("Renderer", () => {
     // Verify color palette is set correctly
     assert.ok(result.includes('"plotColorPalette": "Red"'));
 
-    // Verify axis settings are included
-    assert.ok(result.includes('x-axis "Time"'));
+    // Verify axis settings are included (now shows "Workflow Steps" instead of "Time")
+    assert.ok(result.includes('x-axis "Workflow Steps"'));
     assert.ok(result.includes('y-axis "Percentage" 0 --> 100'));
 
     // Verify bar chart is included
@@ -334,7 +334,7 @@ describe("Renderer", () => {
     assert.strictEqual(barMatches?.length, 3);
   });
 
-  it("should format times correctly in x-axis", () => {
+  it("should format times correctly in x-axis when no step markers provided", () => {
     const renderer: Renderer = new Renderer();
     const result: string = renderer.render(
       [
@@ -360,13 +360,14 @@ describe("Renderer", () => {
       testMetricsID,
     );
 
+    // When no step markers provided, should fall back to time-based labels
     // Verify times are in HH:MM:SS format
     assert.ok(result.includes("09:15:30"));
     assert.ok(result.includes("14:30:45"));
     assert.ok(result.includes("23:59:59"));
 
-    // Verify x-axis definition includes time array
-    assert.ok(result.includes('x-axis "Time"'));
+    // Verify x-axis definition uses "Workflow Steps"
+    assert.ok(result.includes('x-axis "Workflow Steps"'));
   });
 
   it("should include complete Mermaid chart structure", () => {
@@ -548,5 +549,62 @@ describe("Renderer", () => {
 
     assert.ok(!result.includes("### Workflow Steps"));
     assert.ok(!result.includes("#### Step Timeline"));
+  });
+
+  it("should use step names in x-axis when step markers provided", () => {
+    const renderer: Renderer = new Renderer();
+    const result: string = renderer.render(
+      [
+        {
+          title: "CPU Usage",
+          metricsInfoList: [
+            {
+              color: "Red",
+              name: "User CPU",
+              data: [10, 20, 30, 40],
+            },
+          ],
+          times: [
+            new Date("2024-01-01T00:00:00Z"),
+            new Date("2024-01-01T00:00:05Z"),
+            new Date("2024-01-01T00:00:10Z"),
+            new Date("2024-01-01T00:00:15Z"),
+          ],
+          yAxis: {
+            title: "Percentage",
+          },
+        },
+      ],
+      testMetricsID,
+      [
+        {
+          unixTimeMs: new Date("2024-01-01T00:00:03Z").getTime(),
+          stepName: "Build",
+          status: "start" as const,
+        },
+        {
+          unixTimeMs: new Date("2024-01-01T00:00:08Z").getTime(),
+          stepName: "Build",
+          status: "end" as const,
+        },
+        {
+          unixTimeMs: new Date("2024-01-01T00:00:10Z").getTime(),
+          stepName: "Test",
+          status: "start" as const,
+        },
+        {
+          unixTimeMs: new Date("2024-01-01T00:00:14Z").getTime(),
+          stepName: "Test",
+          status: "end" as const,
+        },
+      ],
+    );
+
+    // Verify x-axis uses "Workflow Steps"
+    assert.ok(result.includes('x-axis "Workflow Steps"'));
+    
+    // Verify step names appear in the chart labels
+    assert.ok(result.includes("Build"));
+    assert.ok(result.includes("Test"));
   });
 });
