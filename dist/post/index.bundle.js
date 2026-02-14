@@ -122375,12 +122375,18 @@ ${rows}
     stepRanges.sort((a, b) => a.start - b.start);
     for (const timeMs of chartTimesMs) {
       let label = "Pre-workflow";
+      let foundStep = false;
       for (const range2 of stepRanges) {
-        if (timeMs >= range2.start && timeMs <= range2.end) {
+        if (timeMs >= range2.start && timeMs < range2.end) {
           label = range2.name;
+          foundStep = true;
           break;
-        } else if (timeMs > range2.end) {
-          label = "Post-" + range2.name;
+        }
+      }
+      if (!foundStep && stepRanges.length > 0) {
+        const lastStep = stepRanges[stepRanges.length - 1];
+        if (timeMs >= lastStep.end) {
+          label = "Post-workflow";
         }
       }
       labels.push(label);
@@ -122494,7 +122500,7 @@ async function collectFinalMetrics() {
       used: active / bytesPerMB,
       free: available / bytesPerMB
     });
-    await writeFile2(filePath, JSON.stringify(metricsData), "utf-8");
+    await writeFile2(filePath, JSON.stringify(metricsData, null, 2), "utf-8");
   } catch (error49) {
     console.warn(`Failed to collect final metrics: ${error49 instanceof Error ? error49.message : String(error49)}`);
   }

@@ -70,7 +70,7 @@ export async function collectFinalMetrics(): Promise<void> {
     });
     
     // Write updated metrics back to file
-    await writeFile(filePath, JSON.stringify(metricsData), "utf-8");
+    await writeFile(filePath, JSON.stringify(metricsData, null, 2), "utf-8");
   } catch (error) {
     // If we can't collect final metrics, log but don't fail
     // The action should still work with the metrics collected so far

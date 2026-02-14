@@ -183,13 +183,21 @@ ${rows}
     // For each chart time, find which step it belongs to
     for (const timeMs of chartTimesMs) {
       let label = "Pre-workflow";
+      let foundStep = false;
       
       for (const range of stepRanges) {
-        if (timeMs >= range.start && timeMs <= range.end) {
+        if (timeMs >= range.start && timeMs < range.end) {
           label = range.name;
+          foundStep = true;
           break;
-        } else if (timeMs > range.end) {
-          label = "Post-" + range.name;
+        }
+      }
+      
+      // If not found within any step, check if it's after all steps
+      if (!foundStep && stepRanges.length > 0) {
+        const lastStep = stepRanges[stepRanges.length - 1];
+        if (timeMs >= lastStep.end) {
+          label = "Post-workflow";
         }
       }
 
