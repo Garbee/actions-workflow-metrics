@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, mock } from "bun:test";
+import { describe, expect, it, beforeEach, vi } from "vitest";
 import { getMetricsData, render } from "./lib";
 import type { z } from "zod";
 import type { metricsDataSchema } from "../lib";
@@ -24,7 +24,7 @@ const sampleMetricsData: z.TypeOf<typeof metricsDataSchema> = {
 function createMockFetch(
   data: z.TypeOf<typeof metricsDataSchema>,
 ): typeof fetch {
-  return mock(
+  return vi.fn(
     async (): Promise<Response> =>
       ({
         ok: true,
@@ -98,7 +98,7 @@ describe("render", () => {
 });
 
 describe("getMetricsData", () => {
-  beforeEach(() => mock.restore());
+  beforeEach(() => vi.restoreAllMocks());
 
   it("should fetch metrics data from server", async () => {
     globalThis.fetch = createMockFetch(sampleMetricsData);
@@ -109,7 +109,7 @@ describe("getMetricsData", () => {
   });
 
   it("should throw error for invalid metrics data", async () => {
-    globalThis.fetch = mock(
+    globalThis.fetch = vi.fn(
       async (): Promise<Response> =>
         ({
           ok: true,
@@ -121,19 +121,19 @@ describe("getMetricsData", () => {
         }) as Response,
     ) as unknown as typeof fetch;
 
-    expect(getMetricsData()).rejects.toThrow();
+    await expect(getMetricsData()).rejects.toThrow();
   });
 
   it("should throw error when fetch fails", async () => {
-    globalThis.fetch = mock(() =>
+    globalThis.fetch = vi.fn(() =>
       Promise.reject(new Error("Network error")),
     ) as unknown as typeof fetch;
 
-    expect(getMetricsData()).rejects.toThrow("Network error");
+    await expect(getMetricsData()).rejects.toThrow("Network error");
   });
 
   it("should throw error when response is not ok", async () => {
-    globalThis.fetch = mock(
+    globalThis.fetch = vi.fn(
       async (): Promise<Response> =>
         ({
           ok: false,
@@ -142,6 +142,6 @@ describe("getMetricsData", () => {
         }) as Response,
     ) as unknown as typeof fetch;
 
-    expect(getMetricsData()).rejects.toThrow("Failed to fetch metrics");
+    await expect(getMetricsData()).rejects.toThrow("Failed to fetch metrics");
   });
 });

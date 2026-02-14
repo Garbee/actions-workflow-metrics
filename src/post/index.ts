@@ -73,7 +73,10 @@ async function index(): Promise<void> {
     setFailed(error);
   } finally {
     const controller: AbortController = new AbortController();
-    const timer: Timer = setTimeout(() => controller.abort(), 10 * 1000); // 10 seconds
+    const timer: NodeJS.Timeout = setTimeout(
+      () => controller.abort(),
+      10 * 1000,
+    ); // 10 seconds
 
     // Stop the metrics server
     try {
