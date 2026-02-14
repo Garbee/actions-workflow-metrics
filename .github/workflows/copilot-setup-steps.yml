@@ -26,7 +26,9 @@ jobs:
     name: Copilot Setup
 
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    # Note: Do not set `timeout-minutes` for this job.
+    # Copilot automatically sets a 1 hour timeout for this job.
+    # Since we don't know how long some work might take, just rely on that.
 
     # Note: Do not try to run inside of a container yet. That causes all the setup scripts
     # by Copilot to fail since that triggers `sh` instead of `bash` for runs. Setting
