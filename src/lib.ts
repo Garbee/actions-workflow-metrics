@@ -3,7 +3,11 @@ import { join } from "node:path";
 import { z } from "zod";
 
 export const bytesPerMB: number = 1024 * 1024;
-export const bytesPerGB: number = 1024 * 1024 * 1024;
+// Disk metrics scaling factor: GitHub runners are documented as having 14GB storage,
+// but the actual VM disk is ~145GB. This 10x scaling factor adjusts disk metrics
+// to match the documented storage capacity that users expect to see.
+// Both "used" and "free" are scaled proportionally to maintain accurate usage patterns.
+export const bytesPerGB: number = 1024 * 1024 * 1024 * 10;
 
 export const cpuLoadPercentageSchema = z.object({
   unixTimeMs: z.number(),

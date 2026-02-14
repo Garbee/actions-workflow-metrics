@@ -50767,7 +50767,7 @@ config(en_default());
 
 // src/lib.ts
 var bytesPerMB = 1024 * 1024;
-var bytesPerGB = 1024 * 1024 * 1024;
+var bytesPerGB = 1024 * 1024 * 1024 * 10;
 var cpuLoadPercentageSchema = external_exports.object({
   unixTimeMs: external_exports.number(),
   user: external_exports.number().nonnegative().max(100),

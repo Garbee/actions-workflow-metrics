@@ -216,10 +216,11 @@ describe("Metrics", () => {
     assert.strictEqual(typeof diskData.used, "number");
     assert.strictEqual(typeof diskData.free, "number");
 
-    // Bytes to GB conversion check
-    // Only root filesystem (mount="/") is tracked: 30 GB used, 70 GB free
-    assert.strictEqual(diskData.used, 30);
-    assert.strictEqual(diskData.free, 70);
+    // Bytes to GB conversion check with 10x scaling factor
+    // Root filesystem (mount="/"): 30 GB used / 10 = 3 GB, 70 GB free / 10 = 7 GB
+    // Scaling matches GitHub runner documented storage (~14GB) vs actual VM size (~145GB)
+    assert.strictEqual(diskData.used, 3);
+    assert.strictEqual(diskData.free, 7);
   });
 
   it("should accumulate metrics data over time", async () => {
