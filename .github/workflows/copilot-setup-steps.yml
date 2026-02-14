@@ -26,7 +26,7 @@ jobs:
     name: Copilot Setup
 
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 5
 
     # Note: Do not try to run inside of a container yet. That causes all the setup scripts
     # by Copilot to fail since that triggers `sh` instead of `bash` for runs. Setting

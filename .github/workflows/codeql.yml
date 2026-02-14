@@ -16,7 +16,7 @@ jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 5
     permissions:
       security-events: write # To upload the results of the analysis
       packages: read # To fetch CodeQL packs from GitHub Packages, if you are using any.
