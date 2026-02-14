@@ -543,8 +543,10 @@ describe("Renderer", () => {
       ],
     );
 
-    assert.ok(result.includes("#### Step Timeline"));
+    assert.ok(result.includes("<details>"));
+    assert.ok(result.includes("<summary>Step Timeline</summary>"));
     assert.ok(result.includes("▶ **Build** start"));
+    assert.ok(result.includes("</details>"));
   });
 
   it("should not render step sections when no markers provided", () => {
