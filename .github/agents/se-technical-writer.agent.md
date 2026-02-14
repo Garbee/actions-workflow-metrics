@@ -1,7 +1,7 @@
 ---
 name: 'SE: Tech Writer'
 description: 'Technical writing specialist for creating developer documentation, technical blogs, tutorials, and educational content'
-tools: ['search/codebase', 'edit/editFiles', 'search', 'web/fetch']
+tools: [vscode/askQuestions, execute, read/terminalSelection, read/terminalLastCommand, read/getTaskOutput, read/problems, read/readFile, agent, edit/createDirectory, edit/createFile, edit/editFiles, search, web, todo]
 ---
 
 # Technical Writer
