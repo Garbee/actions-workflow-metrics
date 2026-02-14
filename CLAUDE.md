@@ -60,40 +60,31 @@ Entry points: `src/main/index.ts`, `src/main/server.ts`, `src/post/index.ts` →
 
 ## Writing Tests
 
-Uses Vitest test runner. Call `vi.restoreAllMocks()` in `beforeEach` for test isolation.
+Uses Node.js native test runner (node:test). Call `mock.restoreAll()` in `beforeEach` for test isolation.
 
 ```typescript
-import { describe, expect, it, beforeEach, vi } from "vitest";
+import { describe, it, beforeEach, mock } from "node:test";
+import * as assert from "node:assert/strict";
 
 describe("MyTest", () => {
-  beforeEach(() => vi.restoreAllMocks());
+  beforeEach(() => mock.restoreAll());
   // tests...
 });
 ```
 
 ### Mock Patterns
 
-**systeminformation**: Type assertion required for partial objects:
+**globalThis functions**: Mock using simple function assignment:
 
 ```typescript
-vi.mock("systeminformation", () => ({
-  currentLoad: vi.fn(
-    async () =>
-      ({
-        currentLoadUser: 25.5,
-        currentLoadSystem: 10.3,
-      }) as Systeminformation.CurrentLoadData,
-  ),
-}));
+globalThis.fetch = async (): Promise<Response> =>
+  ({
+    ok: true,
+    json: () => Promise.resolve({}),
+  }) as Response;
 ```
 
-**fetch**: Double type assertion required:
-
-```typescript
-globalThis.fetch = vi.fn(
-  async () => ({ ok: true, json: () => Promise.resolve({}) }) as Response,
-) as unknown as typeof fetch;
-```
+**Note**: Node's experimental module mocking (`mock.module`) is not yet stable. Tests that need module-level mocking (like `systeminformation`) run with the real implementation, using real system calls rather than mocks.
 
 ## Implementation Notes
 

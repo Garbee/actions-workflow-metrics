@@ -1,4 +1,5 @@
-import { describe, expect, it, beforeEach, vi } from "vitest";
+import { describe, it, beforeEach, mock } from "node:test";
+import * as assert from "node:assert/strict";
 import { getMetricsData, render } from "./lib";
 import type { z } from "zod";
 import type { metricsDataSchema } from "../lib";
@@ -24,14 +25,12 @@ const sampleMetricsData: z.TypeOf<typeof metricsDataSchema> = {
 function createMockFetch(
   data: z.TypeOf<typeof metricsDataSchema>,
 ): typeof fetch {
-  return vi.fn(
-    async (): Promise<Response> =>
-      ({
-        ok: true,
-        json: (): Promise<z.TypeOf<typeof metricsDataSchema>> =>
-          Promise.resolve(data),
-      }) as Response,
-  ) as unknown as typeof fetch;
+  return async (): Promise<Response> =>
+    ({
+      ok: true,
+      json: (): Promise<z.TypeOf<typeof metricsDataSchema>> =>
+        Promise.resolve(data),
+    }) as Response;
 }
 
 describe("render", () => {
@@ -40,12 +39,12 @@ describe("render", () => {
   it("should render charts with valid metrics data", () => {
     const result: string = render(sampleMetricsData, testMetricsID);
 
-    expect(typeof result).toBe("string");
-    expect(result.length).toBeGreaterThan(0);
+    assert.strictEqual(typeof result, "string");
+    assert.ok(result.length > 0);
 
     // Verify rendered result contains expected content
-    expect(result).toContain("CPU Loads");
-    expect(result).toContain("Memory Usages");
+    assert.ok(result.includes("CPU Loads"));
+    assert.ok(result.includes("Memory Usages"));
   });
 
   it("should handle empty metrics data", () => {
@@ -58,7 +57,7 @@ describe("render", () => {
     const result: string = render(metricsData, testMetricsID);
 
     // Empty data results in empty string (no charts to render)
-    expect(typeof result).toBe("string");
+    assert.strictEqual(typeof result, "string");
   });
 
   it("should correctly map CPU load percentages", () => {
@@ -76,8 +75,8 @@ describe("render", () => {
 
     const result: string = render(metricsData, testMetricsID);
 
-    expect(result).toBeTruthy();
-    expect(result.length).toBeGreaterThan(0);
+    assert.ok(result);
+    assert.ok(result.length > 0);
   });
 
   it("should correctly map memory usage data", () => {
@@ -92,56 +91,52 @@ describe("render", () => {
 
     const result: string = render(metricsData, testMetricsID);
 
-    expect(result).toBeTruthy();
-    expect(result.length).toBeGreaterThan(0);
+    assert.ok(result);
+    assert.ok(result.length > 0);
   });
 });
 
 describe("getMetricsData", () => {
-  beforeEach(() => vi.restoreAllMocks());
+  beforeEach(() => mock.restoreAll());
 
   it("should fetch metrics data from server", async () => {
     globalThis.fetch = createMockFetch(sampleMetricsData);
 
     const result = await getMetricsData();
 
-    expect(result).toEqual(sampleMetricsData);
+    assert.deepStrictEqual(result, sampleMetricsData);
   });
 
   it("should throw error for invalid metrics data", async () => {
-    globalThis.fetch = vi.fn(
-      async (): Promise<Response> =>
-        ({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              cpuLoadPercentages: "not an array",
-              memoryUsageMBs: [],
-            }),
-        }) as Response,
-    ) as unknown as typeof fetch;
+    globalThis.fetch = async (): Promise<Response> =>
+      ({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            cpuLoadPercentages: "not an array",
+            memoryUsageMBs: [],
+          }),
+      }) as Response;
 
-    await expect(getMetricsData()).rejects.toThrow();
+    await assert.rejects(getMetricsData());
   });
 
   it("should throw error when fetch fails", async () => {
-    globalThis.fetch = vi.fn(() =>
-      Promise.reject(new Error("Network error")),
-    ) as unknown as typeof fetch;
+    globalThis.fetch = () => Promise.reject(new Error("Network error"));
 
-    await expect(getMetricsData()).rejects.toThrow("Network error");
+    await assert.rejects(getMetricsData(), { message: "Network error" });
   });
 
   it("should throw error when response is not ok", async () => {
-    globalThis.fetch = vi.fn(
-      async (): Promise<Response> =>
-        ({
-          ok: false,
-          status: 500,
-          statusText: "Internal Server Error",
-        }) as Response,
-    ) as unknown as typeof fetch;
+    globalThis.fetch = async (): Promise<Response> =>
+      ({
+        ok: false,
+        status: 500,
+        statusText: "Internal Server Error",
+      }) as Response;
 
-    await expect(getMetricsData()).rejects.toThrow("Failed to fetch metrics");
+    await assert.rejects(getMetricsData(), {
+      message: "Failed to fetch metrics: 500 Internal Server Error",
+    });
   });
 });

@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
+import * as assert from "node:assert/strict";
 import { Renderer } from "./renderer";
 
 describe("Renderer", () => {
@@ -7,7 +8,7 @@ describe("Renderer", () => {
   it("should return only header for empty metricsInfo", () => {
     const renderer: Renderer = new Renderer();
 
-    expect(
+    assert.strictEqual(
       renderer.render(
         [
           {
@@ -21,7 +22,8 @@ describe("Renderer", () => {
         ],
         testMetricsID,
       ),
-    ).toBe(`## Workflow Metrics\n\n### Metrics ID\n\n${testMetricsID}\n\n`);
+      `## Workflow Metrics\n\n### Metrics ID\n\n${testMetricsID}\n\n`,
+    );
   });
 
   it("should render with single metric", () => {
@@ -47,29 +49,29 @@ describe("Renderer", () => {
       testMetricsID,
     );
 
-    expect(result).toBeTruthy();
-    expect(result.length).toBeGreaterThan(0);
+    assert.ok(result);
+    assert.ok(result.length > 0);
 
     // Verify title is included
-    expect(result).toContain("### CPU Usage");
+    assert.ok(result.includes("### CPU Usage"));
 
     // Verify Mermaid block is included
-    expect(result).toContain("```mermaid");
-    expect(result).toContain("xychart");
+    assert.ok(result.includes("```mermaid"));
+    assert.ok(result.includes("xychart"));
 
     // Verify color palette is set correctly
-    expect(result).toContain('"plotColorPalette": "Red"');
+    assert.ok(result.includes('"plotColorPalette": "Red"'));
 
     // Verify axis settings are included
-    expect(result).toContain('x-axis "Time"');
-    expect(result).toContain('y-axis "Percentage" 0 --> 100');
+    assert.ok(result.includes('x-axis "Time"'));
+    assert.ok(result.includes('y-axis "Percentage" 0 --> 100'));
 
     // Verify bar chart is included
-    expect(result).toContain("bar");
+    assert.ok(result.includes("bar"));
 
     // Verify legend is included
-    expect(result).toContain("#### Legends");
-    expect(result).toContain("Red: User CPU");
+    assert.ok(result.includes("#### Legends"));
+    assert.ok(result.includes("Red: User CPU"));
   });
 
   it("should render with multiple metrics", () => {
@@ -104,31 +106,31 @@ describe("Renderer", () => {
       testMetricsID,
     );
 
-    expect(result).toBeTruthy();
-    expect(result.length).toBeGreaterThan(0);
+    assert.ok(result);
+    assert.ok(result.length > 0);
 
     // Verify title is included
-    expect(result).toContain("### System Metrics");
+    assert.ok(result.includes("### System Metrics"));
 
     // Verify multiple colors are set in color palette
-    expect(result).toContain('"plotColorPalette": "Red, Orange"');
+    assert.ok(result.includes('"plotColorPalette": "Red, Orange"'));
 
     // Verify time axis includes multiple times
-    expect(result).toContain("00:00:00");
-    expect(result).toContain("00:00:05");
-    expect(result).toContain("00:00:10");
+    assert.ok(result.includes("00:00:00"));
+    assert.ok(result.includes("00:00:05"));
+    assert.ok(result.includes("00:00:10"));
 
     // Verify axis settings are included
-    expect(result).toContain('y-axis "%" 0 --> 100');
+    assert.ok(result.includes('y-axis "%" 0 --> 100'));
 
     // Verify legends for both metrics are included
-    expect(result).toContain("Red: User CPU");
-    expect(result).toContain("Orange: System CPU");
+    assert.ok(result.includes("Red: User CPU"));
+    assert.ok(result.includes("Orange: System CPU"));
 
     // Verify 2 bar charts are included (for stacking)
     const barMatches: RegExpMatchArray | null = result.match(/bar \[/g);
-    expect(barMatches).not.toBeNull();
-    expect(barMatches?.length).toBe(2);
+    assert.ok(barMatches !== null);
+    assert.strictEqual(barMatches?.length, 2);
   });
 
   it("should handle yAxis without range", () => {
@@ -153,18 +155,18 @@ describe("Renderer", () => {
       testMetricsID,
     );
 
-    expect(result).toBeTruthy();
-    expect(result.length).toBeGreaterThan(0);
+    assert.ok(result);
+    assert.ok(result.length > 0);
 
     // Verify title is included
-    expect(result).toContain("### Memory Usage");
+    assert.ok(result.includes("### Memory Usage"));
 
     // Verify y-axis includes only title, not range
-    expect(result).toContain('y-axis "MB"');
-    expect(result).not.toContain('y-axis "MB" 0 -->');
+    assert.ok(result.includes('y-axis "MB"'));
+    assert.ok(!result.includes('y-axis "MB" 0 -->'));
 
     // Verify legend is included
-    expect(result).toContain("Blue: Used Memory");
+    assert.ok(result.includes("Blue: Used Memory"));
   });
 
   it("should correctly extract colors from metricsInfo", () => {
@@ -199,16 +201,16 @@ describe("Renderer", () => {
       testMetricsID,
     );
 
-    expect(result).toBeTruthy();
-    expect(result.length).toBeGreaterThan(0);
+    assert.ok(result);
+    assert.ok(result.length > 0);
 
     // Verify all colors are included in color palette
-    expect(result).toContain('"plotColorPalette": "Red, Blue, Green"');
+    assert.ok(result.includes('"plotColorPalette": "Red, Blue, Green"'));
 
     // Verify each color is included in legend
-    expect(result).toContain("Red: Metric 1");
-    expect(result).toContain("Blue: Metric 2");
-    expect(result).toContain("Green: Metric 3");
+    assert.ok(result.includes("Red: Metric 1"));
+    assert.ok(result.includes("Blue: Metric 2"));
+    assert.ok(result.includes("Green: Metric 3"));
   });
 
   it("should calculate stacked data correctly", () => {
@@ -251,19 +253,19 @@ describe("Renderer", () => {
     );
 
     // The result should be a valid-rendered template
-    expect(result).toBeTruthy();
-    expect(result.length).toBeGreaterThan(0);
-    expect(result).toContain("### Stacked Test");
+    assert.ok(result);
+    assert.ok(result.length > 0);
+    assert.ok(result.includes("### Stacked Test"));
 
     // Verify stacked data is calculated correctly
     // First bar is topmost stack (cumulative): [10+5, 20+10, 30+15] = [15, 30, 45]
-    expect(result).toContain("bar [15,30,45]");
+    assert.ok(result.includes("bar [15,30,45]"));
     // Second bar is lower layer (Blue Metric only): [5, 10, 15]
-    expect(result).toContain("bar [5,10,15]");
+    assert.ok(result.includes("bar [5,10,15]"));
 
     // Verify legends for both metrics are included
-    expect(result).toContain("Red: Base Metric");
-    expect(result).toContain("Blue: Stacked Metric");
+    assert.ok(result.includes("Red: Base Metric"));
+    assert.ok(result.includes("Blue: Stacked Metric"));
   });
 
   it("should handle three or more metrics in stack", () => {
@@ -301,35 +303,35 @@ describe("Renderer", () => {
       testMetricsID,
     );
 
-    expect(result).toBeTruthy();
-    expect(result.length).toBeGreaterThan(0);
+    assert.ok(result);
+    assert.ok(result.length > 0);
 
     // Verify title is included
-    expect(result).toContain("### Multi-layer Stack");
+    assert.ok(result.includes("### Multi-layer Stack"));
 
     // Verify 3 colors are set in color palette
-    expect(result).toContain('"plotColorPalette": "Red, Orange, Yellow"');
+    assert.ok(result.includes('"plotColorPalette": "Red, Orange, Yellow"'));
 
     // Verify stacked data is calculated correctly
     // Layer 1: [10, 20]
     // Layer 2: [5, 10]
     // Layer 3: [3, 6]
     // Topmost stack (all layers cumulative): [3+5+10, 6+10+20] = [18, 36]
-    expect(result).toContain("bar [18,36]");
+    assert.ok(result.includes("bar [18,36]"));
     // Middle stack (Layer 3 + Layer 2): [3+5, 6+10] = [8, 16]
-    expect(result).toContain("bar [8,16]");
+    assert.ok(result.includes("bar [8,16]"));
     // Bottom layer (Layer 3 only): [3, 6]
-    expect(result).toContain("bar [3,6]");
+    assert.ok(result.includes("bar [3,6]"));
 
     // Verify legends for all layers are included
-    expect(result).toContain("Red: Layer 1");
-    expect(result).toContain("Orange: Layer 2");
-    expect(result).toContain("Yellow: Layer 3");
+    assert.ok(result.includes("Red: Layer 1"));
+    assert.ok(result.includes("Orange: Layer 2"));
+    assert.ok(result.includes("Yellow: Layer 3"));
 
     // Verify 3 bar charts are included
     const barMatches: RegExpMatchArray | null = result.match(/bar \[/g);
-    expect(barMatches).not.toBeNull();
-    expect(barMatches?.length).toBe(3);
+    assert.ok(barMatches !== null);
+    assert.strictEqual(barMatches?.length, 3);
   });
 
   it("should format times correctly in x-axis", () => {
@@ -359,12 +361,12 @@ describe("Renderer", () => {
     );
 
     // Verify times are in HH:MM:SS format
-    expect(result).toContain("09:15:30");
-    expect(result).toContain("14:30:45");
-    expect(result).toContain("23:59:59");
+    assert.ok(result.includes("09:15:30"));
+    assert.ok(result.includes("14:30:45"));
+    assert.ok(result.includes("23:59:59"));
 
     // Verify x-axis definition includes time array
-    expect(result).toContain('x-axis "Time"');
+    assert.ok(result.includes('x-axis "Time"'));
   });
 
   it("should include complete Mermaid chart structure", () => {
@@ -391,25 +393,25 @@ describe("Renderer", () => {
     );
 
     // Verify Mermaid block start and end are included
-    expect(result).toContain("```mermaid");
-    expect(result).toContain("```");
+    assert.ok(result.includes("```mermaid"));
+    assert.ok(result.includes("```"));
 
     // Verify theme settings are included
-    expect(result).toContain("%%{");
-    expect(result).toContain('"themeVariables"');
-    expect(result).toContain('"xyChart"');
-    expect(result).toContain("}%%");
+    assert.ok(result.includes("%%{"));
+    assert.ok(result.includes('"themeVariables"'));
+    assert.ok(result.includes('"xyChart"'));
+    assert.ok(result.includes("}%%"));
 
     // Verify xychart definition is included
-    expect(result).toContain("xychart");
+    assert.ok(result.includes("xychart"));
 
     // Verify legends section is included
-    expect(result).toContain("#### Legends");
+    assert.ok(result.includes("#### Legends"));
 
     // Verify LaTeX format legend is included
-    expect(result).toContain("$$");
-    expect(result).toContain("\\color{");
-    expect(result).toContain("\\verb|");
+    assert.ok(result.includes("$$"));
+    assert.ok(result.includes("\\color{"));
+    assert.ok(result.includes("\\verb|"));
   });
 
   it("should handle single data point", () => {
@@ -434,11 +436,11 @@ describe("Renderer", () => {
       testMetricsID,
     );
 
-    expect(result).toBeTruthy();
-    expect(result).toContain("### Single Point");
-    expect(result).toContain("bar [42]");
-    expect(result).toContain("12:00:00");
-    expect(result).toContain("Purple: Single Metric");
+    assert.ok(result);
+    assert.ok(result.includes("### Single Point"));
+    assert.ok(result.includes("bar [42]"));
+    assert.ok(result.includes("12:00:00"));
+    assert.ok(result.includes("Purple: Single Metric"));
   });
 
   it("should render step summary when step markers are provided", () => {
@@ -480,12 +482,12 @@ describe("Renderer", () => {
       ],
     );
 
-    expect(result).toContain("### Workflow Steps");
-    expect(result).toContain(
-      "| Step Name | Start Time | End Time | Duration |",
+    assert.ok(result.includes("### Workflow Steps"));
+    assert.ok(
+      result.includes("| Step Name | Start Time | End Time | Duration |"),
     );
-    expect(result).toContain("| Build |");
-    expect(result).toContain("10.0s");
+    assert.ok(result.includes("| Build |"));
+    assert.ok(result.includes("10.0s"));
   });
 
   it("should render step timeline annotations", () => {
@@ -517,8 +519,8 @@ describe("Renderer", () => {
       ],
     );
 
-    expect(result).toContain("#### Step Timeline");
-    expect(result).toContain("▶ **Build** start");
+    assert.ok(result.includes("#### Step Timeline"));
+    assert.ok(result.includes("▶ **Build** start"));
   });
 
   it("should not render step sections when no markers provided", () => {
@@ -544,7 +546,7 @@ describe("Renderer", () => {
       [],
     );
 
-    expect(result).not.toContain("### Workflow Steps");
-    expect(result).not.toContain("#### Step Timeline");
+    assert.ok(!result.includes("### Workflow Steps"));
+    assert.ok(!result.includes("#### Step Timeline"));
   });
 });
