@@ -3,7 +3,7 @@ import { dirname } from "node:path";
 import { setFailed } from "@actions/core";
 import { currentLoad, mem, fsSize } from "systeminformation";
 import type { z } from "zod";
-import { metricsDataSchema, getMetricsFilePath } from "../lib.ts";
+import { metricsDataSchema, getMetricsFilePath, bytesPerMB, bytesPerGB } from "../lib.ts";
 
 export class Metrics {
   private readonly data: z.TypeOf<typeof metricsDataSchema>;
@@ -72,7 +72,6 @@ export class Metrics {
         system: currentLoadSystem,
       });
 
-      const bytesPerMB: number = 1024 * 1024;
       const { active, available }: { active: number; available: number } =
         await mem();
       this.data.memoryUsageMBs.push({
@@ -81,7 +80,6 @@ export class Metrics {
         free: available / bytesPerMB,
       });
 
-      const bytesPerGB: number = 1024 * 1024 * 1024;
       const disks = await fsSize();
       // Sum all disks to get total disk usage
       const totalUsed = disks.reduce((sum, disk) => sum + disk.used, 0);

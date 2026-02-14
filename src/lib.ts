@@ -2,6 +2,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
 
+export const bytesPerMB: number = 1024 * 1024;
+export const bytesPerGB: number = 1024 * 1024 * 1024;
+
 export const cpuLoadPercentageSchema = z.object({
   unixTimeMs: z.number(),
   user: z.number().nonnegative().max(100),

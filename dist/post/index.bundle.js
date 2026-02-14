@@ -122431,6 +122431,8 @@ ${annotations.join("\n")}
 // src/lib.ts
 import { tmpdir } from "node:os";
 import { join as join2 } from "node:path";
+var bytesPerMB = 1024 * 1024;
+var bytesPerGB = 1024 * 1024 * 1024;
 var cpuLoadPercentageSchema = external_exports.object({
   unixTimeMs: external_exports.number(),
   user: external_exports.number().nonnegative().max(100),
@@ -122510,14 +122512,12 @@ async function collectFinalMetrics() {
       user: currentLoadUser,
       system: currentLoadSystem
     });
-    const bytesPerMB = 1024 * 1024;
     const { active, available } = await (0, import_systeminformation.mem)();
     metricsData.memoryUsageMBs.push({
       unixTimeMs,
       used: active / bytesPerMB,
       free: available / bytesPerMB
     });
-    const bytesPerGB = 1024 * 1024 * 1024;
     const disks = await (0, import_systeminformation.fsSize)();
     const totalUsed = disks.reduce((sum, disk) => sum + disk.used, 0);
     const totalAvailable = disks.reduce((sum, disk) => sum + disk.available, 0);

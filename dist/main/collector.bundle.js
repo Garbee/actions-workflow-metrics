@@ -50766,6 +50766,8 @@ function date4(params) {
 config(en_default());
 
 // src/lib.ts
+var bytesPerMB = 1024 * 1024;
+var bytesPerGB = 1024 * 1024 * 1024;
 var cpuLoadPercentageSchema = external_exports.object({
   unixTimeMs: external_exports.number(),
   user: external_exports.number().nonnegative().max(100),
@@ -50856,14 +50858,12 @@ var Metrics = class {
         user: currentLoadUser,
         system: currentLoadSystem
       });
-      const bytesPerMB = 1024 * 1024;
       const { active, available } = await (0, import_systeminformation.mem)();
       this.data.memoryUsageMBs.push({
         unixTimeMs,
         used: active / bytesPerMB,
         free: available / bytesPerMB
       });
-      const bytesPerGB = 1024 * 1024 * 1024;
       const disks = await (0, import_systeminformation.fsSize)();
       const totalUsed = disks.reduce((sum, disk) => sum + disk.used, 0);
       const totalAvailable = disks.reduce((sum, disk) => sum + disk.available, 0);

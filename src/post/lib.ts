@@ -4,7 +4,7 @@ import { getInput } from "@actions/core";
 import { context, getOctokit } from "@actions/github";
 import { currentLoad, mem, fsSize } from "systeminformation";
 import { Renderer } from "./renderer.ts";
-import { metricsDataSchema, getMetricsFilePath, stepMarkerSchema } from "../lib.ts";
+import { metricsDataSchema, getMetricsFilePath, stepMarkerSchema, bytesPerMB, bytesPerGB } from "../lib.ts";
 
 export const metricsInfoSchema = z.object({
   color: z.string(),
@@ -60,7 +60,6 @@ export async function collectFinalMetrics(): Promise<void> {
       system: currentLoadSystem,
     });
 
-    const bytesPerMB: number = 1024 * 1024;
     const { active, available }: { active: number; available: number } =
       await mem();
     metricsData.memoryUsageMBs.push({
@@ -69,7 +68,6 @@ export async function collectFinalMetrics(): Promise<void> {
       free: available / bytesPerMB,
     });
     
-    const bytesPerGB: number = 1024 * 1024 * 1024;
     const disks = await fsSize();
     // Sum all disks to get total disk usage
     const totalUsed = disks.reduce((sum, disk) => sum + disk.used, 0);
