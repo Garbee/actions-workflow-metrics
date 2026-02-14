@@ -440,4 +440,111 @@ describe("Renderer", () => {
     expect(result).toContain("12:00:00");
     expect(result).toContain("Purple: Single Metric");
   });
+
+  it("should render step summary when step markers are provided", () => {
+    const renderer: Renderer = new Renderer();
+    const result: string = renderer.render(
+      [
+        {
+          title: "CPU Usage",
+          metricsInfoList: [
+            {
+              color: "Red",
+              name: "User CPU",
+              data: [10, 20, 30],
+            },
+          ],
+          times: [
+            new Date("2024-01-01T00:00:00Z"),
+            new Date("2024-01-01T00:00:05Z"),
+            new Date("2024-01-01T00:00:10Z"),
+          ],
+          yAxis: {
+            title: "Percentage",
+            range: "0 --> 100",
+          },
+        },
+      ],
+      testMetricsID,
+      [
+        {
+          unixTimeMs: new Date("2024-01-01T00:00:00Z").getTime(),
+          stepName: "Build",
+          status: "start" as const,
+        },
+        {
+          unixTimeMs: new Date("2024-01-01T00:00:10Z").getTime(),
+          stepName: "Build",
+          status: "end" as const,
+        },
+      ],
+    );
+
+    expect(result).toContain("### Workflow Steps");
+    expect(result).toContain(
+      "| Step Name | Start Time | End Time | Duration |",
+    );
+    expect(result).toContain("| Build |");
+    expect(result).toContain("10.0s");
+  });
+
+  it("should render step timeline annotations", () => {
+    const renderer: Renderer = new Renderer();
+    const result: string = renderer.render(
+      [
+        {
+          title: "CPU Usage",
+          metricsInfoList: [
+            {
+              color: "Red",
+              name: "User CPU",
+              data: [10],
+            },
+          ],
+          times: [new Date("2024-01-01T00:00:00Z")],
+          yAxis: {
+            title: "Percentage",
+          },
+        },
+      ],
+      testMetricsID,
+      [
+        {
+          unixTimeMs: new Date("2024-01-01T00:00:00Z").getTime(),
+          stepName: "Build",
+          status: "start" as const,
+        },
+      ],
+    );
+
+    expect(result).toContain("#### Step Timeline");
+    expect(result).toContain("▶ **Build** start");
+  });
+
+  it("should not render step sections when no markers provided", () => {
+    const renderer: Renderer = new Renderer();
+    const result: string = renderer.render(
+      [
+        {
+          title: "CPU Usage",
+          metricsInfoList: [
+            {
+              color: "Red",
+              name: "User CPU",
+              data: [10],
+            },
+          ],
+          times: [new Date("2024-01-01T00:00:00Z")],
+          yAxis: {
+            title: "Percentage",
+          },
+        },
+      ],
+      testMetricsID,
+      [],
+    );
+
+    expect(result).not.toContain("### Workflow Steps");
+    expect(result).not.toContain("#### Step Timeline");
+  });
 });

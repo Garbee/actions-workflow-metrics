@@ -12,9 +12,16 @@ export const memoryUsageMBSchema = z.object({
   free: z.number().nonnegative(),
 });
 export const memoryUsageMBsSchema = z.array(memoryUsageMBSchema);
+export const stepMarkerSchema = z.object({
+  unixTimeMs: z.number(),
+  stepName: z.string(),
+  status: z.enum(["start", "end"]),
+});
+export const stepMarkersSchema = z.array(stepMarkerSchema);
 export const metricsDataSchema = z.object({
   cpuLoadPercentages: cpuLoadPercentagesSchema,
   memoryUsageMBs: memoryUsageMBsSchema,
+  stepMarkers: stepMarkersSchema,
 });
 
 export const serverPort: number = 7777;

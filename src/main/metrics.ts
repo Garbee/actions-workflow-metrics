@@ -8,7 +8,7 @@ export class Metrics {
   private readonly intervalMs: number;
 
   constructor() {
-    this.data = { cpuLoadPercentages: [], memoryUsageMBs: [] };
+    this.data = { cpuLoadPercentages: [], memoryUsageMBs: [], stepMarkers: [] };
 
     this.intervalMs = 5 * 1000;
     const intervalSecondsInput: string | undefined =
@@ -27,6 +27,14 @@ export class Metrics {
 
   get(): string {
     return JSON.stringify(this.data);
+  }
+
+  markStep(stepName: string, status: "start" | "end"): void {
+    this.data.stepMarkers.push({
+      unixTimeMs: Date.now(),
+      stepName,
+      status,
+    });
   }
 
   private async append(unixTimeMs: number): Promise<void> {

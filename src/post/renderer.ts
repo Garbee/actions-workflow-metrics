@@ -5,46 +5,57 @@ import type {
   metricsInfoListSchema,
   metricsInfoSchema,
 } from "./lib";
+import type { stepMarkerSchema } from "../lib";
 
 export class Renderer {
   render(
     renderParamsList: z.TypeOf<typeof renderParamsListSchema>,
     metricsID: string,
+    stepMarkers: z.TypeOf<typeof stepMarkerSchema>[] = [],
   ): string {
+    const stepSummary = this.generateStepSummary(stepMarkers);
     return `## Workflow Metrics
 
 ### Metrics ID
 
 ${metricsID}
 
-${renderParamsList
-  .filter(
-    ({
-      metricsInfoList,
-    }: {
-      metricsInfoList: z.TypeOf<typeof metricsInfoListSchema>;
-    }): boolean => metricsInfoList.length > 0,
-  )
-  .map((p: z.TypeOf<typeof renderParamsSchema>): string => {
-    const colors: string[] = p.metricsInfoList.map(
-      ({ color }: { color: string }): string => color,
-    );
-    const stackedDatum: number[][] = p.metricsInfoList
-      .toReversed()
-      .reduce(
-        (
-          prev: number[][],
-          { data }: { data: number[] },
-          i: number,
-        ): number[][] => {
-          prev.push(data.map((d: number, j: number): number => d + prev[i][j]));
-          return prev;
-        },
-        [p.metricsInfoList[0].data.map((): number => 0)],
+${stepSummary}${renderParamsList
+      .filter(
+        ({
+          metricsInfoList,
+        }: {
+          metricsInfoList: z.TypeOf<typeof metricsInfoListSchema>;
+        }): boolean => metricsInfoList.length > 0,
       )
-      .slice(1)
-      .toReversed();
-    return `### ${p.title}
+      .map((p: z.TypeOf<typeof renderParamsSchema>): string => {
+        const colors: string[] = p.metricsInfoList.map(
+          ({ color }: { color: string }): string => color,
+        );
+        const stackedDatum: number[][] = p.metricsInfoList
+          .toReversed()
+          .reduce(
+            (
+              prev: number[][],
+              { data }: { data: number[] },
+              i: number,
+            ): number[][] => {
+              prev.push(
+                data.map((d: number, j: number): number => d + prev[i][j]),
+              );
+              return prev;
+            },
+            [p.metricsInfoList[0].data.map((): number => 0)],
+          )
+          .slice(1)
+          .toReversed();
+
+        const stepAnnotations = this.generateStepAnnotations(
+          stepMarkers,
+          p.times,
+        );
+
+        return `### ${p.title}
 
 #### Legends
 
@@ -70,14 +81,100 @@ ${p.metricsInfoList
 xychart
 
 x-axis "Time" ${JSON.stringify(
-      p.times.map((d: Date): string =>
-        d.toLocaleTimeString("en-GB", { hour12: false }),
-      ),
-    )}
+          p.times.map((d: Date): string =>
+            d.toLocaleTimeString("en-GB", { hour12: false }),
+          ),
+        )}
 y-axis "${p.yAxis.title}"${p.yAxis.range ? ` ${p.yAxis.range}` : ""}
 ${stackedDatum.map((d: number[]): string => `bar ${JSON.stringify(d)}`).join("\n")}
-\`\`\``;
-  })
-  .join("\n\n")}`;
+\`\`\`
+${stepAnnotations}`;
+      })
+      .join("\n\n")}`;
+  }
+
+  private generateStepSummary(
+    stepMarkers: z.TypeOf<typeof stepMarkerSchema>[],
+  ): string {
+    if (stepMarkers.length === 0) {
+      return "";
+    }
+
+    // Group markers by step name and calculate duration
+    const stepMap = new Map<
+      string,
+      { start?: number; end?: number; duration?: number }
+    >();
+
+    for (const marker of stepMarkers) {
+      if (!stepMap.has(marker.stepName)) {
+        stepMap.set(marker.stepName, {});
+      }
+      const step = stepMap.get(marker.stepName)!;
+      if (marker.status === "start") {
+        step.start = marker.unixTimeMs;
+      } else if (marker.status === "end") {
+        step.end = marker.unixTimeMs;
+      }
+      if (step.start && step.end) {
+        step.duration = step.end - step.start;
+      }
+    }
+
+    const rows = Array.from(stepMap.entries())
+      .map(([name, { start, end, duration }]) => {
+        const startTime = start
+          ? new Date(start).toLocaleTimeString("en-GB", { hour12: false })
+          : "N/A";
+        const endTime = end
+          ? new Date(end).toLocaleTimeString("en-GB", { hour12: false })
+          : "N/A";
+        const durationStr = duration
+          ? `${(duration / 1000).toFixed(1)}s`
+          : "N/A";
+        return `| ${name} | ${startTime} | ${endTime} | ${durationStr} |`;
+      })
+      .join("\n");
+
+    return `### Workflow Steps
+
+| Step Name | Start Time | End Time | Duration |
+|-----------|------------|----------|----------|
+${rows}
+
+`;
+  }
+
+  private generateStepAnnotations(
+    stepMarkers: z.TypeOf<typeof stepMarkerSchema>[],
+    chartTimes: Date[],
+  ): string {
+    if (stepMarkers.length === 0) {
+      return "";
+    }
+
+    // Find step boundaries that align with chart times
+    const annotations: string[] = [];
+    const chartTimesMs = chartTimes.map((t) => t.getTime());
+
+    for (const marker of stepMarkers) {
+      // Find the closest chart time to this marker
+      const closestIndex = chartTimesMs.reduce((prev, curr, idx) => {
+        return Math.abs(curr - marker.unixTimeMs) <
+          Math.abs(chartTimesMs[prev] - marker.unixTimeMs)
+          ? idx
+          : prev;
+      }, 0);
+
+      const timeStr = chartTimes[closestIndex].toLocaleTimeString("en-GB", {
+        hour12: false,
+      });
+      const prefix = marker.status === "start" ? "▶" : "◼";
+      annotations.push(
+        `* ${prefix} **${marker.stepName}** ${marker.status} at ${timeStr}`,
+      );
+    }
+
+    return `\n#### Step Timeline\n\n${annotations.join("\n")}`;
   }
 }

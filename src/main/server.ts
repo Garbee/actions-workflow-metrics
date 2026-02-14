@@ -16,6 +16,51 @@ async function server(): Promise<void> {
             response.statusCode = 200;
             response.end(metrics.get());
             break;
+          case "/mark-step":
+            if (request.method === "POST") {
+              let body = "";
+              request.on("data", (chunk) => {
+                body += chunk.toString();
+              });
+              request.on("end", () => {
+                try {
+                  const { stepName, status } = JSON.parse(body);
+                  if (
+                    typeof stepName === "string" &&
+                    (status === "start" || status === "end")
+                  ) {
+                    metrics.markStep(stepName, status);
+                    response.statusCode = 200;
+                    response.end();
+                  } else {
+                    response.statusCode = 400;
+                    response.setHeader("Content-Type", "application/json");
+                    response.end(
+                      JSON.stringify({
+                        error: "Invalid request body",
+                      }),
+                    );
+                  }
+                } catch (error) {
+                  response.statusCode = 400;
+                  response.setHeader("Content-Type", "application/json");
+                  response.end(
+                    JSON.stringify({
+                      error: "Invalid JSON",
+                    }),
+                  );
+                }
+              });
+            } else {
+              response.statusCode = 405;
+              response.setHeader("Content-Type", "application/json");
+              response.end(
+                JSON.stringify({
+                  error: "Method not allowed",
+                }),
+              );
+            }
+            break;
           case "/finish":
             response.statusCode = 200;
             response.end();
