@@ -18906,7 +18906,7 @@ var __dirname = dirname(fileURLToPath(import.meta.url));
 async function index() {
   const serverProcess = spawn(
     "node",
-    [join(__dirname, "server.ts")],
+    [join(__dirname, "server.bundle.js")],
     {
       detached: true,
       stdio: "ignore",
