@@ -122439,10 +122439,11 @@ ${annotations.join("\n")}
         stepInfo = ` in steps: ${alert.steps.map((s) => `**${s}**`).join(", ")}`;
       }
       const icon = alert.type === "memory" ? "\u26A0\uFE0F" : alert.type === "cpu" ? "\u{1F525}" : "\u{1F4BE}";
-      return `* ${icon} ${alert.message}${stepInfo} (${alert.value.toFixed(1)}%)`;
+      return `> ${icon} ${alert.message}${stepInfo} (${alert.value.toFixed(1)}%)`;
     });
     return `### Alerts
 
+> [!WARNING]
 ${alertItems.join("\n")}
 
 `;

@@ -272,11 +272,12 @@ ${rows}
       }
 
       const icon = alert.type === "memory" ? "⚠️" : alert.type === "cpu" ? "🔥" : "💾";
-      return `* ${icon} ${alert.message}${stepInfo} (${alert.value.toFixed(1)}%)`;
+      return `> ${icon} ${alert.message}${stepInfo} (${alert.value.toFixed(1)}%)`;
     });
 
     return `### Alerts
 
+> [!WARNING]
 ${alertItems.join("\n")}
 
 `;

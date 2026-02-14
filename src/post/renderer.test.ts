@@ -705,6 +705,7 @@ describe("Renderer", () => {
     );
 
     assert.ok(result.includes("### Alerts"));
+    assert.ok(result.includes("> [!WARNING]"));
     assert.ok(result.includes("Memory utilization exceeded 80%"));
     assert.ok(result.includes("Memory Heavy Step"));
     assert.ok(result.includes("85.5%"));
@@ -761,6 +762,7 @@ describe("Renderer", () => {
     );
 
     assert.ok(result.includes("### Alerts"));
+    assert.ok(result.includes("> [!WARNING]"));
 
     // Memory alert
     assert.ok(result.includes("Memory utilization exceeded 80%"));
