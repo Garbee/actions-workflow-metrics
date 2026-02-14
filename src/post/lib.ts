@@ -261,6 +261,11 @@ export function render(
   metricsID: string,
   alerts: Alert[] = [],
 ): string {
+  // Get thresholds from inputs
+  const cpuThreshold = parseFloat(getInput("cpu_alert_threshold") || "85");
+  const memoryThreshold = parseFloat(getInput("memory_alert_threshold") || "80");
+  const diskThreshold = parseFloat(getInput("disk_alert_threshold") || "90");
+
   const renderer: Renderer = new Renderer();
   return renderer.render(
     metricsID,
@@ -269,5 +274,6 @@ export function render(
     metricsData.cpuLoadPercentages,
     metricsData.memoryUsageMBs,
     metricsData.diskUsageGBs,
+    { cpu: cpuThreshold, memory: memoryThreshold, disk: diskThreshold },
   );
 }

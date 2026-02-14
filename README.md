@@ -1,35 +1,30 @@
 # actions-workflow-metrics
 
-A GitHub Actions for collecting system metrics during workflows and outputting Mermaid charts.
+A GitHub Action for collecting system metrics during workflows and displaying them in tables.
 
 ## Features
 
-- **System Metrics Collection**: Collects CPU load and memory usage in real-time during workflow execution
+- **System Metrics Collection**: Collects CPU load, memory usage, and disk usage in real-time during workflow execution
 - **Step-Level Visualization**: Track and visualize metrics for individual workflow steps
-- **Mermaid Chart Generation**: Visualizes collected metrics as Mermaid stacked bar charts with step annotations
-- **Job Summary Output**: Automatically displays charts and step timeline in GitHub Actions job summary
+- **Table Display**: Displays collected metrics as clear, easy-to-read tables with step-by-step breakdown
+- **Threshold Alerts**: Automatically detects and highlights when resource usage exceeds configurable thresholds
+- **Job Summary Output**: Automatically displays tables and alerts in GitHub Actions job summary
 
 ## Output Example
 
-The following charts and data are output.
+The action outputs the following tables:
 
-### CPU Loads
+### CPU Usage
 
-Stacked bar chart of system/user CPU load.
+Shows CPU utilization for each workflow step with threshold exceeded indicators.
 
-![CPU Loads](images/metrics_example_cpu.png)
+### Memory Usage
 
-### Memory Usages
+Shows memory utilization for each workflow step with threshold exceeded indicators.
 
-Stacked bar chart of active/available memory.
+### Disk Usage
 
-![Memory Usages](images/metrics_example_memory.png)
-
-### Artifacts
-
-JSON data of CPU Loads and Memory Usages.
-
-![Artifacts](images/artifact_example.png)
+Shows disk usage for each workflow step with threshold exceeded indicators.
 
 ## Usage
 
@@ -65,11 +60,12 @@ jobs:
 ```
 
 The action will automatically:
-- Collect CPU load and memory usage metrics
+- Collect CPU load, memory usage, and disk usage metrics
 - Fetch workflow step information from the GitHub API
 - Correlate metrics with workflow steps
 - Generate step summary table with start/end times and durations
-- Create step timeline annotations on charts
+- Display metrics in clear tables with threshold exceeded indicators
+- Generate alerts for threshold violations
 
 ### Configuration Options
 
@@ -77,12 +73,16 @@ The action will automatically:
 | ------------------ | --------------------------------------------------- | -------- | ------- |
 | `interval_seconds` | Interval between metrics collection in seconds      | No       | `5`     |
 | `github-token`     | GitHub token for fetching workflow step information | Yes      | -       |
+| `memory_alert_threshold` | Memory utilization threshold percentage (0-100) | No | `80` |
+| `cpu_alert_threshold` | Sustained CPU usage threshold percentage (0-100) | No | `85` |
+| `cpu_alert_duration` | Duration in seconds CPU must be sustained above threshold | No | `60` |
+| `disk_alert_threshold` | Disk usage threshold percentage (0-100) | No | `90` |
 
 ### Execution Flow
 
 1. **main** (workflow start): Starts metrics collection as a background process that writes to a temporary file
 2. **Workflow steps**: Execute normally while metrics are collected in the background
-3. **post** (workflow end): Reads collected metrics from file, fetches step information (if token provided), renders metrics as Mermaid charts with step annotations, and outputs to job summary
+3. **post** (workflow end): Reads collected metrics from file, fetches step information (if token provided), renders metrics as tables with threshold indicators, and outputs to job summary
 
 ## Tech Stack
 
@@ -138,18 +138,19 @@ bun run fix
 
 ```text
 src/
-├── lib.ts                 # Common schema and server settings
+├── lib.ts                 # Common schema and configuration
 ├── main/
-│   ├── index.ts           # main entry point (server startup)
-│   ├── server.ts          # Metrics collection HTTP server
+│   ├── index.ts           # main entry point (collector startup)
+│   ├── collector.ts       # Background metrics collection process
 │   ├── metrics.ts         # Metrics class (metrics management)
 │   └── metrics.test.ts    # Metrics class tests
 └── post/
     ├── index.ts           # post entry point (job summary output)
-    ├── lib.ts             # Metrics fetch and rendering
+    ├── lib.ts             # Metrics fetch, alert detection, and rendering
     ├── lib.test.ts        # Rendering logic tests
-    ├── renderer.ts        # Mermaid chart generation
-    └── renderer.test.ts   # Mermaid chart generation tests
+    ├── renderer.ts        # Table generation
+    ├── renderer.test.ts   # Table generation tests
+    └── alerts.test.ts     # Alert detection tests
 ```
 
 ## Architecture
@@ -158,7 +159,7 @@ src/
 
 1. `src/main/index.ts` is executed
 2. Node.js spawns `src/main/collector.ts` as a detached background process
-3. `Metrics` class collects CPU/memory information every 5 seconds using `systeminformation` library
+3. `Metrics` class collects CPU/memory/disk information every 5 seconds using `systeminformation` library
 4. Metrics data is continuously written to a temporary file in the system temp directory
 5. File path is unique per workflow run and job using `GITHUB_RUN_ID` and `GITHUB_JOB` environment variables
 
@@ -166,12 +167,13 @@ src/
 
 1. `src/post/index.ts` is executed
 2. Reads metrics data from the temporary file
-3. Optionally fetches workflow step information from GitHub API (if token provided)
-4. Merges API-based step information with any manual markers (manual markers take precedence)
-5. `Renderer` class generates Mermaid charts with step annotations
+3. Fetches workflow step information from GitHub API (token required)
+4. Detects threshold violations and generates alerts
+5. `Renderer` class generates tables with step-by-step metrics and threshold indicators
 6. Outputs to job summary using `@actions/core` `summary` API, including:
+   - Alerts section for threshold violations
    - Step summary table with durations
-   - CPU and Memory charts with step timeline annotations
+   - CPU, Memory, and Disk usage tables with threshold exceeded indicators
 
 ## License
 

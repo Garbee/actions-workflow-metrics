@@ -122258,12 +122258,12 @@ var import_systeminformation = __toESM(require_lib3(), 1);
 
 // src/post/renderer.ts
 var Renderer = class {
-  render(metricsID, stepMarkers = [], alerts = [], cpuLoadPercentages = [], memoryUsageMBs = [], diskUsageGBs = []) {
+  render(metricsID, stepMarkers = [], alerts = [], cpuLoadPercentages = [], memoryUsageMBs = [], diskUsageGBs = [], thresholds = { cpu: 85, memory: 80, disk: 90 }) {
     const stepSummary = this.generateStepSummary(stepMarkers);
     const alertsSection = this.generateAlertsSection(alerts);
-    const cpuUsageSection = this.generateCPUUsageSection(cpuLoadPercentages, stepMarkers);
-    const memoryUsageSection = this.generateMemoryUsageSection(memoryUsageMBs, stepMarkers);
-    const diskUsageSection = this.generateDiskUsageSection(diskUsageGBs, stepMarkers);
+    const cpuUsageSection = this.generateCPUUsageSection(cpuLoadPercentages, stepMarkers, alerts, thresholds.cpu);
+    const memoryUsageSection = this.generateMemoryUsageSection(memoryUsageMBs, stepMarkers, alerts, thresholds.memory);
+    const diskUsageSection = this.generateDiskUsageSection(diskUsageGBs, stepMarkers, alerts, thresholds.disk);
     return `## Workflow Metrics
 
 ### Metrics ID
@@ -122326,7 +122326,7 @@ ${alertItems.join("\n")}
 
 `;
   }
-  generateCPUUsageSection(cpuLoadPercentages, stepMarkers) {
+  generateCPUUsageSection(cpuLoadPercentages, stepMarkers, alerts, threshold) {
     if (cpuLoadPercentages.length === 0) {
       return "";
     }
@@ -122358,12 +122358,23 @@ ${alertItems.join("\n")}
         }
       }
     }
+    const cpuAlertSteps = /* @__PURE__ */ new Set();
+    for (const alert of alerts) {
+      if (alert.type === "cpu") {
+        if (alert.steps && alert.steps.length > 0) {
+          alert.steps.forEach((step) => cpuAlertSteps.add(step));
+        } else if (alert.step) {
+          cpuAlertSteps.add(alert.step);
+        }
+      }
+    }
     const rows = [];
     const initTotal = 100;
     const initUsed = initialCPU.user + initialCPU.system;
     const initAvailable = 100 - initUsed;
     const initAvailablePercent = initAvailable.toFixed(2);
-    rows.push(`| Initialization | ${initTotal.toFixed(2)}% | ${initUsed.toFixed(2)}% | ${initAvailable.toFixed(2)}% | ${initAvailablePercent}% |`);
+    const initExceeded = initUsed > threshold ? "Yes" : "";
+    rows.push(`| Initialization | ${initTotal.toFixed(2)}% | ${initUsed.toFixed(2)}% | ${initAvailable.toFixed(2)}% | ${initAvailablePercent}% | ${initExceeded} |`);
     for (const range2 of stepRanges) {
       const cpu = stepCPUMap.get(range2.name);
       if (cpu) {
@@ -122371,18 +122382,19 @@ ${alertItems.join("\n")}
         const used = cpu.user + cpu.system;
         const available = 100 - used;
         const availablePercent = available.toFixed(2);
-        rows.push(`| ${range2.name} | ${total.toFixed(2)}% | ${used.toFixed(2)}% | ${available.toFixed(2)}% | ${availablePercent}% |`);
+        const exceeded = cpuAlertSteps.has(range2.name) ? "Yes" : "";
+        rows.push(`| ${range2.name} | ${total.toFixed(2)}% | ${used.toFixed(2)}% | ${available.toFixed(2)}% | ${availablePercent}% | ${exceeded} |`);
       }
     }
     return `### CPU Usage
 
-| Step | Total | Used | Available | Available % |
-|------|-------|------|-----------|-------------|
+| Step | Total | Used | Available | Available % | Threshold Exceeded |
+|------|-------|------|-----------|-------------|-------------------|
 ${rows.join("\n")}
 
 `;
   }
-  generateMemoryUsageSection(memoryUsageMBs, stepMarkers) {
+  generateMemoryUsageSection(memoryUsageMBs, stepMarkers, alerts, threshold) {
     if (memoryUsageMBs.length === 0) {
       return "";
     }
@@ -122414,27 +122426,38 @@ ${rows.join("\n")}
         }
       }
     }
+    let memoryAlertStep;
+    for (const alert of alerts) {
+      if (alert.type === "memory" && alert.step) {
+        memoryAlertStep = alert.step;
+        break;
+      }
+    }
     const rows = [];
     const initTotal = initialMemory.used + initialMemory.free;
+    const initUtilization = initialMemory.used / initTotal * 100;
     const initAvailablePercent = (initialMemory.free / initTotal * 100).toFixed(2);
-    rows.push(`| Initialization | ${initTotal.toFixed(2)} MB | ${initialMemory.used.toFixed(2)} MB | ${initialMemory.free.toFixed(2)} MB | ${initAvailablePercent}% |`);
+    const initExceeded = initUtilization > threshold ? "Yes" : "";
+    rows.push(`| Initialization | ${initTotal.toFixed(2)} MB | ${initialMemory.used.toFixed(2)} MB | ${initialMemory.free.toFixed(2)} MB | ${initAvailablePercent}% | ${initExceeded} |`);
     for (const range2 of stepRanges) {
       const memory = stepMemoryMap.get(range2.name);
       if (memory) {
         const total = memory.used + memory.free;
+        const utilization = memory.used / total * 100;
         const availablePercent = (memory.free / total * 100).toFixed(2);
-        rows.push(`| ${range2.name} | ${total.toFixed(2)} MB | ${memory.used.toFixed(2)} MB | ${memory.free.toFixed(2)} MB | ${availablePercent}% |`);
+        const exceeded = memoryAlertStep === range2.name ? "Yes" : "";
+        rows.push(`| ${range2.name} | ${total.toFixed(2)} MB | ${memory.used.toFixed(2)} MB | ${memory.free.toFixed(2)} MB | ${availablePercent}% | ${exceeded} |`);
       }
     }
     return `### Memory Usage
 
-| Step | Total | Used | Available | Available % |
-|------|-------|------|-----------|-------------|
+| Step | Total | Used | Available | Available % | Threshold Exceeded |
+|------|-------|------|-----------|-------------|-------------------|
 ${rows.join("\n")}
 
 `;
   }
-  generateDiskUsageSection(diskUsageGBs, stepMarkers) {
+  generateDiskUsageSection(diskUsageGBs, stepMarkers, alerts, threshold) {
     if (diskUsageGBs.length === 0) {
       return "";
     }
@@ -122466,20 +122489,31 @@ ${rows.join("\n")}
         }
       }
     }
+    let diskAlertStep;
+    for (const alert of alerts) {
+      if (alert.type === "disk" && alert.step) {
+        diskAlertStep = alert.step;
+        break;
+      }
+    }
     const rows = [];
+    const initUtilization = initialDisk.used / initialDisk.size * 100;
     const initAvailablePercent = (initialDisk.available / initialDisk.size * 100).toFixed(2);
-    rows.push(`| Initialization | ${initialDisk.size.toFixed(2)} GB | ${initialDisk.used.toFixed(2)} GB | ${initialDisk.available.toFixed(2)} GB | ${initAvailablePercent}% |`);
+    const initExceeded = initUtilization > threshold ? "Yes" : "";
+    rows.push(`| Initialization | ${initialDisk.size.toFixed(2)} GB | ${initialDisk.used.toFixed(2)} GB | ${initialDisk.available.toFixed(2)} GB | ${initAvailablePercent}% | ${initExceeded} |`);
     for (const range2 of stepRanges) {
       const disk = stepDiskMap.get(range2.name);
       if (disk) {
+        const utilization = disk.used / disk.size * 100;
         const availablePercent = (disk.available / disk.size * 100).toFixed(2);
-        rows.push(`| ${range2.name} | ${disk.size.toFixed(2)} GB | ${disk.used.toFixed(2)} GB | ${disk.available.toFixed(2)} GB | ${availablePercent}% |`);
+        const exceeded = diskAlertStep === range2.name ? "Yes" : "";
+        rows.push(`| ${range2.name} | ${disk.size.toFixed(2)} GB | ${disk.used.toFixed(2)} GB | ${disk.available.toFixed(2)} GB | ${availablePercent}% | ${exceeded} |`);
       }
     }
     return `### Disk Usage
 
-| Step | Total Size | Used | Available | Available % |
-|------|------------|------|-----------|-------------|
+| Step | Total Size | Used | Available | Available % | Threshold Exceeded |
+|------|------------|------|-----------|-------------|-------------------|
 ${rows.join("\n")}
 
 `;
@@ -122727,6 +122761,9 @@ function detectAlerts(metricsData) {
   return alerts;
 }
 function render(metricsData, metricsID, alerts = []) {
+  const cpuThreshold = parseFloat(getInput("cpu_alert_threshold") || "85");
+  const memoryThreshold = parseFloat(getInput("memory_alert_threshold") || "80");
+  const diskThreshold = parseFloat(getInput("disk_alert_threshold") || "90");
   const renderer = new Renderer();
   return renderer.render(
     metricsID,
@@ -122734,7 +122771,8 @@ function render(metricsData, metricsID, alerts = []) {
     alerts,
     metricsData.cpuLoadPercentages,
     metricsData.memoryUsageMBs,
-    metricsData.diskUsageGBs
+    metricsData.diskUsageGBs,
+    { cpu: cpuThreshold, memory: memoryThreshold, disk: diskThreshold }
   );
 }
 

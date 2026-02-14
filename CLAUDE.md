@@ -6,8 +6,8 @@ It helps when working with code in this repository.
 ## Project Overview
 
 A custom GitHub Action for workflow telemetry collection.
-Periodically collects CPU load and memory usage during workflow execution.
-Visualizes them as Mermaid charts and outputs to GitHub Actions summary.
+Periodically collects CPU load, memory usage, and disk usage during workflow execution.
+Displays them as clear tables and outputs to GitHub Actions summary.
 
 ## PR Title Format
 
@@ -56,7 +56,7 @@ npm test                       # Run all tests
    (Collector continues running in background, writing metrics every 5 seconds)
 
 3. post execution: dist/post/index.js (after all steps complete)
-   └─ Reads metrics from temporary file, renders Mermaid chart, outputs to summary
+   └─ Reads metrics from temporary file, renders tables, outputs to summary
 ```
 
 ### Key Components
@@ -66,7 +66,7 @@ npm test                       # Run all tests
   Uses `systeminformation`. Starts collection in constructor with drift-compensated `setTimeout`. 
   Writes data to file after each collection cycle.
 - **src/main/collector.ts**: Simple background process that creates a Metrics instance and keeps running.
-- **src/post/renderer.ts**: Generates Mermaid stacked bar charts using template literals. Converts time series to cumulative values with `toReversed()` and `reduce()`.
+- **src/post/renderer.ts**: Generates tables with step-by-step metrics. Includes threshold exceeded indicators for each metric type.
 - **src/post/lib.ts**: Reads metrics from file, fetches workflow steps from GitHub API, and renders charts.
 
 ### Build Process

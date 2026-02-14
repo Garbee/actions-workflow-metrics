@@ -9,12 +9,13 @@ export class Renderer {
     cpuLoadPercentages: Array<{ unixTimeMs: number; user: number; system: number }> = [],
     memoryUsageMBs: Array<{ unixTimeMs: number; used: number; free: number }> = [],
     diskUsageGBs: z.TypeOf<typeof diskUsageGBSchema>[] = [],
+    thresholds: { cpu: number; memory: number; disk: number } = { cpu: 85, memory: 80, disk: 90 },
   ): string {
     const stepSummary = this.generateStepSummary(stepMarkers);
     const alertsSection = this.generateAlertsSection(alerts);
-    const cpuUsageSection = this.generateCPUUsageSection(cpuLoadPercentages, stepMarkers);
-    const memoryUsageSection = this.generateMemoryUsageSection(memoryUsageMBs, stepMarkers);
-    const diskUsageSection = this.generateDiskUsageSection(diskUsageGBs, stepMarkers);
+    const cpuUsageSection = this.generateCPUUsageSection(cpuLoadPercentages, stepMarkers, alerts, thresholds.cpu);
+    const memoryUsageSection = this.generateMemoryUsageSection(memoryUsageMBs, stepMarkers, alerts, thresholds.memory);
+    const diskUsageSection = this.generateDiskUsageSection(diskUsageGBs, stepMarkers, alerts, thresholds.disk);
 
     return `## Workflow Metrics
 
@@ -105,6 +106,8 @@ ${alertItems.join("\n")}
   private generateCPUUsageSection(
     cpuLoadPercentages: Array<{ unixTimeMs: number; user: number; system: number }>,
     stepMarkers: z.TypeOf<typeof stepMarkerSchema>[],
+    alerts: Alert[],
+    threshold: number,
   ): string {
     if (cpuLoadPercentages.length === 0) {
       return "";
@@ -149,6 +152,18 @@ ${alertItems.join("\n")}
       }
     }
 
+    // Get CPU alert steps
+    const cpuAlertSteps = new Set<string>();
+    for (const alert of alerts) {
+      if (alert.type === "cpu") {
+        if (alert.steps && alert.steps.length > 0) {
+          alert.steps.forEach(step => cpuAlertSteps.add(step));
+        } else if (alert.step) {
+          cpuAlertSteps.add(alert.step);
+        }
+      }
+    }
+
     // Generate the CPU usage table
     const rows: string[] = [];
     
@@ -157,7 +172,8 @@ ${alertItems.join("\n")}
     const initUsed = initialCPU.user + initialCPU.system;
     const initAvailable = 100 - initUsed;
     const initAvailablePercent = initAvailable.toFixed(2);
-    rows.push(`| Initialization | ${initTotal.toFixed(2)}% | ${initUsed.toFixed(2)}% | ${initAvailable.toFixed(2)}% | ${initAvailablePercent}% |`);
+    const initExceeded = initUsed > threshold ? "Yes" : "";
+    rows.push(`| Initialization | ${initTotal.toFixed(2)}% | ${initUsed.toFixed(2)}% | ${initAvailable.toFixed(2)}% | ${initAvailablePercent}% | ${initExceeded} |`);
     
     // Add rows for each step that has CPU metrics
     for (const range of stepRanges) {
@@ -167,14 +183,15 @@ ${alertItems.join("\n")}
         const used = cpu.user + cpu.system;
         const available = 100 - used;
         const availablePercent = available.toFixed(2);
-        rows.push(`| ${range.name} | ${total.toFixed(2)}% | ${used.toFixed(2)}% | ${available.toFixed(2)}% | ${availablePercent}% |`);
+        const exceeded = cpuAlertSteps.has(range.name) ? "Yes" : "";
+        rows.push(`| ${range.name} | ${total.toFixed(2)}% | ${used.toFixed(2)}% | ${available.toFixed(2)}% | ${availablePercent}% | ${exceeded} |`);
       }
     }
 
     return `### CPU Usage
 
-| Step | Total | Used | Available | Available % |
-|------|-------|------|-----------|-------------|
+| Step | Total | Used | Available | Available % | Threshold Exceeded |
+|------|-------|------|-----------|-------------|-------------------|
 ${rows.join("\n")}
 
 `;
@@ -183,6 +200,8 @@ ${rows.join("\n")}
   private generateMemoryUsageSection(
     memoryUsageMBs: Array<{ unixTimeMs: number; used: number; free: number }>,
     stepMarkers: z.TypeOf<typeof stepMarkerSchema>[],
+    alerts: Alert[],
+    threshold: number,
   ): string {
     if (memoryUsageMBs.length === 0) {
       return "";
@@ -227,28 +246,41 @@ ${rows.join("\n")}
       }
     }
 
+    // Get memory alert step
+    let memoryAlertStep: string | undefined;
+    for (const alert of alerts) {
+      if (alert.type === "memory" && alert.step) {
+        memoryAlertStep = alert.step;
+        break;
+      }
+    }
+
     // Generate the memory usage table
     const rows: string[] = [];
     
     // Add initialization row
     const initTotal = initialMemory.used + initialMemory.free;
+    const initUtilization = (initialMemory.used / initTotal * 100);
     const initAvailablePercent = (initialMemory.free / initTotal * 100).toFixed(2);
-    rows.push(`| Initialization | ${initTotal.toFixed(2)} MB | ${initialMemory.used.toFixed(2)} MB | ${initialMemory.free.toFixed(2)} MB | ${initAvailablePercent}% |`);
+    const initExceeded = initUtilization > threshold ? "Yes" : "";
+    rows.push(`| Initialization | ${initTotal.toFixed(2)} MB | ${initialMemory.used.toFixed(2)} MB | ${initialMemory.free.toFixed(2)} MB | ${initAvailablePercent}% | ${initExceeded} |`);
     
     // Add rows for each step that has memory metrics
     for (const range of stepRanges) {
       const memory = stepMemoryMap.get(range.name);
       if (memory) {
         const total = memory.used + memory.free;
+        const utilization = (memory.used / total * 100);
         const availablePercent = (memory.free / total * 100).toFixed(2);
-        rows.push(`| ${range.name} | ${total.toFixed(2)} MB | ${memory.used.toFixed(2)} MB | ${memory.free.toFixed(2)} MB | ${availablePercent}% |`);
+        const exceeded = (memoryAlertStep === range.name) ? "Yes" : "";
+        rows.push(`| ${range.name} | ${total.toFixed(2)} MB | ${memory.used.toFixed(2)} MB | ${memory.free.toFixed(2)} MB | ${availablePercent}% | ${exceeded} |`);
       }
     }
 
     return `### Memory Usage
 
-| Step | Total | Used | Available | Available % |
-|------|-------|------|-----------|-------------|
+| Step | Total | Used | Available | Available % | Threshold Exceeded |
+|------|-------|------|-----------|-------------|-------------------|
 ${rows.join("\n")}
 
 `;
@@ -257,6 +289,8 @@ ${rows.join("\n")}
   private generateDiskUsageSection(
     diskUsageGBs: z.TypeOf<typeof diskUsageGBSchema>[],
     stepMarkers: z.TypeOf<typeof stepMarkerSchema>[],
+    alerts: Alert[],
+    threshold: number,
   ): string {
     if (diskUsageGBs.length === 0) {
       return "";
@@ -301,26 +335,39 @@ ${rows.join("\n")}
       }
     }
 
+    // Get disk alert step
+    let diskAlertStep: string | undefined;
+    for (const alert of alerts) {
+      if (alert.type === "disk" && alert.step) {
+        diskAlertStep = alert.step;
+        break;
+      }
+    }
+
     // Generate the disk usage table
     const rows: string[] = [];
     
     // Add initialization row
+    const initUtilization = (initialDisk.used / initialDisk.size * 100);
     const initAvailablePercent = (initialDisk.available / initialDisk.size * 100).toFixed(2);
-    rows.push(`| Initialization | ${initialDisk.size.toFixed(2)} GB | ${initialDisk.used.toFixed(2)} GB | ${initialDisk.available.toFixed(2)} GB | ${initAvailablePercent}% |`);
+    const initExceeded = initUtilization > threshold ? "Yes" : "";
+    rows.push(`| Initialization | ${initialDisk.size.toFixed(2)} GB | ${initialDisk.used.toFixed(2)} GB | ${initialDisk.available.toFixed(2)} GB | ${initAvailablePercent}% | ${initExceeded} |`);
     
     // Add rows for each step that has disk metrics
     for (const range of stepRanges) {
       const disk = stepDiskMap.get(range.name);
       if (disk) {
+        const utilization = (disk.used / disk.size * 100);
         const availablePercent = (disk.available / disk.size * 100).toFixed(2);
-        rows.push(`| ${range.name} | ${disk.size.toFixed(2)} GB | ${disk.used.toFixed(2)} GB | ${disk.available.toFixed(2)} GB | ${availablePercent}% |`);
+        const exceeded = (diskAlertStep === range.name) ? "Yes" : "";
+        rows.push(`| ${range.name} | ${disk.size.toFixed(2)} GB | ${disk.used.toFixed(2)} GB | ${disk.available.toFixed(2)} GB | ${availablePercent}% | ${exceeded} |`);
       }
     }
 
     return `### Disk Usage
 
-| Step | Total Size | Used | Available | Available % |
-|------|------------|------|-----------|-------------|
+| Step | Total Size | Used | Available | Available % | Threshold Exceeded |
+|------|------------|------|-----------|-------------|-------------------|
 ${rows.join("\n")}
 
 `;

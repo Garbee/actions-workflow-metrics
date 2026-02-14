@@ -51,11 +51,12 @@ describe("Renderer", () => {
       cpuData,
       [],
       [],
+      { cpu: 85, memory: 80, disk: 90 },
     );
 
     // Verify CPU Usage section is included
     assert.ok(result.includes("### CPU Usage"));
-    assert.ok(result.includes("| Step | Total | Used | Available | Available % |"));
+    assert.ok(result.includes("| Step | Total | Used | Available | Available % | Threshold Exceeded |"));
     assert.ok(result.includes("| Initialization |"));
   });
 
@@ -73,11 +74,12 @@ describe("Renderer", () => {
       [],
       memoryData,
       [],
+      { cpu: 85, memory: 80, disk: 90 },
     );
 
     // Verify Memory Usage section is included
     assert.ok(result.includes("### Memory Usage"));
-    assert.ok(result.includes("| Step | Total | Used | Available | Available % |"));
+    assert.ok(result.includes("| Step | Total | Used | Available | Available % | Threshold Exceeded |"));
     assert.ok(result.includes("| Initialization |"));
   });
 
@@ -95,11 +97,12 @@ describe("Renderer", () => {
       [],
       [],
       diskData,
+      { cpu: 85, memory: 80, disk: 90 },
     );
 
     // Verify Disk Usage section is included
     assert.ok(result.includes("### Disk Usage"));
-    assert.ok(result.includes("| Step | Total Size | Used | Available | Available % |"));
+    assert.ok(result.includes("| Step | Total Size | Used | Available | Available % | Threshold Exceeded |"));
     assert.ok(result.includes("| Initialization |"));
     // Check that percentage is calculated and included
     assert.ok(result.includes("%"));
@@ -114,6 +117,7 @@ describe("Renderer", () => {
       [],
       [],
       [],
+      { cpu: 85, memory: 80, disk: 90 },
     );
 
     assert.ok(result.includes("### Workflow Steps"));
@@ -130,6 +134,7 @@ describe("Renderer", () => {
       [],
       [],
       [],
+      { cpu: 85, memory: 80, disk: 90 },
     );
 
     assert.ok(!result.includes("### Workflow Steps"));
@@ -144,6 +149,7 @@ describe("Renderer", () => {
       [],
       [],
       [],
+      { cpu: 85, memory: 80, disk: 90 },
     );
 
     assert.ok(!result.includes("### Alerts"));
@@ -168,6 +174,7 @@ describe("Renderer", () => {
       [],
       [],
       [],
+      { cpu: 85, memory: 80, disk: 90 },
     );
 
     assert.ok(result.includes("### Alerts"));
@@ -202,6 +209,7 @@ describe("Renderer", () => {
       [],
       [],
       [],
+      { cpu: 85, memory: 80, disk: 90 },
     );
 
     assert.ok(result.includes("CPU usage exceeded 85%"));
@@ -229,6 +237,7 @@ describe("Renderer", () => {
       [],
       [],
       [],
+      { cpu: 85, memory: 80, disk: 90 },
     );
 
     const alertsIndex = result.indexOf("### Alerts");
@@ -258,6 +267,7 @@ describe("Renderer", () => {
       [],
       [],
       [],
+      { cpu: 85, memory: 80, disk: 90 },
     );
 
     assert.ok(result.includes("CPU usage exceeded 85%"));

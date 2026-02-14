@@ -1,6 +1,6 @@
 name: "actions-workflow-metrics"
 author: "Jonathan Garbee"
-description: "A GitHub Actions for collecting system metrics during workflows and outputting Mermaid charts"
+description: "A GitHub Action for collecting system metrics during workflows and displaying them in tables"
 branding:
   color: blue
   icon: cpu
