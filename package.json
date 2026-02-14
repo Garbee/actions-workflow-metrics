@@ -3,7 +3,8 @@
   "scripts": {
     "build": "pnpm run fix && tsc && tsx scripts/build.ts",
     "fix": "prettier --write .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "tsc": "tsc"
   },
   "dependencies": {
     "@actions/artifact": "^6.0.0",
