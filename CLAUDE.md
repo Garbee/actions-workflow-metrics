@@ -29,28 +29,31 @@ npm test                       # Run all tests
 
 ```text
 1. main execution: dist/main/index.js
-   └─ Spawns server as detached process and exits immediately
-       └─ dist/main/server.js (runs in background)
+   └─ Spawns collector as detached process and exits immediately
+       └─ dist/main/collector.js (runs in background)
            └─ Creates Metrics instance, collects metrics every 5 seconds
-           └─ Exposes JSON API via HTTP server (localhost:7777)
+           └─ Writes metrics to temporary file in system temp directory
 
 2. Other workflow steps execute
-   (Server continues running in background, collecting metrics every 5 seconds)
+   (Collector continues running in background, writing metrics every 5 seconds)
 
 3. post execution: dist/post/index.js (after all steps complete)
-   └─ Fetches metrics from server, renders Mermaid chart, outputs to summary
+   └─ Reads metrics from temporary file, renders Mermaid chart, outputs to summary
 ```
 
 ### Key Components
 
+- **src/lib.ts**: Shared utilities including `getMetricsFilePath()` which generates unique temp file paths using GITHUB_RUN_ID and GITHUB_JOB.
 - **src/main/metrics.ts**: Collects CPU (user/system 0-100%) and memory (active/available in MB).
-  Uses `systeminformation`. Starts collection in constructor with drift-compensated `setTimeout`.
+  Uses `systeminformation`. Starts collection in constructor with drift-compensated `setTimeout`. 
+  Writes data to file after each collection cycle.
+- **src/main/collector.ts**: Simple background process that creates a Metrics instance and keeps running.
 - **src/post/renderer.ts**: Generates Mermaid stacked bar charts using template literals. Converts time series to cumulative values with `toReversed()` and `reduce()`.
-- **src/lib.ts**: Zod schema for metrics validation and server port constant (7777).
+- **src/post/lib.ts**: Reads metrics from file, fetches workflow steps from GitHub API, and renders charts.
 
 ### Build Process
 
-Entry points: `src/main/index.ts`, `src/main/server.ts`, `src/post/index.ts` → bundled to `dist/`
+Entry points: `src/main/index.ts`, `src/main/collector.ts`, `src/main/mark-step.ts`, `src/post/index.ts` → bundled to `dist/`
 
 **Critical**: dist/ directory must be committed. All dependencies are bundled into dist files.
 
@@ -134,7 +137,8 @@ globalThis.fetch = async (): Promise<Response> =>
 
 - **Immediate async start**: `Metrics` class starts async collection in constructor without `await`.
   Uses `.catch()` for error handling.
+- **File-based storage**: Metrics are written to temporary file after each collection cycle. File path is unique per workflow run/job using GITHUB_RUN_ID and GITHUB_JOB.
 - **Drift-compensated timers**: Uses `Math.max(0, nextUNIXTimeMs - Date.now())` for precise intervals.
-- **AbortController timeout**: 10-second timeout for metrics fetch in post execution.
+- **AbortController timeout**: 10-second timeout for metrics file read in post execution.
 - **Node.js compatibility**: Uses `import.meta.url` with `dirname(fileURLToPath())`.
   Avoids Bun-specific `import.meta.dir`.
