@@ -185,15 +185,29 @@ ${rows}
       let label = "Pre-workflow";
       let foundStep = false;
       
-      for (const range of stepRanges) {
+      for (let i = 0; i < stepRanges.length; i++) {
+        const range = stepRanges[i];
+        
         if (timeMs >= range.start && timeMs < range.end) {
           label = range.name;
           foundStep = true;
           break;
         }
+        
+        // Check if time is between current step and next step
+        if (timeMs >= range.end) {
+          if (i < stepRanges.length - 1) {
+            const nextRange = stepRanges[i + 1];
+            if (timeMs < nextRange.start) {
+              label = `Between ${range.name} and ${nextRange.name}`;
+              foundStep = true;
+              break;
+            }
+          }
+        }
       }
       
-      // If not found within any step, check if it's after all steps
+      // If not found within any step or between steps, check if it's after all steps
       if (!foundStep && stepRanges.length > 0) {
         const lastStep = stepRanges[stepRanges.length - 1];
         if (timeMs >= lastStep.end) {

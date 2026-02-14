@@ -122376,11 +122376,22 @@ ${rows}
     for (const timeMs of chartTimesMs) {
       let label = "Pre-workflow";
       let foundStep = false;
-      for (const range2 of stepRanges) {
+      for (let i = 0; i < stepRanges.length; i++) {
+        const range2 = stepRanges[i];
         if (timeMs >= range2.start && timeMs < range2.end) {
           label = range2.name;
           foundStep = true;
           break;
+        }
+        if (timeMs >= range2.end) {
+          if (i < stepRanges.length - 1) {
+            const nextRange = stepRanges[i + 1];
+            if (timeMs < nextRange.start) {
+              label = `Between ${range2.name} and ${nextRange.name}`;
+              foundStep = true;
+              break;
+            }
+          }
         }
       }
       if (!foundStep && stepRanges.length > 0) {
