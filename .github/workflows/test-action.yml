@@ -1,4 +1,5 @@
 name: Test Action
+
 on:
   push:
     branches:
@@ -7,16 +8,19 @@ on:
     branches:
       - main
   workflow_dispatch:
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref }}-${{ github.ref }}
   cancel-in-progress: true
+
 permissions:
   contents: read # To clone the repository
   actions: read # To retrieve information about the workflow run and jobs
+
 jobs:
   test-basic:
     name: Test Basic Usage
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout Code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -41,7 +45,7 @@ jobs:
 
   test-custom-interval:
     name: Test Custom Interval
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout Code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -62,7 +66,7 @@ jobs:
 
   test-resource-visualization:
     name: Test Resource Visualization
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout Code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -78,9 +82,9 @@ jobs:
           cpu_alert_duration: "10"
           disk_alert_threshold: "10"
 
-      - name: CPU Intensive Activity
+      - name: CPU and Storage Intensive Activity
         run: |
-          echo "Starting CPU-intensive activity for 20 seconds..."
+          echo "Starting CPU-intensive activity for 15 seconds..."
           echo "Creating 5GB test file to demonstrate disk usage..."
           dd if=/dev/zero of=/tmp/test-5gb-file.bin bs=1M count=5120 status=progress
           echo "5GB file created at /tmp/test-5gb-file.bin"
@@ -88,7 +92,7 @@ jobs:
 
           node -e "
           const startTime = Date.now();
-          const endTime = startTime + 20000;
+          const endTime = startTime + 15000;
           let count = 0;
           while (Date.now() < endTime) {
             // CPU-intensive calculation
@@ -105,7 +109,7 @@ jobs:
 
       - name: Memory Intensive Activity
         run: |
-          echo "Starting memory-intensive activity for 20 seconds..."
+          echo "Starting memory-intensive activity for 15 seconds..."
           node -e "
           const arrays = [];
           const startTime = Date.now();
@@ -117,8 +121,8 @@ jobs:
           }
           console.log('Memory allocated:', arrays.length, 'arrays');
 
-          // Hold memory for 20 seconds
-          const endTime = startTime + 20000;
+          // Hold memory for 15 seconds
+          const endTime = startTime + 15000;
           while (Date.now() < endTime) {
             // Keep arrays in use
             if (arrays.length > 0 && Date.now() % 1000 < 10) {
@@ -134,6 +138,6 @@ jobs:
 
       - name: Idle Activity
         run: |
-          echo "Starting idle period for 20 seconds..."
-          sleep 20
+          echo "Starting idle period for 5 seconds..."
+          sleep 5
           echo "Idle period completed."
