@@ -1,0 +1,158 @@
+---
+name: Test Action
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  test-basic:
+    name: Test Basic Usage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Start Workflow Telemetry
+        uses: ./
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@3d267786b128fe76c2f16a390aa2448b815359f3 # v2.1.2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install Dependencies
+        run: bun install
+
+      - name: Run Tests
+        run: bun test
+
+      - name: Build Project
+        run: bun run build
+
+      - name: Verify Build Artifacts
+        run: |
+          test -f dist/main/index.js
+          test -f dist/main/server.js
+          test -f dist/post/index.js
+          echo "All build artifacts present"
+
+  test-automatic-step-tracking:
+    name: Test Automatic Step Tracking
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Start Workflow Telemetry with GitHub Token
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@3d267786b128fe76c2f16a390aa2448b815359f3 # v2.1.2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install Dependencies
+        run: bun install
+
+      - name: Type Check
+        run: bun run tsc
+
+      - name: Run Tests
+        run: bun test
+
+      - name: Build Project
+        run: bun run build
+
+  test-manual-step-markers:
+    name: Test Manual Step Markers
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Start Workflow Telemetry
+        uses: ./
+        with:
+          interval_seconds: "3"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@3d267786b128fe76c2f16a390aa2448b815359f3 # v2.1.2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install Dependencies with Manual Markers
+        run: |
+          curl -X POST http://localhost:7777/mark-step \
+            -H "Content-Type: application/json" \
+            -d '{"stepName":"Install Dependencies","status":"start"}'
+
+          bun install
+
+          curl -X POST http://localhost:7777/mark-step \
+            -H "Content-Type: application/json" \
+            -d '{"stepName":"Install Dependencies","status":"end"}'
+
+      - name: Build with Manual Markers
+        run: |
+          curl -X POST http://localhost:7777/mark-step \
+            -H "Content-Type: application/json" \
+            -d '{"stepName":"Build Project","status":"start"}'
+
+          bun run build
+
+          curl -X POST http://localhost:7777/mark-step \
+            -H "Content-Type: application/json" \
+            -d '{"stepName":"Build Project","status":"end"}'
+
+      - name: Test with Manual Markers
+        run: |
+          curl -X POST http://localhost:7777/mark-step \
+            -H "Content-Type: application/json" \
+            -d '{"stepName":"Run Tests","status":"start"}'
+
+          bun test
+
+          curl -X POST http://localhost:7777/mark-step \
+            -H "Content-Type: application/json" \
+            -d '{"stepName":"Run Tests","status":"end"}'
+
+  test-custom-interval:
+    name: Test Custom Interval
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Start Workflow Telemetry with Custom Interval
+        uses: ./
+        with:
+          interval_seconds: "2"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@3d267786b128fe76c2f16a390aa2448b815359f3 # v2.1.2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Simulate Workload
+        run: |
+          echo "Simulating CPU and memory intensive workload"
+          sleep 10
+          echo "Workload simulation complete"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
