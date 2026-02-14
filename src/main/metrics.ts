@@ -55,6 +55,11 @@ export class Metrics {
   }
 
   async markStep(stepName: string, status: "start" | "end"): Promise<void> {
+    // Note: This method has a race condition when called concurrently.
+    // However, manual step markers are deprecated in favor of automatic
+    // step detection via GitHub API. This method is kept for backward
+    // compatibility but should not be used in production.
+    
     // Read current data from file to get latest state
     await this.readData();
     

@@ -2,6 +2,13 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { getMetricsFilePath, metricsDataSchema } from "../lib.js";
 
+/**
+ * Marks a workflow step in the metrics file.
+ * 
+ * Note: This script has a race condition with concurrent writes.
+ * Manual step markers are deprecated in favor of automatic step detection
+ * via GitHub API. This is provided for backward compatibility only.
+ */
 async function markStep(stepName: string, status: "start" | "end"): Promise<void> {
   const filePath = getMetricsFilePath();
   

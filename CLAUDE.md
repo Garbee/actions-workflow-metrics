@@ -139,6 +139,5 @@ globalThis.fetch = async (): Promise<Response> =>
   Uses `.catch()` for error handling.
 - **File-based storage**: Metrics are written to temporary file after each collection cycle. File path is unique per workflow run/job using GITHUB_RUN_ID and GITHUB_JOB.
 - **Drift-compensated timers**: Uses `Math.max(0, nextUNIXTimeMs - Date.now())` for precise intervals.
-- **AbortController timeout**: 10-second timeout for metrics file read in post execution.
 - **Node.js compatibility**: Uses `import.meta.url` with `dirname(fileURLToPath())`.
   Avoids Bun-specific `import.meta.dir`.
