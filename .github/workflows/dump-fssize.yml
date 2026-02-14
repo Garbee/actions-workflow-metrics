@@ -26,3 +26,12 @@ jobs:
 
       - name: Dump fsSize Information
         run: node scripts/dump-fssize.js
+
+      - name: Create Large File
+        run: fallocate -l 80G largefile.dat
+
+      - name: Sleep
+        run: sleep 10
+
+      - name: Remove large file
+        run: rm largefile.dat
