@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import { setTimeout } from "node:timers/promises";
+import { setTimeout as setTimeoutCallback } from "node:timers";
 import { DefaultArtifactClient } from "@actions/artifact";
 import { info, setFailed, summary } from "@actions/core";
 import { getMetricsData, render, fetchWorkflowSteps } from "./lib.ts";
@@ -74,14 +75,7 @@ async function index(): Promise<void> {
     setFailed(error);
   } finally {
     const controller: AbortController = new AbortController();
-    const clearTimerController = new AbortController();
-    const timer = setTimeout(
-      10 * 1000,
-      () => controller.abort(),
-      {
-        signal: clearTimerController.signal,
-      }
-    );
+    const timer: NodeJS.Timeout = setTimeoutCallback(() => controller.abort(), 10 * 1000);
 
     // Stop the metrics server
     try {
@@ -98,7 +92,7 @@ async function index(): Promise<void> {
         setFailed(`Failed to finish server: ${res.status} ${res.statusText}`);
       }
     } finally {
-      clearTimerController.abort();
+      clearTimeout(timer);
     }
   }
 }

@@ -53201,6 +53201,7 @@ var require_light = __commonJS({
 // src/post/index.ts
 import fs5 from "node:fs/promises";
 import { setTimeout as setTimeout2 } from "node:timers/promises";
+import { setTimeout as setTimeoutCallback } from "node:timers";
 
 // node_modules/@actions/core/lib/command.js
 import * as os from "os";
@@ -104556,14 +104557,7 @@ async function index() {
     setFailed(error49);
   } finally {
     const controller = new AbortController();
-    const clearTimerController = new AbortController();
-    const timer = setTimeout2(
-      10 * 1e3,
-      () => controller.abort(),
-      {
-        signal: clearTimerController.signal
-      }
-    );
+    const timer = setTimeoutCallback(() => controller.abort(), 10 * 1e3);
     try {
       const res = await fetch(
         `http://localhost:${serverPort}/finish`,
@@ -104577,7 +104571,7 @@ async function index() {
         setFailed(`Failed to finish server: ${res.status} ${res.statusText}`);
       }
     } finally {
-      clearTimerController.abort();
+      clearTimeout(timer);
     }
   }
 }
