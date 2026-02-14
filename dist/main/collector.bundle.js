@@ -27117,7 +27117,7 @@ var require_filesystem = __commonJS({
     var _sunos = _platform === "sunos";
     var _fs_speed = {};
     var _disk_io = {};
-    function fsSize(drive, callback) {
+    function fsSize2(drive, callback) {
       if (util.isFunction(drive)) {
         callback = drive;
         drive = "";
@@ -27315,7 +27315,7 @@ var require_filesystem = __commonJS({
         });
       });
     }
-    exports.fsSize = fsSize;
+    exports.fsSize = fsSize2;
     function fsOpenFiles(callback) {
       return new Promise((resolve) => {
         process.nextTick(() => {
@@ -50778,6 +50778,12 @@ var memoryUsageMBSchema = external_exports.object({
   free: external_exports.number().nonnegative()
 });
 var memoryUsageMBsSchema = external_exports.array(memoryUsageMBSchema);
+var diskUsageGBSchema = external_exports.object({
+  unixTimeMs: external_exports.number(),
+  used: external_exports.number().nonnegative(),
+  free: external_exports.number().nonnegative()
+});
+var diskUsageGBsSchema = external_exports.array(diskUsageGBSchema);
 var stepMarkerSchema = external_exports.object({
   unixTimeMs: external_exports.number(),
   stepName: external_exports.string(),
@@ -50787,6 +50793,7 @@ var stepMarkersSchema = external_exports.array(stepMarkerSchema);
 var metricsDataSchema = external_exports.object({
   cpuLoadPercentages: cpuLoadPercentagesSchema,
   memoryUsageMBs: memoryUsageMBsSchema,
+  diskUsageGBs: diskUsageGBsSchema,
   stepMarkers: stepMarkersSchema
 });
 function getMetricsFilePath() {
@@ -50803,7 +50810,7 @@ var Metrics = class {
   timeoutId = null;
   stopped = false;
   constructor() {
-    this.data = { cpuLoadPercentages: [], memoryUsageMBs: [], stepMarkers: [] };
+    this.data = { cpuLoadPercentages: [], memoryUsageMBs: [], diskUsageGBs: [], stepMarkers: [] };
     this.filePath = getMetricsFilePath();
     this.intervalMs = 5 * 1e3;
     const intervalSecondsInput = process.env.METRICS_INTERVAL_SECONDS;
@@ -50855,6 +50862,15 @@ var Metrics = class {
         unixTimeMs,
         used: active / bytesPerMB,
         free: available / bytesPerMB
+      });
+      const bytesPerGB = 1024 * 1024 * 1024;
+      const disks = await (0, import_systeminformation.fsSize)();
+      const totalUsed = disks.reduce((sum, disk) => sum + disk.used, 0);
+      const totalAvailable = disks.reduce((sum, disk) => sum + disk.available, 0);
+      this.data.diskUsageGBs.push({
+        unixTimeMs,
+        used: totalUsed / bytesPerGB,
+        free: totalAvailable / bytesPerGB
       });
       await this.writeData();
     } catch (error49) {
