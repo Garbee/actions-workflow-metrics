@@ -39,7 +39,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 var require_tunnel = __commonJS({
   "node_modules/tunnel/lib/tunnel.js"(exports2) {
     "use strict";
-    var net2 = __require("net");
+    var net = __require("net");
     var tls = __require("tls");
     var http3 = __require("http");
     var https3 = __require("https");
@@ -950,7 +950,7 @@ var require_util = __commonJS({
     var { kDestroyed, kBodyUsed, kListeners, kBody } = require_symbols();
     var { IncomingMessage } = __require("node:http");
     var stream4 = __require("node:stream");
-    var net2 = __require("node:net");
+    var net = __require("node:net");
     var { Blob: Blob2 } = __require("node:buffer");
     var nodeUtil = __require("node:util");
     var { stringify } = __require("node:querystring");
@@ -1095,7 +1095,7 @@ var require_util = __commonJS({
       }
       assert2(typeof host === "string");
       const servername = getHostname(host);
-      if (net2.isIP(servername)) {
+      if (net.isIP(servername)) {
         return "";
       }
       return servername;
@@ -2332,11 +2332,11 @@ var require_timers = __commonJS({
        *
        * @param {NodeJS.Timeout|FastTimer} timeout
        */
-      clearTimeout(timeout2) {
-        if (timeout2[kFastTimer]) {
-          timeout2.clear();
+      clearTimeout(timeout) {
+        if (timeout[kFastTimer]) {
+          timeout.clear();
         } else {
-          clearTimeout(timeout2);
+          clearTimeout(timeout);
         }
       },
       /**
@@ -2359,8 +2359,8 @@ var require_timers = __commonJS({
        *
        * @param {FastTimer} timeout
        */
-      clearFastTimeout(timeout2) {
-        timeout2.clear();
+      clearFastTimeout(timeout) {
+        timeout.clear();
       },
       /**
        * The now method returns the value of the internal fast timer clock.
@@ -2408,7 +2408,7 @@ var require_timers = __commonJS({
 var require_connect = __commonJS({
   "node_modules/undici/lib/core/connect.js"(exports2, module) {
     "use strict";
-    var net2 = __require("node:net");
+    var net = __require("node:net");
     var assert2 = __require("node:assert");
     var util3 = require_util();
     var { InvalidArgumentError, ConnectTimeoutError } = require_errors();
@@ -2465,13 +2465,13 @@ var require_connect = __commonJS({
         }
       };
     }
-    function buildConnector({ allowH2, maxCachedSessions, socketPath, timeout: timeout2, session: customSession, ...opts }) {
+    function buildConnector({ allowH2, maxCachedSessions, socketPath, timeout, session: customSession, ...opts }) {
       if (maxCachedSessions != null && (!Number.isInteger(maxCachedSessions) || maxCachedSessions < 0)) {
         throw new InvalidArgumentError("maxCachedSessions must be a positive integer or zero");
       }
       const options = { path: socketPath, ...opts };
       const sessionCache = new SessionCache(maxCachedSessions == null ? 100 : maxCachedSessions);
-      timeout2 = timeout2 == null ? 1e4 : timeout2;
+      timeout = timeout == null ? 1e4 : timeout;
       allowH2 = allowH2 != null ? allowH2 : false;
       return function connect({ hostname: hostname3, host, protocol, port, servername, localAddress, httpSocket }, callback) {
         let socket;
@@ -2504,7 +2504,7 @@ var require_connect = __commonJS({
         } else {
           assert2(!httpSocket, "httpSocket can only be sent on TLS update");
           port = port || 80;
-          socket = net2.connect({
+          socket = net.connect({
             highWaterMark: 64 * 1024,
             // Same as nodejs fs streams.
             ...options,
@@ -2517,7 +2517,7 @@ var require_connect = __commonJS({
           const keepAliveInitialDelay = options.keepAliveInitialDelay === void 0 ? 6e4 : options.keepAliveInitialDelay;
           socket.setKeepAlive(true, keepAliveInitialDelay);
         }
-        const clearConnectTimeout = setupConnectTimeout(new WeakRef(socket), { timeout: timeout2, hostname: hostname3, port });
+        const clearConnectTimeout = setupConnectTimeout(new WeakRef(socket), { timeout, hostname: hostname3, port });
         socket.setNoDelay(true).once(protocol === "https:" ? "secureConnect" : "connect", function() {
           queueMicrotask(clearConnectTimeout);
           if (callback) {
@@ -6005,14 +6005,14 @@ var require_client_h1 = __commonJS({
         if (this.shouldKeepAlive && client2[kPipelining]) {
           const keepAliveTimeout = this.keepAlive ? util3.parseKeepAliveTimeout(this.keepAlive) : null;
           if (keepAliveTimeout != null) {
-            const timeout2 = Math.min(
+            const timeout = Math.min(
               keepAliveTimeout - client2[kKeepAliveTimeoutThreshold],
               client2[kKeepAliveMaxTimeout]
             );
-            if (timeout2 <= 0) {
+            if (timeout <= 0) {
               socket[kReset] = true;
             } else {
-              client2[kKeepAliveTimeoutValue] = timeout2;
+              client2[kKeepAliveTimeoutValue] = timeout;
             }
           } else {
             client2[kKeepAliveTimeoutValue] = client2[kKeepAliveDefaultTimeout];
@@ -7374,7 +7374,7 @@ var require_client = __commonJS({
   "node_modules/undici/lib/dispatcher/client.js"(exports2, module) {
     "use strict";
     var assert2 = __require("node:assert");
-    var net2 = __require("node:net");
+    var net = __require("node:net");
     var http3 = __require("node:http");
     var util3 = require_util();
     var { channels } = require_diagnostics();
@@ -7522,7 +7522,7 @@ var require_client = __commonJS({
         if (maxRequestsPerClient != null && (!Number.isInteger(maxRequestsPerClient) || maxRequestsPerClient < 0)) {
           throw new InvalidArgumentError("maxRequestsPerClient must be a positive number");
         }
-        if (localAddress != null && (typeof localAddress !== "string" || net2.isIP(localAddress) === 0)) {
+        if (localAddress != null && (typeof localAddress !== "string" || net.isIP(localAddress) === 0)) {
           throw new InvalidArgumentError("localAddress must be valid string IP address");
         }
         if (maxResponseSize != null && (!Number.isInteger(maxResponseSize) || maxResponseSize < -1)) {
@@ -7686,7 +7686,7 @@ var require_client = __commonJS({
         const idx = hostname3.indexOf("]");
         assert2(idx !== -1);
         const ip = hostname3.substring(1, idx);
-        assert2(net2.isIP(ip));
+        assert2(net.isIP(ip));
         hostname3 = ip;
       }
       client2[kConnecting] = true;
@@ -23592,7 +23592,7 @@ var require_dist = __commonJS({
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.Agent = void 0;
-    var net2 = __importStar(__require("net"));
+    var net = __importStar(__require("net"));
     var http3 = __importStar(__require("http"));
     var https_1 = __require("https");
     __exportStar(require_helpers(), exports2);
@@ -23632,7 +23632,7 @@ var require_dist = __commonJS({
         if (!this.sockets[name]) {
           this.sockets[name] = [];
         }
-        const fakeSocket = new net2.Socket({ writable: false });
+        const fakeSocket = new net.Socket({ writable: false });
         this.sockets[name].push(fakeSocket);
         this.totalSocketCount++;
         return fakeSocket;
@@ -23844,7 +23844,7 @@ var require_dist2 = __commonJS({
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.HttpsProxyAgent = void 0;
-    var net2 = __importStar(__require("net"));
+    var net = __importStar(__require("net"));
     var tls = __importStar(__require("tls"));
     var assert_1 = __importDefault(__require("assert"));
     var debug_1 = __importDefault(require_src());
@@ -23853,7 +23853,7 @@ var require_dist2 = __commonJS({
     var parse_proxy_response_1 = require_parse_proxy_response();
     var debug2 = (0, debug_1.default)("https-proxy-agent");
     var setServernameFromNonIpHost = (options) => {
-      if (options.servername === void 0 && options.host && !net2.isIP(options.host)) {
+      if (options.servername === void 0 && options.host && !net.isIP(options.host)) {
         return {
           ...options,
           servername: options.host
@@ -23893,10 +23893,10 @@ var require_dist2 = __commonJS({
           socket = tls.connect(setServernameFromNonIpHost(this.connectOpts));
         } else {
           debug2("Creating `net.Socket`: %o", this.connectOpts);
-          socket = net2.connect(this.connectOpts);
+          socket = net.connect(this.connectOpts);
         }
         const headers = typeof this.proxyHeaders === "function" ? this.proxyHeaders() : { ...this.proxyHeaders };
-        const host = net2.isIPv6(opts.host) ? `[${opts.host}]` : opts.host;
+        const host = net.isIPv6(opts.host) ? `[${opts.host}]` : opts.host;
         let payload = `CONNECT ${host}:${opts.port} HTTP/1.1\r
 `;
         if (proxy.username || proxy.password) {
@@ -23929,7 +23929,7 @@ var require_dist2 = __commonJS({
           return socket;
         }
         socket.destroy();
-        const fakeSocket = new net2.Socket({ writable: false });
+        const fakeSocket = new net.Socket({ writable: false });
         fakeSocket.readable = true;
         req.once("socket", (s) => {
           debug2("Replaying proxy buffer for failed request");
@@ -23994,7 +23994,7 @@ var require_dist3 = __commonJS({
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.HttpProxyAgent = void 0;
-    var net2 = __importStar(__require("net"));
+    var net = __importStar(__require("net"));
     var tls = __importStar(__require("tls"));
     var debug_1 = __importDefault(require_src());
     var events_1 = __require("events");
@@ -24067,7 +24067,7 @@ var require_dist3 = __commonJS({
           socket = tls.connect(this.connectOpts);
         } else {
           debug2("Creating `net.Socket`: %o", this.connectOpts);
-          socket = net2.connect(this.connectOpts);
+          socket = net.connect(this.connectOpts);
         }
         await (0, events_1.once)(socket, "connect");
         return socket;
@@ -26631,7 +26631,7 @@ var require_async = __commonJS({
         }
       }
       var sortBy$1 = awaitify(sortBy, 3);
-      function timeout2(asyncFn, milliseconds, info2) {
+      function timeout(asyncFn, milliseconds, info2) {
         var fn = wrapAsync(asyncFn);
         return initialParams((args, callback) => {
           var timedOut = false;
@@ -26818,7 +26818,7 @@ var require_async = __commonJS({
         someLimit: someLimit$1,
         someSeries: someSeries$1,
         sortBy: sortBy$1,
-        timeout: timeout2,
+        timeout,
         times,
         timesLimit,
         timesSeries,
@@ -26950,7 +26950,7 @@ var require_async = __commonJS({
       exports3.someLimit = someLimit$1;
       exports3.someSeries = someSeries$1;
       exports3.sortBy = sortBy$1;
-      exports3.timeout = timeout2;
+      exports3.timeout = timeout;
       exports3.times = times;
       exports3.timesLimit = timesLimit;
       exports3.timesSeries = timesSeries;
@@ -54433,11 +54433,11 @@ function getUploadChunkTimeout() {
   if (!timeoutVar) {
     return 3e5;
   }
-  const timeout2 = parseInt(timeoutVar);
-  if (isNaN(timeout2)) {
+  const timeout = parseInt(timeoutVar);
+  if (isNaN(timeout)) {
     throw new Error("Invalid value set for ACTIONS_ARTIFACT_UPLOAD_TIMEOUT_MS env variable");
   }
-  return timeout2;
+  return timeout;
 }
 function getMaxArtifactListCount() {
   const maxCountVar = process.env["ACTIONS_ARTIFACT_MAX_ARTIFACT_COUNT"] || "1000";
@@ -64012,10 +64012,10 @@ function getURLQueries(url3) {
 }
 async function delay3(timeInMs, aborter, abortError) {
   return new Promise((resolve2, reject) => {
-    let timeout2;
+    let timeout;
     const abortHandler = () => {
-      if (timeout2 !== void 0) {
-        clearTimeout(timeout2);
+      if (timeout !== void 0) {
+        clearTimeout(timeout);
       }
       reject(abortError);
     };
@@ -64025,7 +64025,7 @@ async function delay3(timeInMs, aborter, abortError) {
       }
       resolve2();
     };
-    timeout2 = setTimeout(resolveHandler, timeInMs);
+    timeout = setTimeout(resolveHandler, timeInMs);
     if (aborter !== void 0) {
       aborter.addEventListener("abort", abortHandler);
     }
@@ -83029,10 +83029,10 @@ async function streamToBuffer(stream4, buffer2, offset, end, encoding) {
   let pos = 0;
   const count = end - offset;
   return new Promise((resolve2, reject) => {
-    const timeout2 = setTimeout(() => reject(new Error(`The operation cannot be completed in timeout.`)), REQUEST_TIMEOUT);
+    const timeout = setTimeout(() => reject(new Error(`The operation cannot be completed in timeout.`)), REQUEST_TIMEOUT);
     stream4.on("readable", () => {
       if (pos >= count) {
-        clearTimeout(timeout2);
+        clearTimeout(timeout);
         resolve2();
         return;
       }
@@ -83048,14 +83048,14 @@ async function streamToBuffer(stream4, buffer2, offset, end, encoding) {
       pos += chunkLength;
     });
     stream4.on("end", () => {
-      clearTimeout(timeout2);
+      clearTimeout(timeout);
       if (pos < count) {
         reject(new Error(`Stream drains before getting enough data needed. Data read: ${pos}, data need: ${count}`));
       }
       resolve2();
     });
     stream4.on("error", (msg) => {
-      clearTimeout(timeout2);
+      clearTimeout(timeout);
       reject(msg);
     });
   });
@@ -89716,7 +89716,7 @@ function streamExtract(url3, directory, skipDecompress) {
 }
 function streamExtractExternal(url_1, directory_1) {
   return __awaiter9(this, arguments, void 0, function* (url3, directory, opts = {}) {
-    const { timeout: timeout2 = 30 * 1e3, skipDecompress = false } = opts;
+    const { timeout = 30 * 1e3, skipDecompress = false } = opts;
     const client2 = new HttpClient(getUserAgentString());
     const response = yield client2.get(url3);
     if (response.message.statusCode !== 200) {
@@ -89738,11 +89738,11 @@ function streamExtractExternal(url_1, directory_1) {
     let sha256Digest = void 0;
     return new Promise((resolve2, reject) => {
       const timerFn = () => {
-        const timeoutError = new Error(`Blob storage chunk did not respond in ${timeout2}ms`);
+        const timeoutError = new Error(`Blob storage chunk did not respond in ${timeout}ms`);
         response.message.destroy(timeoutError);
         reject(timeoutError);
       };
-      const timer = setTimeout(timerFn, timeout2);
+      const timer = setTimeout(timerFn, timeout);
       const onError = (error49) => {
         debug(`response.message: Artifact download failed: ${error49.message}`);
         clearTimeout(timer);
@@ -104346,119 +104346,6 @@ ${annotations.join("\n")}`;
   }
 };
 
-// node_modules/get-port/index.js
-import net from "node:net";
-import os6 from "node:os";
-var Locked = class extends Error {
-  constructor(port) {
-    super(`${port} is locked`);
-  }
-};
-var lockedPorts = {
-  old: /* @__PURE__ */ new Set(),
-  young: /* @__PURE__ */ new Set()
-};
-var releaseOldLockedPortsIntervalMs = 1e3 * 15;
-var timeout;
-var getLocalHosts = () => {
-  const interfaces = os6.networkInterfaces();
-  const results = /* @__PURE__ */ new Set([void 0, "0.0.0.0"]);
-  for (const _interface of Object.values(interfaces)) {
-    for (const config2 of _interface) {
-      results.add(config2.address);
-    }
-  }
-  return results;
-};
-var checkAvailablePort = (options) => new Promise((resolve2, reject) => {
-  const server = net.createServer();
-  server.unref();
-  server.on("error", reject);
-  server.listen(options, () => {
-    const { port } = server.address();
-    server.close(() => {
-      resolve2(port);
-    });
-  });
-});
-var getAvailablePort = async (options, hosts) => {
-  if (options.host || options.port === 0) {
-    return checkAvailablePort(options);
-  }
-  for (const host of hosts) {
-    try {
-      await checkAvailablePort({ port: options.port, host });
-    } catch (error49) {
-      if (!["EADDRNOTAVAIL", "EINVAL"].includes(error49.code)) {
-        throw error49;
-      }
-    }
-  }
-  return options.port;
-};
-var portCheckSequence = function* (ports) {
-  if (ports) {
-    yield* ports;
-  }
-  yield 0;
-};
-async function getPorts(options) {
-  let ports;
-  let exclude = /* @__PURE__ */ new Set();
-  if (options) {
-    if (options.port) {
-      ports = typeof options.port === "number" ? [options.port] : options.port;
-    }
-    if (options.exclude) {
-      const excludeIterable = options.exclude;
-      if (typeof excludeIterable[Symbol.iterator] !== "function") {
-        throw new TypeError("The `exclude` option must be an iterable.");
-      }
-      for (const element of excludeIterable) {
-        if (typeof element !== "number") {
-          throw new TypeError("Each item in the `exclude` option must be a number corresponding to the port you want excluded.");
-        }
-        if (!Number.isSafeInteger(element)) {
-          throw new TypeError(`Number ${element} in the exclude option is not a safe integer and can't be used`);
-        }
-      }
-      exclude = new Set(excludeIterable);
-    }
-  }
-  if (timeout === void 0) {
-    timeout = setTimeout(() => {
-      timeout = void 0;
-      lockedPorts.old = lockedPorts.young;
-      lockedPorts.young = /* @__PURE__ */ new Set();
-    }, releaseOldLockedPortsIntervalMs);
-    if (timeout.unref) {
-      timeout.unref();
-    }
-  }
-  const hosts = getLocalHosts();
-  for (const port of portCheckSequence(ports)) {
-    try {
-      if (exclude.has(port)) {
-        continue;
-      }
-      let availablePort = await getAvailablePort({ ...options, port }, hosts);
-      while (lockedPorts.old.has(availablePort) || lockedPorts.young.has(availablePort)) {
-        if (port !== 0) {
-          throw new Locked(port);
-        }
-        availablePort = await getAvailablePort({ ...options, port }, hosts);
-      }
-      lockedPorts.young.add(availablePort);
-      return availablePort;
-    } catch (error49) {
-      if (!["EADDRINUSE", "EACCES"].includes(error49.code) && !(error49 instanceof Locked)) {
-        throw error49;
-      }
-    }
-  }
-  throw new Error("No available ports found");
-}
-
 // src/lib.ts
 var cpuLoadPercentageSchema = external_exports.object({
   unixTimeMs: external_exports.number(),
@@ -104483,9 +104370,7 @@ var metricsDataSchema = external_exports.object({
   memoryUsageMBs: memoryUsageMBsSchema,
   stepMarkers: stepMarkersSchema
 });
-var serverPort = await getPorts({
-  port: 7777
-});
+var serverPort = 7777;
 
 // src/post/lib.ts
 var metricsInfoSchema = external_exports.object({

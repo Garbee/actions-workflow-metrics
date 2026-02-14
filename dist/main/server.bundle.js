@@ -39,7 +39,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 var require_tunnel = __commonJS({
   "node_modules/tunnel/lib/tunnel.js"(exports) {
     "use strict";
-    var net2 = __require("net");
+    var net = __require("net");
     var tls = __require("tls");
     var http = __require("http");
     var https = __require("https");
@@ -950,7 +950,7 @@ var require_util = __commonJS({
     var { kDestroyed, kBodyUsed, kListeners, kBody } = require_symbols();
     var { IncomingMessage } = __require("node:http");
     var stream = __require("node:stream");
-    var net2 = __require("node:net");
+    var net = __require("node:net");
     var { Blob: Blob2 } = __require("node:buffer");
     var nodeUtil = __require("node:util");
     var { stringify } = __require("node:querystring");
@@ -1095,7 +1095,7 @@ var require_util = __commonJS({
       }
       assert2(typeof host === "string");
       const servername = getHostname(host);
-      if (net2.isIP(servername)) {
+      if (net.isIP(servername)) {
         return "";
       }
       return servername;
@@ -2332,11 +2332,11 @@ var require_timers = __commonJS({
        *
        * @param {NodeJS.Timeout|FastTimer} timeout
        */
-      clearTimeout(timeout2) {
-        if (timeout2[kFastTimer]) {
-          timeout2.clear();
+      clearTimeout(timeout) {
+        if (timeout[kFastTimer]) {
+          timeout.clear();
         } else {
-          clearTimeout(timeout2);
+          clearTimeout(timeout);
         }
       },
       /**
@@ -2359,8 +2359,8 @@ var require_timers = __commonJS({
        *
        * @param {FastTimer} timeout
        */
-      clearFastTimeout(timeout2) {
-        timeout2.clear();
+      clearFastTimeout(timeout) {
+        timeout.clear();
       },
       /**
        * The now method returns the value of the internal fast timer clock.
@@ -2408,7 +2408,7 @@ var require_timers = __commonJS({
 var require_connect = __commonJS({
   "node_modules/undici/lib/core/connect.js"(exports, module) {
     "use strict";
-    var net2 = __require("node:net");
+    var net = __require("node:net");
     var assert2 = __require("node:assert");
     var util = require_util();
     var { InvalidArgumentError, ConnectTimeoutError } = require_errors();
@@ -2465,13 +2465,13 @@ var require_connect = __commonJS({
         }
       };
     }
-    function buildConnector({ allowH2, maxCachedSessions, socketPath, timeout: timeout2, session: customSession, ...opts }) {
+    function buildConnector({ allowH2, maxCachedSessions, socketPath, timeout, session: customSession, ...opts }) {
       if (maxCachedSessions != null && (!Number.isInteger(maxCachedSessions) || maxCachedSessions < 0)) {
         throw new InvalidArgumentError("maxCachedSessions must be a positive integer or zero");
       }
       const options = { path: socketPath, ...opts };
       const sessionCache = new SessionCache(maxCachedSessions == null ? 100 : maxCachedSessions);
-      timeout2 = timeout2 == null ? 1e4 : timeout2;
+      timeout = timeout == null ? 1e4 : timeout;
       allowH2 = allowH2 != null ? allowH2 : false;
       return function connect({ hostname: hostname3, host, protocol, port, servername, localAddress, httpSocket }, callback) {
         let socket;
@@ -2504,7 +2504,7 @@ var require_connect = __commonJS({
         } else {
           assert2(!httpSocket, "httpSocket can only be sent on TLS update");
           port = port || 80;
-          socket = net2.connect({
+          socket = net.connect({
             highWaterMark: 64 * 1024,
             // Same as nodejs fs streams.
             ...options,
@@ -2517,7 +2517,7 @@ var require_connect = __commonJS({
           const keepAliveInitialDelay = options.keepAliveInitialDelay === void 0 ? 6e4 : options.keepAliveInitialDelay;
           socket.setKeepAlive(true, keepAliveInitialDelay);
         }
-        const clearConnectTimeout = setupConnectTimeout(new WeakRef(socket), { timeout: timeout2, hostname: hostname3, port });
+        const clearConnectTimeout = setupConnectTimeout(new WeakRef(socket), { timeout, hostname: hostname3, port });
         socket.setNoDelay(true).once(protocol === "https:" ? "secureConnect" : "connect", function() {
           queueMicrotask(clearConnectTimeout);
           if (callback) {
@@ -6005,14 +6005,14 @@ var require_client_h1 = __commonJS({
         if (this.shouldKeepAlive && client[kPipelining]) {
           const keepAliveTimeout = this.keepAlive ? util.parseKeepAliveTimeout(this.keepAlive) : null;
           if (keepAliveTimeout != null) {
-            const timeout2 = Math.min(
+            const timeout = Math.min(
               keepAliveTimeout - client[kKeepAliveTimeoutThreshold],
               client[kKeepAliveMaxTimeout]
             );
-            if (timeout2 <= 0) {
+            if (timeout <= 0) {
               socket[kReset] = true;
             } else {
-              client[kKeepAliveTimeoutValue] = timeout2;
+              client[kKeepAliveTimeoutValue] = timeout;
             }
           } else {
             client[kKeepAliveTimeoutValue] = client[kKeepAliveDefaultTimeout];
@@ -7374,7 +7374,7 @@ var require_client = __commonJS({
   "node_modules/undici/lib/dispatcher/client.js"(exports, module) {
     "use strict";
     var assert2 = __require("node:assert");
-    var net2 = __require("node:net");
+    var net = __require("node:net");
     var http = __require("node:http");
     var util = require_util();
     var { channels } = require_diagnostics();
@@ -7522,7 +7522,7 @@ var require_client = __commonJS({
         if (maxRequestsPerClient != null && (!Number.isInteger(maxRequestsPerClient) || maxRequestsPerClient < 0)) {
           throw new InvalidArgumentError("maxRequestsPerClient must be a positive number");
         }
-        if (localAddress != null && (typeof localAddress !== "string" || net2.isIP(localAddress) === 0)) {
+        if (localAddress != null && (typeof localAddress !== "string" || net.isIP(localAddress) === 0)) {
           throw new InvalidArgumentError("localAddress must be valid string IP address");
         }
         if (maxResponseSize != null && (!Number.isInteger(maxResponseSize) || maxResponseSize < -1)) {
@@ -7686,7 +7686,7 @@ var require_client = __commonJS({
         const idx = hostname3.indexOf("]");
         assert2(idx !== -1);
         const ip = hostname3.substring(1, idx);
-        assert2(net2.isIP(ip));
+        assert2(net.isIP(ip));
         hostname3 = ip;
       }
       client[kConnecting] = true;
@@ -18633,7 +18633,7 @@ var require_package = __commonJS({
 var require_util9 = __commonJS({
   "node_modules/systeminformation/lib/util.js"(exports) {
     "use strict";
-    var os4 = __require("os");
+    var os3 = __require("os");
     var fs2 = __require("fs");
     var path = __require("path");
     var spawn = __require("child_process").spawn;
@@ -18740,7 +18740,7 @@ var require_util9 = __commonJS({
     }
     function cores() {
       if (_cores === 0) {
-        _cores = os4.cpus().length;
+        _cores = os3.cpus().length;
       }
       return _cores;
     }
@@ -19001,7 +19001,7 @@ var require_util9 = __commonJS({
     function powerShellRelease() {
       try {
         if (_psChild) {
-          _psChild.stdin.write("exit" + os4.EOL);
+          _psChild.stdin.write("exit" + os3.EOL);
           _psChild.stdin.end();
         }
       } catch {
@@ -19028,7 +19028,7 @@ var require_util9 = __commonJS({
             });
             try {
               if (_psChild && _psChild.pid) {
-                _psChild.stdin.write(_psToUTF8 + "echo " + _psCmdStart + id + _psIdSeperator + "; " + os4.EOL + cmd + os4.EOL + "echo " + _psCmdSeperator + os4.EOL);
+                _psChild.stdin.write(_psToUTF8 + "echo " + _psCmdStart + id + _psIdSeperator + "; " + os3.EOL + cmd + os3.EOL + "echo " + _psCmdSeperator + os3.EOL);
               }
             } catch {
               resolve("");
@@ -19040,7 +19040,7 @@ var require_util9 = __commonJS({
         return new Promise((resolve) => {
           process.nextTick(() => {
             try {
-              const osVersion = os4.release().split(".").map(Number);
+              const osVersion = os3.release().split(".").map(Number);
               const spanOptions = osVersion[0] < 10 ? ["-NoProfile", "-NoLogo", "-InputFormat", "Text", "-NoExit", "-ExecutionPolicy", "Unrestricted", "-Command", "-"] : ["-NoProfile", "-NoLogo", "-InputFormat", "Text", "-ExecutionPolicy", "Unrestricted", "-Command", _psToUTF8 + cmd];
               const child = spawn(_powerShell, spanOptions, {
                 stdio: "pipe",
@@ -19072,8 +19072,8 @@ var require_util9 = __commonJS({
                 });
                 if (osVersion[0] < 10) {
                   try {
-                    child.stdin.write(_psToUTF8 + cmd + os4.EOL);
-                    child.stdin.write("exit" + os4.EOL);
+                    child.stdin.write(_psToUTF8 + cmd + os3.EOL);
+                    child.stdin.write("exit" + os3.EOL);
                     child.stdin.end();
                   } catch {
                     child.kill();
@@ -21042,7 +21042,7 @@ var require_util9 = __commonJS({
         version: list[0].name + " (" + features.join(", ") + ")"
       };
     }
-    function checkWebsite(url2, timeout2 = 5e3) {
+    function checkWebsite(url2, timeout = 5e3) {
       const http = url2.startsWith("https:") || url2.indexOf(":443/") > 0 || url2.indexOf(":8443/") > 0 ? __require("https") : __require("http");
       const t = Date.now();
       return new Promise((resolve) => {
@@ -21064,7 +21064,7 @@ var require_util9 = __commonJS({
             message: e.message,
             time: Date.now() - t
           });
-        }).setTimeout(timeout2, () => {
+        }).setTimeout(timeout, () => {
           request.destroy();
           resolve({
             url: url2,
@@ -21141,7 +21141,7 @@ var require_util9 = __commonJS({
 var require_osinfo = __commonJS({
   "node_modules/systeminformation/lib/osinfo.js"(exports) {
     "use strict";
-    var os4 = __require("os");
+    var os3 = __require("os");
     var fs2 = __require("fs");
     var util = require_util9();
     var exec = __require("child_process").exec;
@@ -21164,14 +21164,14 @@ var require_osinfo = __commonJS({
       }
       const result2 = {
         current: Date.now(),
-        uptime: os4.uptime(),
+        uptime: os3.uptime(),
         timezone: t.length >= 7 ? t[5] : "",
         timezoneName
       };
       if (_darwin || _linux) {
         try {
           const stdout = execSync("date +%Z && date +%z && ls -l /etc/localtime 2>/dev/null", util.execOptsLinux);
-          const lines = stdout.toString().split(os4.EOL);
+          const lines = stdout.toString().split(os3.EOL);
           if (lines.length > 3 && !lines[0]) {
             lines.shift();
           }
@@ -21181,7 +21181,7 @@ var require_osinfo = __commonJS({
           }
           return {
             current: Date.now(),
-            uptime: os4.uptime(),
+            uptime: os3.uptime(),
             timezone: lines[1] ? timezone + lines[1] : timezone,
             timezoneName: lines[2] && lines[2].indexOf("/zoneinfo/") > 0 ? lines[2].split("/zoneinfo/")[1] || "" : ""
           };
@@ -21300,11 +21300,11 @@ var require_osinfo = __commonJS({
       return "";
     }
     function getFQDN() {
-      let fqdn = os4.hostname;
+      let fqdn = os3.hostname;
       if (_linux || _darwin) {
         try {
           const stdout = execSync("hostname -f 2>/dev/null", util.execOptsLinux);
-          fqdn = stdout.toString().split(os4.EOL)[0];
+          fqdn = stdout.toString().split(os3.EOL)[0];
         } catch {
           util.noop();
         }
@@ -21312,7 +21312,7 @@ var require_osinfo = __commonJS({
       if (_freebsd || _openbsd || _netbsd) {
         try {
           const stdout = execSync("hostname 2>/dev/null");
-          fqdn = stdout.toString().split(os4.EOL)[0];
+          fqdn = stdout.toString().split(os3.EOL)[0];
         } catch {
           util.noop();
         }
@@ -21320,7 +21320,7 @@ var require_osinfo = __commonJS({
       if (_windows) {
         try {
           const stdout = execSync("echo %COMPUTERNAME%.%USERDNSDOMAIN%", util.execOptsWin);
-          fqdn = stdout.toString().replace(".%USERDNSDOMAIN%", "").split(os4.EOL)[0];
+          fqdn = stdout.toString().replace(".%USERDNSDOMAIN%", "").split(os3.EOL)[0];
         } catch {
           util.noop();
         }
@@ -21335,9 +21335,9 @@ var require_osinfo = __commonJS({
             distro: "unknown",
             release: "unknown",
             codename: "",
-            kernel: os4.release(),
-            arch: os4.arch(),
-            hostname: os4.hostname(),
+            kernel: os3.release(),
+            arch: os3.arch(),
+            hostname: os3.hostname(),
             fqdn: getFQDN(),
             codepage: "",
             logofile: "",
@@ -21546,7 +21546,7 @@ var require_osinfo = __commonJS({
     }
     function versions(apps, callback) {
       let versionObject = {
-        kernel: os4.release(),
+        kernel: os3.release(),
         apache: "",
         bash: "",
         bun: "",
@@ -22255,7 +22255,7 @@ var require_osinfo = __commonJS({
     function getUniqueMacAdresses() {
       let macs = [];
       try {
-        const ifaces = os4.networkInterfaces();
+        const ifaces = os3.networkInterfaces();
         for (let dev in ifaces) {
           if ({}.hasOwnProperty.call(ifaces, dev)) {
             ifaces[dev].forEach((details) => {
@@ -22377,7 +22377,7 @@ var require_system = __commonJS({
   "node_modules/systeminformation/lib/system.js"(exports) {
     "use strict";
     var fs2 = __require("fs");
-    var os4 = __require("os");
+    var os3 = __require("os");
     var util = require_util9();
     var { uuid: uuid3 } = require_osinfo();
     var exec = __require("child_process").exec;
@@ -22501,8 +22501,8 @@ var require_system = __commonJS({
                   util.noop();
                 }
               }
-              if (!result2.virtual && (os4.release().toLowerCase().indexOf("microsoft") >= 0 || os4.release().toLowerCase().endsWith("wsl2"))) {
-                const kernelVersion = parseFloat(os4.release().toLowerCase());
+              if (!result2.virtual && (os3.release().toLowerCase().indexOf("microsoft") >= 0 || os3.release().toLowerCase().endsWith("wsl2"))) {
+                const kernelVersion = parseFloat(os3.release().toLowerCase());
                 result2.virtual = true;
                 result2.manufacturer = "Microsoft";
                 result2.model = "WSL";
@@ -22912,7 +22912,7 @@ var require_system = __commonJS({
                 result2.model = "Raspberry Pi";
                 result2.serial = rpi.serial;
                 result2.version = rpi.type + " - " + rpi.revision;
-                result2.memMax = os4.totalmem();
+                result2.memMax = os3.totalmem();
                 result2.memSlots = 0;
               }
               if (callback) {
@@ -22938,9 +22938,9 @@ var require_system = __commonJS({
               }
               devices.shift();
               result2.memSlots = devices.length;
-              if (os4.arch() === "arm64") {
+              if (os3.arch() === "arm64") {
                 result2.memSlots = 0;
-                result2.memMax = os4.totalmem();
+                result2.memMax = os3.totalmem();
               }
               if (callback) {
                 callback(result2);
@@ -22957,7 +22957,7 @@ var require_system = __commonJS({
           if (_windows) {
             try {
               const workload = [];
-              const win10plus = parseInt(os4.release()) >= 10;
+              const win10plus = parseInt(os3.release()) >= 10;
               const maxCapacityAttribute = win10plus ? "MaxCapacityEx" : "MaxCapacity";
               workload.push(util.powerShell("Get-CimInstance Win32_baseboard | select Model,Manufacturer,Product,Version,SerialNumber,PartNumber,SKU | fl"));
               workload.push(util.powerShell(`Get-CimInstance Win32_physicalmemoryarray | select ${maxCapacityAttribute}, MemoryDevices | fl`));
@@ -23153,7 +23153,7 @@ var require_system = __commonJS({
 var require_cpu = __commonJS({
   "node_modules/systeminformation/lib/cpu.js"(exports) {
     "use strict";
-    var os4 = __require("os");
+    var os3 = __require("os");
     var exec = __require("child_process").exec;
     var execSync = __require("child_process").execSync;
     var fs2 = __require("fs");
@@ -24016,7 +24016,7 @@ var require_cpu = __commonJS({
                 const countProcessors = util.getValue(lines, "hw.packages");
                 const countCores = util.getValue(lines, "hw.physicalcpu_max");
                 const countThreads = util.getValue(lines, "hw.ncpu");
-                if (os4.arch() === "arm64") {
+                if (os3.arch() === "arm64") {
                   result2.socket = "SOC";
                   try {
                     const clusters = execSync("ioreg -c IOPlatformDevice -d 3 -r | grep cluster-type").toString().split("\n");
@@ -24044,8 +24044,8 @@ var require_cpu = __commonJS({
             if (_linux) {
               let modelline = "";
               let lines = [];
-              if (os4.cpus()[0] && os4.cpus()[0].model) {
-                modelline = os4.cpus()[0].model;
+              if (os3.cpus()[0] && os3.cpus()[0].model) {
+                modelline = os3.cpus()[0].model;
               }
               exec('export LC_ALL=C; lscpu; echo -n "Governor: "; cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null; echo; unset LC_ALL', (error49, stdout) => {
                 if (!error49) {
@@ -24134,8 +24134,8 @@ var require_cpu = __commonJS({
             if (_freebsd || _openbsd || _netbsd) {
               let modelline = "";
               let lines = [];
-              if (os4.cpus()[0] && os4.cpus()[0].model) {
-                modelline = os4.cpus()[0].model;
+              if (os3.cpus()[0] && os3.cpus()[0].model) {
+                modelline = os3.cpus()[0].model;
               }
               exec("export LC_ALL=C; dmidecode -t 4; dmidecode -t 7 unset LC_ALL", (error49, stdout) => {
                 let cache = [];
@@ -24295,7 +24295,7 @@ var require_cpu = __commonJS({
     }
     exports.cpu = cpu;
     function getCpuCurrentSpeedSync() {
-      const cpus = os4.cpus();
+      const cpus = os3.cpus();
       let minFreq = 999999999;
       let maxFreq = 0;
       let avgFreq = 0;
@@ -24990,7 +24990,7 @@ var require_cpu = __commonJS({
     function getLoad() {
       return new Promise((resolve) => {
         process.nextTick(() => {
-          const loads = os4.loadavg().map((x) => {
+          const loads = os3.loadavg().map((x) => {
             return x / util.cores();
           });
           const avgLoad = parseFloat(Math.max.apply(Math, loads).toFixed(2));
@@ -24998,7 +24998,7 @@ var require_cpu = __commonJS({
           const now = Date.now() - _current_cpu.ms;
           if (now >= 200) {
             _current_cpu.ms = Date.now();
-            const cpus = os4.cpus().map((cpu2) => {
+            const cpus = os3.cpus().map((cpu2) => {
               cpu2.times.steal = 0;
               cpu2.times.guest = 0;
               return cpu2;
@@ -25192,7 +25192,7 @@ var require_cpu = __commonJS({
     function getFullLoad() {
       return new Promise((resolve) => {
         process.nextTick(() => {
-          const cpus = os4.cpus();
+          const cpus = os3.cpus();
           let totalUser = 0;
           let totalSystem = 0;
           let totalNice = 0;
@@ -25235,7 +25235,7 @@ var require_cpu = __commonJS({
 var require_memory = __commonJS({
   "node_modules/systeminformation/lib/memory.js"(exports) {
     "use strict";
-    var os4 = __require("os");
+    var os3 = __require("os");
     var exec = __require("child_process").exec;
     var execSync = __require("child_process").execSync;
     var util = require_util9();
@@ -25281,12 +25281,12 @@ var require_memory = __commonJS({
       return new Promise((resolve) => {
         process.nextTick(() => {
           let result2 = {
-            total: os4.totalmem(),
-            free: os4.freemem(),
-            used: os4.totalmem() - os4.freemem(),
-            active: os4.totalmem() - os4.freemem(),
+            total: os3.totalmem(),
+            free: os3.freemem(),
+            used: os3.totalmem() - os3.freemem(),
+            active: os3.totalmem() - os3.freemem(),
             // temporarily (fallback)
-            available: os4.freemem(),
+            available: os3.freemem(),
             // temporarily (fallback)
             buffers: 0,
             cached: 0,
@@ -25305,9 +25305,9 @@ var require_memory = __commonJS({
                 if (!error49) {
                   const lines = stdout.toString().split("\n");
                   result2.total = parseInt(util.getValue(lines, "memtotal"), 10);
-                  result2.total = result2.total ? result2.total * 1024 : os4.totalmem();
+                  result2.total = result2.total ? result2.total * 1024 : os3.totalmem();
                   result2.free = parseInt(util.getValue(lines, "memfree"), 10);
-                  result2.free = result2.free ? result2.free * 1024 : os4.freemem();
+                  result2.free = result2.free ? result2.free * 1024 : os3.freemem();
                   result2.used = result2.total - result2.free;
                   result2.buffers = parseInt(util.getValue(lines, "buffers"), 10);
                   result2.buffers = result2.buffers ? result2.buffers * 1024 : 0;
@@ -25529,7 +25529,7 @@ var require_memory = __commonJS({
                 }
                 if (!result2.length) {
                   result2.push({
-                    size: os4.totalmem(),
+                    size: os3.totalmem(),
                     bank: "",
                     type: "",
                     ecc: null,
@@ -28625,7 +28625,7 @@ ${BSDName}|"; diskutil info /dev/${BSDName} | grep SMART;`;
 var require_network = __commonJS({
   "node_modules/systeminformation/lib/network.js"(exports) {
     "use strict";
-    var os4 = __require("os");
+    var os3 = __require("os");
     var exec = __require("child_process").exec;
     var execSync = __require("child_process").execSync;
     var fs2 = __require("fs");
@@ -28649,7 +28649,7 @@ var require_network = __commonJS({
       let ifacename = "";
       let ifacenameFirst = "";
       try {
-        const ifaces = os4.networkInterfaces();
+        const ifaces = os3.networkInterfaces();
         let scopeid = 9999;
         for (let dev in ifaces) {
           if ({}.hasOwnProperty.call(ifaces, dev)) {
@@ -28669,7 +28669,7 @@ var require_network = __commonJS({
           let defaultIp = "";
           const cmd = "netstat -r";
           const result2 = execSync(cmd, util.execOptsWin);
-          const lines = result2.toString().split(os4.EOL);
+          const lines = result2.toString().split(os3.EOL);
           lines.forEach((line) => {
             line = line.replace(/\s+/g, " ").trim();
             if (line.indexOf("0.0.0.0 0.0.0.0") > -1 && !/[a-zA-Z]/.test(line)) {
@@ -29302,7 +29302,7 @@ var require_network = __commonJS({
       defaultString = "" + defaultString;
       return new Promise((resolve) => {
         process.nextTick(() => {
-          const ifaces = os4.networkInterfaces();
+          const ifaces = os3.networkInterfaces();
           let result2 = [];
           let nics = [];
           let dnsSuffixes = [];
@@ -30372,7 +30372,7 @@ var require_network = __commonJS({
           if (_windows) {
             try {
               exec("netstat -r", util.execOptsWin, (error49, stdout) => {
-                const lines = stdout.toString().split(os4.EOL);
+                const lines = stdout.toString().split(os3.EOL);
                 lines.forEach((line) => {
                   line = line.replace(/\s+/g, " ").trim();
                   if (line.indexOf("0.0.0.0 0.0.0.0") > -1 && !/[a-zA-Z]/.test(line)) {
@@ -30418,7 +30418,7 @@ var require_network = __commonJS({
 var require_wifi = __commonJS({
   "node_modules/systeminformation/lib/wifi.js"(exports) {
     "use strict";
-    var os4 = __require("os");
+    var os3 = __require("os");
     var exec = __require("child_process").exec;
     var execSync = __require("child_process").execSync;
     var util = require_util9();
@@ -30640,7 +30640,7 @@ var require_wifi = __commonJS({
         parts.shift();
         parts.forEach((part) => {
           part = "ACTIVE:" + part;
-          const lines = part.split(os4.EOL);
+          const lines = part.split(os3.EOL);
           const channel = util.getValue(lines, "CHAN");
           const frequency = util.getValue(lines, "FREQ").toLowerCase().replace("mhz", "").trim();
           const security = util.getValue(lines, "SECURITY").replace("(", "").replace(")", "");
@@ -30864,15 +30864,15 @@ var require_wifi = __commonJS({
           } else if (_windows) {
             const cmd = "netsh wlan show networks mode=Bssid";
             util.powerShell(cmd).then((stdout) => {
-              const ssidParts = stdout.toString("utf8").split(os4.EOL + os4.EOL + "SSID ");
+              const ssidParts = stdout.toString("utf8").split(os3.EOL + os3.EOL + "SSID ");
               ssidParts.shift();
               ssidParts.forEach((ssidPart) => {
-                const ssidLines = ssidPart.split(os4.EOL);
+                const ssidLines = ssidPart.split(os3.EOL);
                 if (ssidLines && ssidLines.length >= 8 && ssidLines[0].indexOf(":") >= 0) {
                   const bssidsParts = ssidPart.split(" BSSID");
                   bssidsParts.shift();
                   bssidsParts.forEach((bssidPart) => {
-                    const bssidLines = bssidPart.split(os4.EOL);
+                    const bssidLines = bssidPart.split(os3.EOL);
                     const bssidLine = bssidLines[0].split(":");
                     bssidLine.shift();
                     const bssid = bssidLine.join(":").trim().toLowerCase();
@@ -31196,7 +31196,7 @@ var require_wifi = __commonJS({
 var require_processes = __commonJS({
   "node_modules/systeminformation/lib/processes.js"(exports) {
     "use strict";
-    var os4 = __require("os");
+    var os3 = __require("os");
     var fs2 = __require("fs");
     var path = __require("path");
     var exec = __require("child_process").exec;
@@ -31847,7 +31847,7 @@ var require_processes = __commonJS({
             line = line.trim().replace(/ +/g, " ").replace(/,+/g, ".");
             const parts = line.split(" ");
             const command = parts.slice(9).join(" ");
-            const pmem = parseFloat((1 * parseInt(parts[3]) * 1024 / os4.totalmem()).toFixed(1));
+            const pmem = parseFloat((1 * parseInt(parts[3]) * 1024 / os3.totalmem()).toFixed(1));
             const started = parseElapsed(parts[5]);
             result2.push({
               pid: parseInt(parts[0]),
@@ -32050,7 +32050,7 @@ var require_processes = __commonJS({
                         cpu: 0,
                         cpuu: 0,
                         cpus: 0,
-                        mem: memw / os4.totalmem() * 100,
+                        mem: memw / os3.totalmem() * 100,
                         priority: element.Priority | null,
                         memVsz: element.PageFileUsage || null,
                         memRss: Math.floor((element.WorkingSetSize || 0) / 1024),
@@ -32204,7 +32204,7 @@ var require_processes = __commonJS({
                         result2.forEach((item) => {
                           if (item.proc.toLowerCase() === pname.toLowerCase()) {
                             item.pids.push(pid);
-                            item.mem += mem2 / os4.totalmem() * 100;
+                            item.mem += mem2 / os3.totalmem() * 100;
                             processFound = true;
                           }
                         });
@@ -32214,7 +32214,7 @@ var require_processes = __commonJS({
                             pid,
                             pids: [pid],
                             cpu: 0,
-                            mem: mem2 / os4.totalmem() * 100
+                            mem: mem2 / os3.totalmem() * 100
                           });
                         }
                       }
@@ -33000,13 +33000,13 @@ var require_internet = __commonJS({
 var require_dockerSocket = __commonJS({
   "node_modules/systeminformation/lib/dockerSocket.js"(exports, module) {
     "use strict";
-    var net2 = __require("net");
+    var net = __require("net");
     var isWin = __require("os").type() === "Windows_NT";
     var socketPath = isWin ? "//./pipe/docker_engine" : "/var/run/docker.sock";
     var DockerSocket = class {
       getInfo(callback) {
         try {
-          let socket = net2.createConnection({ path: socketPath });
+          let socket = net.createConnection({ path: socketPath });
           let alldata = "";
           let data;
           socket.on("connect", () => {
@@ -33036,7 +33036,7 @@ var require_dockerSocket = __commonJS({
       }
       listImages(all, callback) {
         try {
-          let socket = net2.createConnection({ path: socketPath });
+          let socket = net.createConnection({ path: socketPath });
           let alldata = "";
           let data;
           socket.on("connect", () => {
@@ -33068,7 +33068,7 @@ var require_dockerSocket = __commonJS({
         id = id || "";
         if (id) {
           try {
-            let socket = net2.createConnection({ path: socketPath });
+            let socket = net.createConnection({ path: socketPath });
             let alldata = "";
             let data;
             socket.on("connect", () => {
@@ -33101,7 +33101,7 @@ var require_dockerSocket = __commonJS({
       }
       listContainers(all, callback) {
         try {
-          let socket = net2.createConnection({ path: socketPath });
+          let socket = net.createConnection({ path: socketPath });
           let alldata = "";
           let data;
           socket.on("connect", () => {
@@ -33133,7 +33133,7 @@ var require_dockerSocket = __commonJS({
         id = id || "";
         if (id) {
           try {
-            let socket = net2.createConnection({ path: socketPath });
+            let socket = net.createConnection({ path: socketPath });
             let alldata = "";
             let data;
             socket.on("connect", () => {
@@ -33168,7 +33168,7 @@ var require_dockerSocket = __commonJS({
         id = id || "";
         if (id) {
           try {
-            let socket = net2.createConnection({ path: socketPath });
+            let socket = net.createConnection({ path: socketPath });
             let alldata = "";
             let data;
             socket.on("connect", () => {
@@ -33203,7 +33203,7 @@ var require_dockerSocket = __commonJS({
         id = id || "";
         if (id) {
           try {
-            let socket = net2.createConnection({ path: socketPath });
+            let socket = net.createConnection({ path: socketPath });
             let alldata = "";
             let data;
             socket.on("connect", () => {
@@ -33236,7 +33236,7 @@ var require_dockerSocket = __commonJS({
       }
       listVolumes(callback) {
         try {
-          let socket = net2.createConnection({ path: socketPath });
+          let socket = net.createConnection({ path: socketPath });
           let alldata = "";
           let data;
           socket.on("connect", () => {
@@ -33955,7 +33955,7 @@ var require_docker = __commonJS({
 var require_virtualbox = __commonJS({
   "node_modules/systeminformation/lib/virtualbox.js"(exports) {
     "use strict";
-    var os4 = __require("os");
+    var os3 = __require("os");
     var exec = __require("child_process").exec;
     var util = require_util9();
     function vboxInfo(callback) {
@@ -33964,10 +33964,10 @@ var require_virtualbox = __commonJS({
         process.nextTick(() => {
           try {
             exec(util.getVboxmanage() + " list vms --long", (error49, stdout) => {
-              let parts = (os4.EOL + stdout.toString()).split(os4.EOL + "Name:");
+              let parts = (os3.EOL + stdout.toString()).split(os3.EOL + "Name:");
               parts.shift();
               parts.forEach((part) => {
-                const lines = ("Name:" + part).split(os4.EOL);
+                const lines = ("Name:" + part).split(os3.EOL);
                 const state = util.getValue(lines, "State");
                 const running = state.startsWith("running");
                 const runningSinceString = running ? state.replace("running (since ", "").replace(")", "").trim() : "";
@@ -37058,119 +37058,6 @@ var Metrics = class {
     }
   }
 };
-
-// node_modules/get-port/index.js
-import net from "node:net";
-import os3 from "node:os";
-var Locked = class extends Error {
-  constructor(port) {
-    super(`${port} is locked`);
-  }
-};
-var lockedPorts = {
-  old: /* @__PURE__ */ new Set(),
-  young: /* @__PURE__ */ new Set()
-};
-var releaseOldLockedPortsIntervalMs = 1e3 * 15;
-var timeout;
-var getLocalHosts = () => {
-  const interfaces = os3.networkInterfaces();
-  const results = /* @__PURE__ */ new Set([void 0, "0.0.0.0"]);
-  for (const _interface of Object.values(interfaces)) {
-    for (const config2 of _interface) {
-      results.add(config2.address);
-    }
-  }
-  return results;
-};
-var checkAvailablePort = (options) => new Promise((resolve, reject) => {
-  const server2 = net.createServer();
-  server2.unref();
-  server2.on("error", reject);
-  server2.listen(options, () => {
-    const { port } = server2.address();
-    server2.close(() => {
-      resolve(port);
-    });
-  });
-});
-var getAvailablePort = async (options, hosts) => {
-  if (options.host || options.port === 0) {
-    return checkAvailablePort(options);
-  }
-  for (const host of hosts) {
-    try {
-      await checkAvailablePort({ port: options.port, host });
-    } catch (error49) {
-      if (!["EADDRNOTAVAIL", "EINVAL"].includes(error49.code)) {
-        throw error49;
-      }
-    }
-  }
-  return options.port;
-};
-var portCheckSequence = function* (ports) {
-  if (ports) {
-    yield* ports;
-  }
-  yield 0;
-};
-async function getPorts(options) {
-  let ports;
-  let exclude = /* @__PURE__ */ new Set();
-  if (options) {
-    if (options.port) {
-      ports = typeof options.port === "number" ? [options.port] : options.port;
-    }
-    if (options.exclude) {
-      const excludeIterable = options.exclude;
-      if (typeof excludeIterable[Symbol.iterator] !== "function") {
-        throw new TypeError("The `exclude` option must be an iterable.");
-      }
-      for (const element of excludeIterable) {
-        if (typeof element !== "number") {
-          throw new TypeError("Each item in the `exclude` option must be a number corresponding to the port you want excluded.");
-        }
-        if (!Number.isSafeInteger(element)) {
-          throw new TypeError(`Number ${element} in the exclude option is not a safe integer and can't be used`);
-        }
-      }
-      exclude = new Set(excludeIterable);
-    }
-  }
-  if (timeout === void 0) {
-    timeout = setTimeout(() => {
-      timeout = void 0;
-      lockedPorts.old = lockedPorts.young;
-      lockedPorts.young = /* @__PURE__ */ new Set();
-    }, releaseOldLockedPortsIntervalMs);
-    if (timeout.unref) {
-      timeout.unref();
-    }
-  }
-  const hosts = getLocalHosts();
-  for (const port of portCheckSequence(ports)) {
-    try {
-      if (exclude.has(port)) {
-        continue;
-      }
-      let availablePort = await getAvailablePort({ ...options, port }, hosts);
-      while (lockedPorts.old.has(availablePort) || lockedPorts.young.has(availablePort)) {
-        if (port !== 0) {
-          throw new Locked(port);
-        }
-        availablePort = await getAvailablePort({ ...options, port }, hosts);
-      }
-      lockedPorts.young.add(availablePort);
-      return availablePort;
-    } catch (error49) {
-      if (!["EADDRINUSE", "EACCES"].includes(error49.code) && !(error49 instanceof Locked)) {
-        throw error49;
-      }
-    }
-  }
-  throw new Error("No available ports found");
-}
 
 // node_modules/zod/v4/classic/external.js
 var external_exports = {};
@@ -50964,9 +50851,7 @@ var metricsDataSchema = external_exports.object({
   memoryUsageMBs: memoryUsageMBsSchema,
   stepMarkers: stepMarkersSchema
 });
-var serverPort = await getPorts({
-  port: 7777
-});
+var serverPort = 7777;
 
 // src/main/server.ts
 async function server() {
