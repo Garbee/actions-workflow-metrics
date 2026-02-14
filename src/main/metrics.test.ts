@@ -1,5 +1,5 @@
 import { setTimeout } from "node:timers/promises";
-import { describe, it, beforeEach, mock, before, after } from "node:test";
+import { describe, it, beforeEach, mock, before, after, afterEach } from "node:test";
 import * as assert from "node:assert/strict";
 import type { Systeminformation } from "systeminformation";
 import type { z } from "zod";
@@ -12,6 +12,7 @@ import {
 describe("Metrics", () => {
   let Metrics;
   let mockModule;
+  const metricsInstances: any[] = [];
 
   before(async () => {
     // Mock systeminformation module
@@ -37,12 +38,27 @@ describe("Metrics", () => {
     mock.restoreAll();
   });
 
+  afterEach(() => {
+    // Clean up all Metrics instances to prevent hanging
+    for (const instance of metricsInstances) {
+      instance.stop();
+    }
+    metricsInstances.length = 0;
+  });
+
   after(() => {
     mockModule.restore();
   })
 
+  // Helper function to create and track Metrics instances
+  function createMetrics() {
+    const instance = new Metrics();
+    metricsInstances.push(instance);
+    return instance;
+  }
+
   it("should return JSON string from get()", () => {
-    const metrics = new Metrics();
+    const metrics = createMetrics();
     const result: string = metrics.get();
 
     assert.strictEqual(typeof result, "string");
@@ -52,7 +68,7 @@ describe("Metrics", () => {
   });
 
   it("should initialize with empty data arrays", () => {
-    const metrics = new Metrics();
+    const metrics = createMetrics();
     const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
 
     assert.ok(data.cpuLoadPercentages);
@@ -64,7 +80,7 @@ describe("Metrics", () => {
   });
 
   it("should collect initial metrics on construction", async () => {
-    const metrics = new Metrics();
+    const metrics = createMetrics();
 
     // Wait for async processing to complete
     await setTimeout(100);
@@ -85,7 +101,7 @@ describe("Metrics", () => {
   });
 
   it("should have correct CPU metrics format", async () => {
-    const metrics = new Metrics();
+    const metrics = createMetrics();
 
     // Wait for async processing to complete
     await setTimeout(100);
@@ -103,7 +119,7 @@ describe("Metrics", () => {
   });
 
   it("should have correct memory metrics format and conversion", async () => {
-    const metrics = new Metrics();
+    const metrics = createMetrics();
 
     // Wait for async processing to complete
     await setTimeout(100);
@@ -122,7 +138,7 @@ describe("Metrics", () => {
   });
 
   it("should accumulate metrics data over time", async () => {
-    const metrics = new Metrics();
+    const metrics = createMetrics();
 
     // Wait for initial data collection
     await setTimeout(100);
@@ -155,7 +171,7 @@ describe("Metrics", () => {
   });
 
   it("should maintain correct time intervals between data points", async () => {
-    const metrics = new Metrics();
+    const metrics = createMetrics();
 
     // Wait for initial data collection
     await setTimeout(100);
@@ -184,7 +200,7 @@ describe("Metrics", () => {
   });
 
   it("should continue accumulating data for multiple intervals", async () => {
-    const metrics = new Metrics();
+    const metrics = createMetrics();
 
     // Wait for initial data collection
     await setTimeout(100);
@@ -219,7 +235,7 @@ describe("Metrics", () => {
   });
 
   it("should add step markers when markStep is called", () => {
-    const metrics = new Metrics();
+    const metrics = createMetrics();
 
     metrics.markStep("Build", "start");
     metrics.markStep("Test", "start");
@@ -237,7 +253,7 @@ describe("Metrics", () => {
   });
 
   it("should include timestamp for step markers", () => {
-    const metrics = new Metrics();
+    const metrics = createMetrics();
     const beforeTime = Date.now();
 
     metrics.markStep("Deploy", "start");

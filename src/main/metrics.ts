@@ -6,6 +6,8 @@ import type { metricsDataSchema } from "../lib.ts";
 export class Metrics {
   private readonly data: z.TypeOf<typeof metricsDataSchema>;
   private readonly intervalMs: number;
+  private timeoutId: NodeJS.Timeout | null = null;
+  private stopped: boolean = false;
 
   constructor() {
     this.data = { cpuLoadPercentages: [], memoryUsageMBs: [], stepMarkers: [] };
@@ -23,6 +25,14 @@ export class Metrics {
 
     // Start async processing immediately (don't await in constructor)
     this.append(Date.now()).catch(setFailed);
+  }
+
+  stop(): void {
+    this.stopped = true;
+    if (this.timeoutId !== null) {
+      clearTimeout(this.timeoutId);
+      this.timeoutId = null;
+    }
   }
 
   get(): string {
@@ -61,11 +71,13 @@ export class Metrics {
     } catch (error) {
       setFailed(error);
     } finally {
-      const nextUNIXTimeMs: number = unixTimeMs + this.intervalMs;
-      setTimeout(
-        () => this.append(nextUNIXTimeMs).catch(setFailed),
-        Math.max(0, nextUNIXTimeMs - Date.now()),
-      );
+      if (!this.stopped) {
+        const nextUNIXTimeMs: number = unixTimeMs + this.intervalMs;
+        this.timeoutId = setTimeout(
+          () => this.append(nextUNIXTimeMs).catch(setFailed),
+          Math.max(0, nextUNIXTimeMs - Date.now()),
+        );
+      }
     }
   }
 }
