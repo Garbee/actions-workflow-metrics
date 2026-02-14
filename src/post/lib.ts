@@ -2,7 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { z } from "zod";
 import { getInput } from "@actions/core";
 import { context, getOctokit } from "@actions/github";
-import { currentLoad, mem } from "systeminformation";
+import { currentLoad, mem, fsSize } from "systeminformation";
 import { Renderer } from "./renderer.ts";
 import { metricsDataSchema, getMetricsFilePath, stepMarkerSchema } from "../lib.ts";
 
@@ -67,6 +67,17 @@ export async function collectFinalMetrics(): Promise<void> {
       unixTimeMs,
       used: active / bytesPerMB,
       free: available / bytesPerMB,
+    });
+    
+    const bytesPerGB: number = 1024 * 1024 * 1024;
+    const disks = await fsSize();
+    // Sum all disks to get total disk usage
+    const totalUsed = disks.reduce((sum, disk) => sum + disk.used, 0);
+    const totalAvailable = disks.reduce((sum, disk) => sum + disk.available, 0);
+    metricsData.diskUsageGBs.push({
+      unixTimeMs,
+      used: totalUsed / bytesPerGB,
+      free: totalAvailable / bytesPerGB,
     });
     
     // Write updated metrics back to file
@@ -182,6 +193,31 @@ export function render(
         ),
         yAxis: {
           title: "MB",
+        },
+      },
+      {
+        title: "Disk Usages",
+        metricsInfoList: [
+          {
+            color: "Cyan",
+            name: "Free",
+            data: metricsData.diskUsageGBs.map(
+              ({ free }: { free: number }): number => free,
+            ),
+          },
+          {
+            color: "Purple",
+            name: "Used",
+            data: metricsData.diskUsageGBs.map(
+              ({ used }: { used: number }): number => used,
+            ),
+          },
+        ],
+        times: metricsData.diskUsageGBs.map(
+          ({ unixTimeMs }: { unixTimeMs: number }): number => unixTimeMs,
+        ),
+        yAxis: {
+          title: "GB",
         },
       },
     ]),

@@ -18,6 +18,10 @@ const sampleMetricsData: z.TypeOf<typeof metricsDataSchema> = {
     { unixTimeMs: 1704067200000, used: 4096, free: 8192 },
     { unixTimeMs: 1704067205000, used: 4200, free: 8000 },
   ],
+  diskUsageGBs: [
+    { unixTimeMs: 1704067200000, used: 50, free: 100 },
+    { unixTimeMs: 1704067205000, used: 55, free: 95 },
+  ],
   stepMarkers: [
     { unixTimeMs: 1704067199000, stepName: "Test Step", status: "start" as const },
     { unixTimeMs: 1704067206000, stepName: "Test Step", status: "end" as const },
@@ -36,12 +40,14 @@ describe("render", () => {
     // Verify rendered result contains expected content
     assert.ok(result.includes("CPU Loads"));
     assert.ok(result.includes("Memory Usages"));
+    assert.ok(result.includes("Disk Usages"));
   });
 
   it("should handle empty metrics data", () => {
     const metricsData: z.TypeOf<typeof metricsDataSchema> = {
       cpuLoadPercentages: [],
       memoryUsageMBs: [],
+      diskUsageGBs: [],
       stepMarkers: [
         { unixTimeMs: 1704067199000, stepName: "Test Step", status: "start" as const },
         { unixTimeMs: 1704067206000, stepName: "Test Step", status: "end" as const },
@@ -64,6 +70,10 @@ describe("render", () => {
         { unixTimeMs: 1704067200000, used: 4000, free: 8000 },
         { unixTimeMs: 1704067205000, used: 4100, free: 7900 },
       ],
+      diskUsageGBs: [
+        { unixTimeMs: 1704067200000, used: 50, free: 100 },
+        { unixTimeMs: 1704067205000, used: 55, free: 95 },
+      ],
       stepMarkers: [
         { unixTimeMs: 1704067199000, stepName: "Test Step", status: "start" as const },
         { unixTimeMs: 1704067206000, stepName: "Test Step", status: "end" as const },
@@ -82,6 +92,10 @@ describe("render", () => {
       memoryUsageMBs: [
         { unixTimeMs: 1704067200000, used: 5000, free: 10000 },
         { unixTimeMs: 1704067205000, used: 5500, free: 9500 },
+      ],
+      diskUsageGBs: [
+        { unixTimeMs: 1704067200000, used: 50, free: 100 },
+        { unixTimeMs: 1704067205000, used: 55, free: 95 },
       ],
       stepMarkers: [
         { unixTimeMs: 1704067199000, stepName: "Test Step", status: "start" as const },

@@ -14,6 +14,12 @@ export const memoryUsageMBSchema = z.object({
   free: z.number().nonnegative(),
 });
 export const memoryUsageMBsSchema = z.array(memoryUsageMBSchema);
+export const diskUsageGBSchema = z.object({
+  unixTimeMs: z.number(),
+  used: z.number().nonnegative(),
+  free: z.number().nonnegative(),
+});
+export const diskUsageGBsSchema = z.array(diskUsageGBSchema);
 export const stepMarkerSchema = z.object({
   unixTimeMs: z.number(),
   stepName: z.string(),
@@ -23,6 +29,7 @@ export const stepMarkersSchema = z.array(stepMarkerSchema);
 export const metricsDataSchema = z.object({
   cpuLoadPercentages: cpuLoadPercentagesSchema,
   memoryUsageMBs: memoryUsageMBsSchema,
+  diskUsageGBs: diskUsageGBsSchema,
   stepMarkers: stepMarkersSchema,
 });
 
