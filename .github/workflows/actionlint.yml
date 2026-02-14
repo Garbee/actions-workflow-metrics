@@ -23,14 +23,14 @@ jobs:
       actions: read # Only needed for private repos. Needed for upload-sarif to read workflow run info.
       security-events: write # Required for upload-sarif to upload SARIF files.
     steps:
-      - name: Start Workflow Telemetry
-        uses: ./
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      - name: Start Workflow Telemetry
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Check workflow files
         run: actionlint -format "$(cat .github/formatters/actionlint-sarif.gotmpl)" .github/workflows/*.yml > actionlint.sarif
       - name: Upload SARIF file
