@@ -87,6 +87,76 @@ jobs:
           sleep 10
           echo "Workload simulation complete"
 
+  test-resource-visualization:
+    name: Test Resource Visualization
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Start Workflow Telemetry
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: "24"
+
+      - name: CPU Intensive Activity
+        run: |
+          echo "Starting CPU-intensive activity for 20 seconds..."
+          node -e "
+          const startTime = Date.now();
+          const endTime = startTime + 20000;
+          let count = 0;
+          while (Date.now() < endTime) {
+            // CPU-intensive calculation
+            for (let i = 0; i < 1000000; i++) {
+              count += Math.sqrt(i);
+            }
+          }
+          console.log('CPU-intensive activity completed. Count:', count);
+          "
+
+      - name: Memory Intensive Activity
+        run: |
+          echo "Starting memory-intensive activity for 20 seconds..."
+          node -e "
+          const arrays = [];
+          const startTime = Date.now();
+          
+          // Allocate ~500MB of memory
+          console.log('Allocating memory...');
+          for (let i = 0; i < 50; i++) {
+            arrays.push(new Array(10 * 1024 * 1024).fill(Math.random()));
+          }
+          console.log('Memory allocated:', arrays.length, 'arrays');
+          
+          // Hold memory for 20 seconds
+          const endTime = startTime + 20000;
+          while (Date.now() < endTime) {
+            // Keep arrays in use
+            if (arrays.length > 0 && Date.now() % 1000 < 10) {
+              arrays[0][0] = Math.random();
+            }
+          }
+          
+          // Free memory
+          console.log('Freeing memory...');
+          arrays.length = 0;
+          console.log('Memory freed. Activity completed.');
+          "
+
+      - name: Idle Activity
+        run: |
+          echo "Starting idle period for 20 seconds..."
+          sleep 20
+          echo "Idle period completed."
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
