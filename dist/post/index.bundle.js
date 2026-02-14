@@ -27458,8 +27458,8 @@ var require_graceful_fs = __commonJS({
       fs7.createReadStream = createReadStream;
       fs7.createWriteStream = createWriteStream2;
       var fs$readFile = fs7.readFile;
-      fs7.readFile = readFile2;
-      function readFile2(path2, options, cb) {
+      fs7.readFile = readFile;
+      function readFile(path2, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$readFile(path2, options, cb);
@@ -27475,8 +27475,8 @@ var require_graceful_fs = __commonJS({
         }
       }
       var fs$writeFile = fs7.writeFile;
-      fs7.writeFile = writeFile3;
-      function writeFile3(path2, data, options, cb) {
+      fs7.writeFile = writeFile2;
+      function writeFile2(path2, data, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$writeFile(path2, data, options, cb);
@@ -28037,7 +28037,7 @@ var require_BufferList = __commonJS({
         this.head = this.tail = null;
         this.length = 0;
       };
-      BufferList.prototype.join = function join3(s) {
+      BufferList.prototype.join = function join2(s) {
         if (this.length === 0) return "";
         var p = this.head;
         var ret = "" + p.data;
@@ -54016,7 +54016,7 @@ var require_util13 = __commonJS({
     function getFilesInPath(source) {
       const lstatSync2 = fs6.lstatSync;
       const readdirSync = fs6.readdirSync;
-      const join3 = path2.join;
+      const join2 = path2.join;
       function isDirectory2(source2) {
         return lstatSync2(source2).isDirectory();
       }
@@ -54025,12 +54025,12 @@ var require_util13 = __commonJS({
       }
       function getDirectories(source2) {
         return readdirSync(source2).map((name) => {
-          return join3(source2, name);
+          return join2(source2, name);
         }).filter(isDirectory2);
       }
       function getFiles(source2) {
         return readdirSync(source2).map((name) => {
-          return join3(source2, name);
+          return join2(source2, name);
         }).filter(isFile);
       }
       function getFilesRecursively(source2) {
@@ -72396,6 +72396,9 @@ function warning(message, properties = {}) {
 }
 function info(message) {
   process.stdout.write(message + os3.EOL);
+}
+function getState(name) {
+  return process.env[`STATE_${name}`] || "";
 }
 
 // node_modules/@actions/artifact/lib/internal/shared/config.js
@@ -108482,9 +108485,6 @@ If the error persists, please check whether Actions and API requests are operati
 // node_modules/@actions/artifact/lib/artifact.js
 var client = new DefaultArtifactClient();
 
-// src/post/lib.ts
-import { readFile, writeFile as writeFile2 } from "node:fs/promises";
-
 // node_modules/zod/v4/classic/external.js
 var external_exports = {};
 __export(external_exports, {
@@ -122521,8 +122521,6 @@ ${rows.join("\n")}
 };
 
 // src/lib.ts
-import { tmpdir } from "node:os";
-import { join as join2 } from "node:path";
 var bytesPerMB = 1024 * 1024;
 var bytesPerGB = 1024 * 1024 * 1024;
 var cpuLoadPercentageSchema = external_exports.object({
@@ -122564,29 +122562,24 @@ var alertSchema = external_exports.object({
   value: external_exports.number(),
   threshold: external_exports.number()
 });
-function getMetricsFilePath() {
-  const runId = process.env.GITHUB_RUN_ID || "local";
-  const job = process.env.GITHUB_JOB || "default";
-  return join2(tmpdir(), `metrics-${runId}-${job}.json`);
-}
 
 // src/post/lib.ts
 async function getMetricsData() {
-  const filePath = getMetricsFilePath();
   try {
-    const content = await readFile(filePath, "utf-8");
-    return metricsDataSchema.parse(JSON.parse(content));
+    const stateData = getState("metrics_data");
+    if (!stateData) {
+      throw new Error("No metrics data found in state");
+    }
+    return metricsDataSchema.parse(JSON.parse(stateData));
   } catch (error49) {
     throw new Error(
-      `Failed to read metrics file at ${filePath}: ${error49 instanceof Error ? error49.message : String(error49)}`
+      `Failed to read metrics from state: ${error49 instanceof Error ? error49.message : String(error49)}`
     );
   }
 }
 async function collectFinalMetrics() {
-  const filePath = getMetricsFilePath();
   try {
-    const content = await readFile(filePath, "utf-8");
-    const metricsData = metricsDataSchema.parse(JSON.parse(content));
+    const metricsData = await getMetricsData();
     const unixTimeMs = Date.now();
     const {
       currentLoadUser,
@@ -122615,9 +122608,10 @@ async function collectFinalMetrics() {
     } else {
       console.warn("Root filesystem not found in final metrics collection. Disk metrics will be incomplete.");
     }
-    await writeFile2(filePath, JSON.stringify(metricsData, null, 2), "utf-8");
+    return metricsData;
   } catch (error49) {
     console.warn(`Failed to collect final metrics: ${error49 instanceof Error ? error49.message : String(error49)}`);
+    return getMetricsData();
   }
 }
 async function fetchWorkflowSteps() {
@@ -122780,18 +122774,7 @@ function render(metricsData, metricsID, alerts = []) {
 async function index() {
   const maxRetryCount = 10;
   let metricsData;
-  await collectFinalMetrics();
-  for (let i = 0; i < maxRetryCount; i++) {
-    try {
-      metricsData = await getMetricsData();
-      break;
-    } catch (error49) {
-      if (maxRetryCount - 2 < i || !(error49 instanceof Error) || !error49.message.includes("Failed to read metrics file")) {
-        setFailed(error49);
-      }
-    }
-    await setTimeout2(1e3);
-  }
+  metricsData = await collectFinalMetrics();
   try {
     const apiSteps = await fetchWorkflowSteps();
     metricsData.stepMarkers = apiSteps;
