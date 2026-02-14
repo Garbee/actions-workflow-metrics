@@ -19,8 +19,8 @@ const sampleMetricsData: z.TypeOf<typeof metricsDataSchema> = {
     { unixTimeMs: 1704067205000, used: 4200, free: 8000 },
   ],
   diskUsageGBs: [
-    { unixTimeMs: 1704067200000, used: 50, free: 100 },
-    { unixTimeMs: 1704067205000, used: 55, free: 95 },
+    { unixTimeMs: 1704067200000, used: 50, available: 100, size: 150 },
+    { unixTimeMs: 1704067205000, used: 55, available: 95, size: 150 },
   ],
   stepMarkers: [
     { unixTimeMs: 1704067199000, stepName: "Test Step", status: "start" as const },
@@ -38,9 +38,9 @@ describe("render", () => {
     assert.ok(result.length > 0);
 
     // Verify rendered result contains expected content
-    assert.ok(result.includes("CPU Loads"));
-    assert.ok(result.includes("Memory Usages"));
-    assert.ok(result.includes("Disk Usages"));
+    assert.ok(result.includes("CPU Usage"));
+    assert.ok(result.includes("Memory Usage"));
+    assert.ok(result.includes("Disk Usage"));
   });
 
   it("should handle empty metrics data", () => {
@@ -71,8 +71,8 @@ describe("render", () => {
         { unixTimeMs: 1704067205000, used: 4100, free: 7900 },
       ],
       diskUsageGBs: [
-        { unixTimeMs: 1704067200000, used: 50, free: 100 },
-        { unixTimeMs: 1704067205000, used: 55, free: 95 },
+        { unixTimeMs: 1704067200000, used: 50, available: 100, size: 150 },
+        { unixTimeMs: 1704067205000, used: 55, available: 95, size: 150 },
       ],
       stepMarkers: [
         { unixTimeMs: 1704067199000, stepName: "Test Step", status: "start" as const },
@@ -94,8 +94,7 @@ describe("render", () => {
         { unixTimeMs: 1704067205000, used: 5500, free: 9500 },
       ],
       diskUsageGBs: [
-        { unixTimeMs: 1704067200000, used: 50, free: 100 },
-        { unixTimeMs: 1704067205000, used: 55, free: 95 },
+        { unixTimeMs: 1704067200000, used: 60, available: 90, size: 150 },
       ],
       stepMarkers: [
         { unixTimeMs: 1704067199000, stepName: "Test Step", status: "start" as const },

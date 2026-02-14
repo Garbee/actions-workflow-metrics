@@ -81,14 +81,18 @@ export class Metrics {
       });
 
       const disks = await fsSize();
-      // Sum all disks to get total disk usage
-      const totalUsed = disks.reduce((sum, disk) => sum + disk.used, 0);
-      const totalAvailable = disks.reduce((sum, disk) => sum + disk.available, 0);
-      this.data.diskUsageGBs.push({
-        unixTimeMs,
-        used: totalUsed / bytesPerGB,
-        free: totalAvailable / bytesPerGB,
-      });
+      // Track only the root filesystem where workflows run
+      const rootDisk = disks.find(disk => disk.mount === '/');
+      if (rootDisk) {
+        this.data.diskUsageGBs.push({
+          unixTimeMs,
+          used: rootDisk.used / bytesPerGB,
+          available: rootDisk.available / bytesPerGB,
+          size: rootDisk.size / bytesPerGB,
+        });
+      } else {
+        console.warn('Root filesystem not found in disk list. Disk metrics will be incomplete.');
+      }
 
       // Write to file after collecting metrics
       await this.writeData();

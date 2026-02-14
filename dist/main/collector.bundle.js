@@ -50767,7 +50767,7 @@ config(en_default());
 
 // src/lib.ts
 var bytesPerMB = 1024 * 1024;
-var bytesPerGB = 1024 * 1024 * 1024 * 10;
+var bytesPerGB = 1024 * 1024 * 1024;
 var cpuLoadPercentageSchema = external_exports.object({
   unixTimeMs: external_exports.number(),
   user: external_exports.number().nonnegative().max(100),
@@ -50783,7 +50783,8 @@ var memoryUsageMBsSchema = external_exports.array(memoryUsageMBSchema);
 var diskUsageGBSchema = external_exports.object({
   unixTimeMs: external_exports.number(),
   used: external_exports.number().nonnegative(),
-  free: external_exports.number().nonnegative()
+  available: external_exports.number().nonnegative(),
+  size: external_exports.number().nonnegative()
 });
 var diskUsageGBsSchema = external_exports.array(diskUsageGBSchema);
 var stepMarkerSchema = external_exports.object({
@@ -50873,13 +50874,17 @@ var Metrics = class {
         free: available / bytesPerMB
       });
       const disks = await (0, import_systeminformation.fsSize)();
-      const totalUsed = disks.reduce((sum, disk) => sum + disk.used, 0);
-      const totalAvailable = disks.reduce((sum, disk) => sum + disk.available, 0);
-      this.data.diskUsageGBs.push({
-        unixTimeMs,
-        used: totalUsed / bytesPerGB,
-        free: totalAvailable / bytesPerGB
-      });
+      const rootDisk = disks.find((disk) => disk.mount === "/");
+      if (rootDisk) {
+        this.data.diskUsageGBs.push({
+          unixTimeMs,
+          used: rootDisk.used / bytesPerGB,
+          available: rootDisk.available / bytesPerGB,
+          size: rootDisk.size / bytesPerGB
+        });
+      } else {
+        console.warn("Root filesystem not found in disk list. Disk metrics will be incomplete.");
+      }
       await this.writeData();
     } catch (error49) {
       setFailed(error49);

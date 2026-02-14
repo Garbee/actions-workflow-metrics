@@ -3,11 +3,7 @@ import { join } from "node:path";
 import { z } from "zod";
 
 export const bytesPerMB: number = 1024 * 1024;
-// Disk metrics scaling factor: GitHub runners are documented as having 14GB storage,
-// but fsSize() reports the full VM disk size (~145GB). This 10x scaling factor adjusts
-// disk metrics to match the documented storage capacity for consistency with user expectations.
-// Note: This is a pragmatic workaround for the discrepancy between VM disk size and documented storage.
-export const bytesPerGB: number = 1024 * 1024 * 1024 * 10;
+export const bytesPerGB: number = 1024 * 1024 * 1024;
 
 export const cpuLoadPercentageSchema = z.object({
   unixTimeMs: z.number(),
@@ -24,7 +20,8 @@ export const memoryUsageMBsSchema = z.array(memoryUsageMBSchema);
 export const diskUsageGBSchema = z.object({
   unixTimeMs: z.number(),
   used: z.number().nonnegative(),
-  free: z.number().nonnegative(),
+  available: z.number().nonnegative(),
+  size: z.number().nonnegative(),
 });
 export const diskUsageGBsSchema = z.array(diskUsageGBSchema);
 export const stepMarkerSchema = z.object({
