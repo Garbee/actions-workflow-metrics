@@ -1,7 +1,9 @@
 import { z } from "zod";
-import { getInput, getState } from "@actions/core";
+import { getInput } from "@actions/core";
 import { context, getOctokit } from "@actions/github";
 import { currentLoad, mem, fsSize } from "systeminformation";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { Renderer } from "./renderer.ts";
 import { metricsDataSchema, stepMarkerSchema, bytesPerMB, bytesPerGB, type Alert } from "../lib.ts";
 
@@ -9,14 +11,27 @@ export async function getMetricsData(): Promise<
   z.TypeOf<typeof metricsDataSchema>
 > {
   try {
-    const stateData = getState("metrics_data");
-    if (!stateData) {
-      throw new Error("No metrics data found in state");
+    // Read from state file in GitHub state directory
+    const githubStateFile = process.env.GITHUB_STATE;
+    const runId = process.env.GITHUB_RUN_ID || "local";
+    const job = process.env.GITHUB_JOB || "default";
+    
+    let stateFile: string;
+    if (githubStateFile) {
+      // Use the directory containing the GitHub state file
+      const stateDir = join(githubStateFile, '..');
+      stateFile = join(stateDir, `metrics-state-${runId}-${job}.json`);
+    } else {
+      // Fallback for local testing
+      const runnerTemp = process.env.RUNNER_TEMP || process.env.TMPDIR || '/tmp';
+      stateFile = join(runnerTemp, `metrics-state-${runId}-${job}.json`);
     }
-    return metricsDataSchema.parse(JSON.parse(stateData));
+    
+    const content = await readFile(stateFile, "utf-8");
+    return metricsDataSchema.parse(JSON.parse(content));
   } catch (error) {
     throw new Error(
-      `Failed to read metrics from state: ${error instanceof Error ? error.message : String(error)}`,
+      `Failed to read metrics from state file: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }

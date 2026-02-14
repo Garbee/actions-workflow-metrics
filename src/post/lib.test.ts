@@ -1,5 +1,6 @@
 import { describe, it, before, after, mock, beforeEach } from "node:test";
 import * as assert from "node:assert/strict";
+import { join } from "node:path";
 import type { z } from "zod";
 import type { metricsDataSchema } from "../lib.js";
 
@@ -26,7 +27,7 @@ const sampleMetricsData: z.TypeOf<typeof metricsDataSchema> = {
 };
 
 // Shared state for mocking
-const savedStates: Map<string, string> = new Map();
+const fileReads: Map<string, string> = new Map();
 let render;
 let getMetricsData;
 
@@ -35,8 +36,18 @@ before(async () => {
   mock.module("@actions/core", {
     namedExports: {
       getInput: () => "",
-      getState: (name: string) => {
-        return savedStates.get(name) || "";
+    },
+  });
+
+  // Mock node:fs/promises module
+  mock.module("node:fs/promises", {
+    namedExports: {
+      readFile: async (path: string): Promise<string> => {
+        const content = fileReads.get(path);
+        if (content) {
+          return Promise.resolve(content);
+        }
+        throw new Error("ENOENT: no such file or directory");
       },
     },
   });
@@ -48,8 +59,8 @@ before(async () => {
 });
 
 beforeEach(() => {
-  // Clear saved states between tests
-  savedStates.clear();
+  // Clear file reads between tests
+  fileReads.clear();
 });
 
 describe("render", () => {
@@ -134,9 +145,11 @@ describe("render", () => {
 });
 
 describe("getMetricsData", () => {
-  it("should read metrics data from state", async () => {
-    // Set test data in state
-    savedStates.set("metrics_data", JSON.stringify(sampleMetricsData));
+  it("should read metrics data from state file", async () => {
+    // Set test data in file map (simulating RUNNER_TEMP file)
+    const runnerTemp = process.env.RUNNER_TEMP || process.env.TMPDIR || '/tmp';
+    const stateFile = join(runnerTemp, 'metrics-state-local-default.json');
+    fileReads.set(stateFile, JSON.stringify(sampleMetricsData));
 
     const result = await getMetricsData();
 
@@ -145,7 +158,9 @@ describe("getMetricsData", () => {
 
   it("should throw error for invalid metrics data", async () => {
     // Set invalid data
-    savedStates.set("metrics_data", JSON.stringify({
+    const runnerTemp = process.env.RUNNER_TEMP || process.env.TMPDIR || '/tmp';
+    const stateFile = join(runnerTemp, 'metrics-state-local-default.json');
+    fileReads.set(stateFile, JSON.stringify({
       cpuLoadPercentages: "not an array",
       memoryUsageMBs: [],
     }));
@@ -153,21 +168,23 @@ describe("getMetricsData", () => {
     await assert.rejects(getMetricsData());
   });
 
-  it("should throw error when state is empty", async () => {
-    // Clear state
-    savedStates.clear();
+  it("should throw error when state file doesn't exist", async () => {
+    // Clear file reads
+    fileReads.clear();
 
     await assert.rejects(getMetricsData(), { 
-      message: /Failed to read metrics from state/
+      message: /Failed to read metrics from state file/
     });
   });
 
   it("should throw error when JSON is invalid", async () => {
     // Set invalid JSON
-    savedStates.set("metrics_data", "invalid json{");
+    const runnerTemp = process.env.RUNNER_TEMP || process.env.TMPDIR || '/tmp';
+    const stateFile = join(runnerTemp, 'metrics-state-local-default.json');
+    fileReads.set(stateFile, "invalid json{");
 
     await assert.rejects(getMetricsData(), {
-      message: /Failed to read metrics from state/
+      message: /Failed to read metrics from state file/
     });
   });
 });

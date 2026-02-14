@@ -9,7 +9,7 @@ describe("detectAlerts", () => {
     // Reset mocks
     mock.restoreAll();
 
-    // Mock @actions/core getInput and getState
+    // Mock @actions/core getInput
     mock.module("@actions/core", {
       namedExports: {
         getInput: (name: string): string => {
@@ -21,7 +21,6 @@ describe("detectAlerts", () => {
           };
           return defaults[name] || "";
         },
-        getState: () => "",
       },
     });
 

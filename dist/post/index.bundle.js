@@ -27458,8 +27458,8 @@ var require_graceful_fs = __commonJS({
       fs7.createReadStream = createReadStream;
       fs7.createWriteStream = createWriteStream2;
       var fs$readFile = fs7.readFile;
-      fs7.readFile = readFile;
-      function readFile(path2, options, cb) {
+      fs7.readFile = readFile2;
+      function readFile2(path2, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$readFile(path2, options, cb);
@@ -28037,7 +28037,7 @@ var require_BufferList = __commonJS({
         this.head = this.tail = null;
         this.length = 0;
       };
-      BufferList.prototype.join = function join2(s) {
+      BufferList.prototype.join = function join3(s) {
         if (this.length === 0) return "";
         var p = this.head;
         var ret = "" + p.data;
@@ -54016,7 +54016,7 @@ var require_util13 = __commonJS({
     function getFilesInPath(source) {
       const lstatSync2 = fs6.lstatSync;
       const readdirSync = fs6.readdirSync;
-      const join2 = path2.join;
+      const join3 = path2.join;
       function isDirectory2(source2) {
         return lstatSync2(source2).isDirectory();
       }
@@ -54025,12 +54025,12 @@ var require_util13 = __commonJS({
       }
       function getDirectories(source2) {
         return readdirSync(source2).map((name) => {
-          return join2(source2, name);
+          return join3(source2, name);
         }).filter(isDirectory2);
       }
       function getFiles(source2) {
         return readdirSync(source2).map((name) => {
-          return join2(source2, name);
+          return join3(source2, name);
         }).filter(isFile);
       }
       function getFilesRecursively(source2) {
@@ -72396,9 +72396,6 @@ function warning(message, properties = {}) {
 }
 function info(message) {
   process.stdout.write(message + os3.EOL);
-}
-function getState(name) {
-  return process.env[`STATE_${name}`] || "";
 }
 
 // node_modules/@actions/artifact/lib/internal/shared/config.js
@@ -122255,6 +122252,8 @@ config(en_default());
 
 // src/post/lib.ts
 var import_systeminformation = __toESM(require_lib3(), 1);
+import { readFile } from "node:fs/promises";
+import { join as join2 } from "node:path";
 
 // src/post/renderer.ts
 var Renderer = class {
@@ -122566,14 +122565,22 @@ var alertSchema = external_exports.object({
 // src/post/lib.ts
 async function getMetricsData() {
   try {
-    const stateData = getState("metrics_data");
-    if (!stateData) {
-      throw new Error("No metrics data found in state");
+    const githubStateFile = process.env.GITHUB_STATE;
+    const runId = process.env.GITHUB_RUN_ID || "local";
+    const job = process.env.GITHUB_JOB || "default";
+    let stateFile;
+    if (githubStateFile) {
+      const stateDir = join2(githubStateFile, "..");
+      stateFile = join2(stateDir, `metrics-state-${runId}-${job}.json`);
+    } else {
+      const runnerTemp = process.env.RUNNER_TEMP || process.env.TMPDIR || "/tmp";
+      stateFile = join2(runnerTemp, `metrics-state-${runId}-${job}.json`);
     }
-    return metricsDataSchema.parse(JSON.parse(stateData));
+    const content = await readFile(stateFile, "utf-8");
+    return metricsDataSchema.parse(JSON.parse(content));
   } catch (error49) {
     throw new Error(
-      `Failed to read metrics from state: ${error49 instanceof Error ? error49.message : String(error49)}`
+      `Failed to read metrics from state file: ${error49 instanceof Error ? error49.message : String(error49)}`
     );
   }
 }
