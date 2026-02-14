@@ -16,7 +16,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'push' }}
 
 permissions: {}
 
@@ -26,6 +26,7 @@ jobs:
     name: Copilot Setup
 
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
 
     # Note: Do not try to run inside of a container yet. That causes all the setup scripts
     # by Copilot to fail since that triggers `sh` instead of `bash` for runs. Setting
@@ -43,21 +44,23 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-      - name: Setup NodeJS
+      - name: Setup Node.js
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version-file: .node-version
           cache: npm
       - name: Install Dependencies
         run: npm ci
-      - name: Install actionlint
+      - name: Install Actionlint
         run: go install github.com/rhysd/actionlint/cmd/actionlint@latest
+      - name: Add GOPATH to PATH
+        run: echo "$HOME/go/bin" >> "$GITHUB_PATH"
       - name: Install Zizmor
         env:
           TMP_DIR: ${{ runner.temp }}
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -euoC pipefail
+          set -euo pipefail
           tarball="$TMP_DIR/zizmor.tar.gz"
           gh release download --repo zizmorcore/zizmor --pattern "zizmor-x86_64-unknown-linux-gnu.tar.gz" --output "$tarball"
           tar -xzf "$tarball" -C "$TMP_DIR"

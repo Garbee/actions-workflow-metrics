@@ -18,12 +18,13 @@ jobs:
   actionlint:
     name: Actionlint
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     permissions:
       contents: read # Only needed for private repos. Needed to clone the repo.
       actions: read # Only needed for private repos. Needed for upload-sarif to read workflow run info.
       security-events: write # Required for upload-sarif to upload SARIF files.
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
@@ -31,9 +32,14 @@ jobs:
         uses: ./
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Check workflow files
+      - name: Install actionlint
+        run: go install github.com/rhysd/actionlint/cmd/actionlint@latest
+      - name: Add GOPATH to PATH
+        run: echo "$HOME/go/bin" >> "$GITHUB_PATH"
+      - name: Check Workflow Files
         run: actionlint -format "$(cat .github/formatters/actionlint-sarif.gotmpl)" .github/workflows/*.yml > actionlint.sarif
-      - name: Upload SARIF file
+      - name: Upload SARIF File
+        if: ${{ always() }} # Ensure this runs even if the actionlint step fails, so we get results in the Security tab.
         uses: github/codeql-action/upload-sarif@45cbd0c69e560cd9e7cd7f8c32362050c9b7ded2 # v4.32.2
         with:
           sarif_file: actionlint.sarif
