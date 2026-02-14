@@ -14,20 +14,28 @@ export class Renderer {
     stepMarkers: z.TypeOf<typeof stepMarkerSchema>[] = [],
   ): string {
     const stepSummary = this.generateStepSummary(stepMarkers);
+    
+    // Get times from the first chart for step annotations
+    const filteredParams = renderParamsList.filter(
+      ({
+        metricsInfoList,
+      }: {
+        metricsInfoList: z.TypeOf<typeof metricsInfoListSchema>;
+      }): boolean => metricsInfoList.length > 0,
+    );
+    
+    // Generate step annotations only if there are charts with data
+    const stepAnnotations = filteredParams.length > 0 
+      ? this.generateStepAnnotations(stepMarkers, filteredParams[0].times)
+      : '';
+    
     return `## Workflow Metrics
 
 ### Metrics ID
 
 ${metricsID}
 
-${stepSummary}${renderParamsList
-      .filter(
-        ({
-          metricsInfoList,
-        }: {
-          metricsInfoList: z.TypeOf<typeof metricsInfoListSchema>;
-        }): boolean => metricsInfoList.length > 0,
-      )
+${stepSummary}${filteredParams
       .map((p: z.TypeOf<typeof renderParamsSchema>): string => {
         const colors: string[] = p.metricsInfoList.map(
           ({ color }: { color: string }): string => color,
@@ -49,11 +57,6 @@ ${stepSummary}${renderParamsList
           )
           .slice(1)
           .toReversed();
-
-        const stepAnnotations = this.generateStepAnnotations(
-          stepMarkers,
-          p.times,
-        );
         
         // Generate X-axis labels based on step markers
         const xAxisLabels = this.generateXAxisLabels(stepMarkers, p.times);
@@ -86,10 +89,9 @@ xychart
 x-axis "Workflow Steps" ${JSON.stringify(xAxisLabels)}
 y-axis "${p.yAxis.title}"${p.yAxis.range ? ` ${p.yAxis.range}` : ""}
 ${stackedDatum.map((d: number[]): string => `bar ${JSON.stringify(d)}`).join("\n")}
-\`\`\`
-${stepAnnotations}`;
+\`\`\``;
       })
-      .join("\n\n")}`;
+      .join("\n\n")}${stepAnnotations}`;
   }
 
   private generateStepSummary(

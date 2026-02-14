@@ -122260,17 +122260,19 @@ var import_systeminformation = __toESM(require_lib3(), 1);
 var Renderer = class {
   render(renderParamsList, metricsID, stepMarkers = []) {
     const stepSummary = this.generateStepSummary(stepMarkers);
+    const filteredParams = renderParamsList.filter(
+      ({
+        metricsInfoList
+      }) => metricsInfoList.length > 0
+    );
+    const stepAnnotations = filteredParams.length > 0 ? this.generateStepAnnotations(stepMarkers, filteredParams[0].times) : "";
     return `## Workflow Metrics
 
 ### Metrics ID
 
 ${metricsID}
 
-${stepSummary}${renderParamsList.filter(
-      ({
-        metricsInfoList
-      }) => metricsInfoList.length > 0
-    ).map((p) => {
+${stepSummary}${filteredParams.map((p) => {
       const colors = p.metricsInfoList.map(
         ({ color }) => color
       );
@@ -122283,10 +122285,6 @@ ${stepSummary}${renderParamsList.filter(
         },
         [p.metricsInfoList[0].data.map(() => 0)]
       ).slice(1).toReversed();
-      const stepAnnotations = this.generateStepAnnotations(
-        stepMarkers,
-        p.times
-      );
       const xAxisLabels = this.generateXAxisLabels(stepMarkers, p.times);
       return `### ${p.title}
 
@@ -122313,9 +122311,8 @@ xychart
 x-axis "Workflow Steps" ${JSON.stringify(xAxisLabels)}
 y-axis "${p.yAxis.title}"${p.yAxis.range ? ` ${p.yAxis.range}` : ""}
 ${stackedDatum.map((d) => `bar ${JSON.stringify(d)}`).join("\n")}
-\`\`\`
-${stepAnnotations}`;
-    }).join("\n\n")}`;
+\`\`\``;
+    }).join("\n\n")}${stepAnnotations}`;
   }
   generateStepSummary(stepMarkers) {
     if (stepMarkers.length === 0) {
