@@ -12,36 +12,69 @@ The Workflow Metrics action is a custom GitHub Action that periodically collects
 
 ## Execution Flow
 
+```mermaid
+sequenceDiagram
+    participant User as Workflow
+    participant Main as Main Action<br/>(dist/main/index.js)
+    participant Collector as Collector Process<br/>(dist/main/collector.js)
+    participant State as State File<br/>(metrics-state-{runId}-{job}.json)
+    participant Steps as Workflow Steps
+    participant Post as Post Action<br/>(dist/post/index.js)
+    participant API as GitHub API
+    participant Summary as Job Summary
+
+    User->>Main: 1. Execute action
+    Main->>Collector: Spawn detached process
+    Collector->>Collector: Create Metrics instance
+    Main-->>User: Exit immediately
+    
+    Collector->>Collector: Start collection loop
+    loop Every 5 seconds
+        Collector->>Collector: Collect CPU, Memory, Disk metrics
+        Collector->>State: Write metrics to state file
+    end
+    
+    User->>Steps: Execute workflow steps
+    Note over Collector,Steps: Collector runs in background<br/>while steps execute
+    
+    Steps-->>User: Steps complete
+    User->>Post: 3. Execute post action
+    Post->>Collector: Send SIGTERM/SIGINT
+    Collector->>State: Save final state
+    Collector-->>Post: Process exits
+    
+    Post->>State: Read metrics data
+    Post->>API: Fetch workflow steps
+    API-->>Post: Return step information
+    Post->>Post: Correlate metrics with steps
+    Post->>Post: Generate tables and alerts
+    Post->>Summary: Write to job summary
+    Summary-->>User: Display metrics
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│ 1. Main Execution (dist/main/index.js)                         │
-│    - Spawns collector as detached process                       │
-│    - Exits immediately                                           │
-└─────────────┬───────────────────────────────────────────────────┘
-              │
-              ├─► ┌─────────────────────────────────────────────────┐
-              │   │ 2. Collector Process (dist/main/collector.js)   │
-              │   │    - Creates Metrics instance                    │
-              │   │    - Collects metrics every 5 seconds            │
-              │   │    - Stores metrics in memory                    │
-              │   │    - Writes to state file after each cycle       │
-              │   └───────────────────┬─────────────────────────────┘
-              │                       │
-┌─────────────▼───────────────────────▼─────────────────────────┐
-│ Other Workflow Steps Execute                                   │
-│ (Collector continues running in background)                    │
-└─────────────────────────────┬──────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│ 3. Post Execution (dist/post/index.js)                         │
-│    - Collector stops and ensures final state save              │
-│    - Post action reads metrics from state file                 │
-│    - Fetches workflow steps from GitHub API                    │
-│    - Renders tables with step-by-step metrics                  │
-│    - Outputs to GitHub Actions summary                         │
-└─────────────────────────────────────────────────────────────────┘
-```
+
+### Text Description of Execution Flow
+
+For accessibility, here is a text description of the execution flow diagram above:
+
+1. **Main Action Execution**: The workflow executes the main action (`dist/main/index.js`), which immediately spawns a collector process as a detached background process and exits.
+
+2. **Collector Process**: The collector process (`dist/main/collector.js`) creates a Metrics instance and starts a collection loop that runs every 5 seconds. During each cycle, it:
+   - Collects CPU, memory, and disk usage metrics using the `systeminformation` library
+   - Writes the metrics to a state file (`metrics-state-{runId}-{job}.json`)
+
+3. **Workflow Steps Execution**: While the collector continues running in the background, the workflow executes its regular steps (checkout, build, test, etc.).
+
+4. **Post Action Execution**: After all workflow steps complete, the post action (`dist/post/index.js`) executes. It:
+   - Sends a SIGTERM or SIGINT signal to the collector process
+   - Waits for the collector to save its final state and exit
+   - Reads the complete metrics data from the state file
+   - Fetches workflow step information from the GitHub API
+   - Correlates the collected metrics with workflow steps by timestamp
+   - Generates formatted tables showing metrics for each step
+   - Detects threshold violations and generates alerts
+   - Writes the tables and alerts to the GitHub Actions job summary
+
+5. **Display**: The metrics tables and any alerts are displayed in the GitHub Actions job summary for review.
 
 ## Key Components
 
