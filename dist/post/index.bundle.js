@@ -122549,13 +122549,14 @@ async function collectFinalMetrics() {
       free: available / bytesPerMB
     });
     const disks = await (0, import_systeminformation.fsSize)();
-    const totalUsed = disks.reduce((sum, disk) => sum + disk.used, 0);
-    const totalAvailable = disks.reduce((sum, disk) => sum + disk.available, 0);
-    metricsData.diskUsageGBs.push({
-      unixTimeMs,
-      used: totalUsed / bytesPerGB,
-      free: totalAvailable / bytesPerGB
-    });
+    const rootDisk = disks.find((disk) => disk.mount === "/");
+    if (rootDisk) {
+      metricsData.diskUsageGBs.push({
+        unixTimeMs,
+        used: rootDisk.used / bytesPerGB,
+        free: rootDisk.available / bytesPerGB
+      });
+    }
     await writeFile2(filePath, JSON.stringify(metricsData, null, 2), "utf-8");
   } catch (error49) {
     console.warn(`Failed to collect final metrics: ${error49 instanceof Error ? error49.message : String(error49)}`);

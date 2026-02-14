@@ -50873,13 +50873,14 @@ var Metrics = class {
         free: available / bytesPerMB
       });
       const disks = await (0, import_systeminformation.fsSize)();
-      const totalUsed = disks.reduce((sum, disk) => sum + disk.used, 0);
-      const totalAvailable = disks.reduce((sum, disk) => sum + disk.available, 0);
-      this.data.diskUsageGBs.push({
-        unixTimeMs,
-        used: totalUsed / bytesPerGB,
-        free: totalAvailable / bytesPerGB
-      });
+      const rootDisk = disks.find((disk) => disk.mount === "/");
+      if (rootDisk) {
+        this.data.diskUsageGBs.push({
+          unixTimeMs,
+          used: rootDisk.used / bytesPerGB,
+          free: rootDisk.available / bytesPerGB
+        });
+      }
       await this.writeData();
     } catch (error49) {
       setFailed(error49);

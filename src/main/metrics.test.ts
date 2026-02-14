@@ -217,9 +217,9 @@ describe("Metrics", () => {
     assert.strictEqual(typeof diskData.free, "number");
 
     // Bytes to GB conversion check
-    // (30 GB + 20 GB = 50 GB used, 70 GB + 30 GB = 100 GB free)
-    assert.strictEqual(diskData.used, 50);
-    assert.strictEqual(diskData.free, 100);
+    // Only root filesystem (mount="/") is tracked: 30 GB used, 70 GB free
+    assert.strictEqual(diskData.used, 30);
+    assert.strictEqual(diskData.free, 70);
   });
 
   it("should accumulate metrics data over time", async () => {
