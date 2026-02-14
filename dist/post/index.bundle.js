@@ -26009,7 +26009,7 @@ var require_isarray = __commonJS((exports, module) => {
   };
 });
 
-// node_modules/lazystream/node_modules/safe-buffer/index.js
+// node_modules/lazystream/node_modules/readable-stream/node_modules/safe-buffer/index.js
 var require_safe_buffer = __commonJS((exports, module) => {
   var buffer2 = __require("buffer");
   var Buffer3 = buffer2.Buffer;
@@ -26863,7 +26863,7 @@ var require__stream_duplex = __commonJS((exports, module) => {
   };
 });
 
-// node_modules/lazystream/node_modules/string_decoder/lib/string_decoder.js
+// node_modules/lazystream/node_modules/readable-stream/node_modules/string_decoder/lib/string_decoder.js
 var require_string_decoder = __commonJS((exports) => {
   var Buffer3 = require_safe_buffer().Buffer;
   var isEncoding = Buffer3.isEncoding || function(encoding) {
@@ -35617,7 +35617,7 @@ var require_isPlainObject = __commonJS((exports, module) => {
   module.exports = isPlainObject;
 });
 
-// node_modules/minimatch/dist/commonjs/assert-valid-pattern.js
+// node_modules/glob/node_modules/minimatch/dist/commonjs/assert-valid-pattern.js
 var require_assert_valid_pattern = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.assertValidPattern = undefined;
@@ -35633,7 +35633,7 @@ var require_assert_valid_pattern = __commonJS((exports) => {
   exports.assertValidPattern = assertValidPattern;
 });
 
-// node_modules/minimatch/dist/commonjs/brace-expressions.js
+// node_modules/glob/node_modules/minimatch/dist/commonjs/brace-expressions.js
 var require_brace_expressions = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.parseClass = undefined;
@@ -35748,7 +35748,7 @@ var require_brace_expressions = __commonJS((exports) => {
   exports.parseClass = parseClass;
 });
 
-// node_modules/minimatch/dist/commonjs/unescape.js
+// node_modules/glob/node_modules/minimatch/dist/commonjs/unescape.js
 var require_unescape = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.unescape = undefined;
@@ -35758,7 +35758,7 @@ var require_unescape = __commonJS((exports) => {
   exports.unescape = unescape;
 });
 
-// node_modules/minimatch/dist/commonjs/ast.js
+// node_modules/glob/node_modules/minimatch/dist/commonjs/ast.js
 var require_ast = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.AST = undefined;
@@ -36163,7 +36163,7 @@ var require_ast = __commonJS((exports) => {
   exports.AST = AST;
 });
 
-// node_modules/minimatch/dist/commonjs/escape.js
+// node_modules/glob/node_modules/minimatch/dist/commonjs/escape.js
 var require_escape = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.escape = undefined;
@@ -36173,7 +36173,7 @@ var require_escape = __commonJS((exports) => {
   exports.escape = escape2;
 });
 
-// node_modules/minimatch/dist/commonjs/index.js
+// node_modules/glob/node_modules/minimatch/dist/commonjs/index.js
 var require_commonjs3 = __commonJS((exports) => {
   var __importDefault = exports && exports.__importDefault || function(mod) {
     return mod && mod.__esModule ? mod : { default: mod };
@@ -43312,7 +43312,6 @@ var require_utf8_decoder = __commonJS((exports, module) => {
         const byte = data[i];
         if (this.bytesNeeded === 0) {
           if (byte <= 127) {
-            this.bytesSeen = 0;
             result += String.fromCharCode(byte);
           } else {
             this.bytesSeen = 1;
@@ -43346,7 +43345,6 @@ var require_utf8_decoder = __commonJS((exports, module) => {
           this.lowerBoundary = 128;
           this.upperBoundary = 191;
           result += "�";
-          i--;
           continue;
         }
         this.lowerBoundary = 128;
@@ -48345,7 +48343,7 @@ var require_parser_stream = __commonJS((exports, module) => {
   module.exports = ParserStream;
 });
 
-// node_modules/unzip-stream/node_modules/mkdirp/index.js
+// node_modules/mkdirp/index.js
 var require_mkdirp = __commonJS((exports, module) => {
   var path = __require("path");
   var fs4 = __require("fs");
@@ -57834,13 +57832,11 @@ class DocTypeReader {
             i += 7;
             let entityName, val;
             [entityName, val, i] = this.readEntityExp(xmlData, i + 1, this.suppressValidationErr);
-            if (val.indexOf("&") === -1) {
-              const escaped = entityName.replace(/[.\-+*:]/g, "\\.");
+            if (val.indexOf("&") === -1)
               entities[entityName] = {
-                regx: RegExp(`&${escaped};`, "g"),
+                regx: RegExp(`&${entityName};`, "g"),
                 val
               };
-            }
           } else if (hasBody && hasSeq(xmlData, "!ELEMENT", i)) {
             i += 8;
             const { index } = this.readElementExp(xmlData, i + 1);
@@ -58272,9 +58268,8 @@ function addExternalEntities(externalEntities) {
   const entKeys = Object.keys(externalEntities);
   for (let i = 0;i < entKeys.length; i++) {
     const ent = entKeys[i];
-    const escaped = ent.replace(/[.\-+*:]/g, "\\.");
     this.lastEntities[ent] = {
-      regex: new RegExp("&" + escaped + ";", "g"),
+      regex: new RegExp("&" + ent + ";", "g"),
       val: externalEntities[ent]
     };
   }
@@ -60723,7 +60718,7 @@ class UserDelegationKeyCredential {
   }
 }
 // node_modules/@azure/storage-blob/dist/esm/utils/constants.js
-var SDK_VERSION2 = "12.31.0";
+var SDK_VERSION2 = "12.30.0";
 var SERVICE_VERSION = "2026-02-06";
 var BLOCK_BLOB_MAX_UPLOAD_BLOB_BYTES = 256 * 1024 * 1024;
 var BLOCK_BLOB_MAX_STAGE_BLOCK_BYTES = 4000 * 1024 * 1024;
@@ -96775,5 +96770,5 @@ async function index() {
 }
 await index();
 
-//# debugId=68AA8199BEB7364F64756E2164756E21
+//# debugId=04343AC1FA793CC464756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
