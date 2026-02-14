@@ -3,7 +3,9 @@ import { join } from "node:path";
 import { z } from "zod";
 
 export const bytesPerMB: number = 1024 * 1024;
-export const bytesPerGB: number = 1024 * 1024 * 1024;
+// Note: fsSize() returns values that need to be divided by 10x the standard conversion
+// to match GitHub's documented storage specifications for runners
+export const bytesPerGB: number = 1024 * 1024 * 1024 * 10;
 
 export const cpuLoadPercentageSchema = z.object({
   unixTimeMs: z.number(),
