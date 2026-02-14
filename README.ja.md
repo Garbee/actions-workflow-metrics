@@ -11,8 +11,9 @@
 ## 機能
 
 - **システムメトリクス収集**: ワークフロー実行中のCPU負荷とメモリ使用量をリアルタイムで収集
-- **Mermaidチャート生成**: 収集したメトリクスをMermaid形式の積み上げ棒グラフとして可視化
-- **ジョブサマリー出力**: GitHub Actionsのジョブサマリーに自動的にチャートを表示
+- **ステップレベルの可視化**: 個別のワークフローステップごとのメトリクスを追跡・可視化
+- **Mermaidチャート生成**: 収集したメトリクスをステップアノテーション付きのMermaid形式の積み上げ棒グラフとして可視化
+- **ジョブサマリー出力**: GitHub Actionsのジョブサマリーにチャートとステップタイムラインを自動的に表示
 
 ## 出力例
 
@@ -40,6 +41,8 @@ CPU LoadsやMemory UsagesのJSONデータです。
 
 このアクションはワークフローの**先頭**で実行することを前提としています。
 
+### 基本的な使い方
+
 ```yaml
 name: Example Workflow
 
@@ -63,11 +66,69 @@ jobs:
       # ... その他のステップ
 ```
 
+### 高度な使い方: ステップレベルの追跡
+
+#### オプション1: 自動ステップ検出（推奨）
+
+GitHub APIから自動的にステップ情報を取得するため、GitHubトークンを提供します:
+
+```yaml
+- name: Start Workflow Telemetry
+  uses: dev-hato/actions-workflow-metrics@v1
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+これにより、メトリクスがワークフローステップと自動的に関連付けられ、次の情報が表示されます:
+
+- 開始/終了時刻と実行時間を含むステップサマリーテーブル
+- チャート上のステップタイムラインアノテーション
+
+#### オプション2: 手動ステップマーカー
+
+より正確な制御のため、ステップの境界を手動でマークします:
+
+```yaml
+- name: Start Workflow Telemetry
+  uses: dev-hato/actions-workflow-metrics@v1
+
+- name: Build Project
+  run: |
+    curl -X POST http://localhost:7777/mark-step \
+      -H "Content-Type: application/json" \
+      -d '{"stepName":"Build Project","status":"start"}'
+
+    npm run build
+
+    curl -X POST http://localhost:7777/mark-step \
+      -H "Content-Type: application/json" \
+      -d '{"stepName":"Build Project","status":"end"}'
+
+- name: Run Tests
+  run: |
+    curl -X POST http://localhost:7777/mark-step \
+      -H "Content-Type: application/json" \
+      -d '{"stepName":"Run Tests","status":"start"}'
+
+    npm test
+
+    curl -X POST http://localhost:7777/mark-step \
+      -H "Content-Type: application/json" \
+      -d '{"stepName":"Run Tests","status":"end"}'
+```
+
+### 設定オプション
+
+| 入力               | 説明                                           | 必須   | デフォルト |
+| ------------------ | ---------------------------------------------- | ------ | ---------- |
+| `interval_seconds` | メトリクス収集の間隔（秒）                     | いいえ | `5`        |
+| `github-token`     | ワークフローステップ情報取得用のGitHubトークン | いいえ | -          |
+
 ### 実行フロー
 
 1. **main** (ワークフロー開始時): バックグラウンドでメトリクス収集サーバーを起動
 2. **ワークフローの各ステップ**: 通常通り実行されながらバックグラウンドでメトリクスが収集される
-3. **post** (ワークフロー終了時): 収集したメトリクスをMermaidチャートとして描画し、ジョブサマリーに出力
+3. **post** (ワークフロー終了時): ステップ情報を取得し（トークンが提供された場合）、収集したメトリクスをステップアノテーション付きのMermaidチャートとして描画し、ジョブサマリーに出力
 
 ## 技術スタック
 
@@ -78,6 +139,7 @@ jobs:
   - `systeminformation`: システムメトリクス収集
   - `zod`: スキーマバリデーション
   - `@actions/core`: GitHub Actions連携
+  - `@actions/github`: ステップ情報取得のためのGitHub API連携
 
 ## 開発セットアップ
 
@@ -142,15 +204,22 @@ src/
 
 1. `src/main/index.ts`が実行される
 2. Node.jsで`src/main/server.ts`をデタッチドプロセスとして起動
-3. サーバーが`localhost:7777`でメトリクスJSONを配信開始
+3. サーバーが`localhost:7777`でメトリクスJSONを配信開始。エンドポイント:
+   - `GET /metrics`: 収集したメトリクスデータを返す
+   - `POST /mark-step`: 手動ステップマーカーを受け付ける
+   - `GET /finish`: サーバーをシャットダウン
 4. `Metrics`クラスが5秒ごとに`systeminformation`ライブラリを使ってCPU/メモリ情報を収集
 
 ### post実行時
 
 1. `src/post/index.ts`が実行される
 2. `localhost:7777`からメトリクスJSONを取得（タイムアウト： 10秒）
-3. `Renderer`クラスがMermaidチャートを生成
-4. `@actions/core`の`summary` APIでジョブサマリーに出力
+3. GitHub APIからワークフローステップ情報を取得（トークンが提供された場合）
+4. API由来のステップ情報と手動マーカーをマージ（手動マーカーが優先）
+5. `Renderer`クラスがステップアノテーション付きのMermaidチャートを生成
+6. `@actions/core`の`summary` APIでジョブサマリーに出力。出力内容:
+   - 実行時間を含むステップサマリーテーブル
+   - ステップタイムラインアノテーション付きのCPUとメモリチャート
 
 ## ライセンス
 
