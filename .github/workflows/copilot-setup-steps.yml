@@ -47,6 +47,9 @@ jobs:
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version-file: .node-version
+          cache: npm
+      - name: Install Dependencies
+        run: npm ci
       - name: Install actionlint
         run: go install github.com/rhysd/actionlint/cmd/actionlint@latest
       - name: Install Zizmor

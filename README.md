@@ -1,6 +1,6 @@
 # actions-workflow-metrics
 
-A GitHub Action for collecting system metrics during workflows and displaying them in tables.
+A GitHub Action for collecting system metrics during workflows.
 
 ## Features
 
@@ -84,38 +84,12 @@ The action will automatically:
 2. **Workflow steps**: Execute normally while metrics are collected in the background
 3. **post** (workflow end): Reads collected metrics from file, fetches step information (if token provided), renders metrics as tables with threshold indicators, and outputs to job summary
 
-## Tech Stack
-
-- **Node.js**: 24.x
-- **TypeScript**: 5
-- **Package Manager**: Bun
-- **Key Libraries**:
-  - `systeminformation`: System metrics collection
-  - `zod`: Schema validation
-  - `@actions/core`: GitHub Actions integration
-  - `@actions/github`: GitHub API integration for step information
-
 ## Development Setup
 
 ### 1. Install Dependencies
 
 ```bash
-bun install
-```
-
-### 2. Setup pre-commit (Recommended)
-
-For security, install [pre-commit](https://pre-commit.com/). It automatically checks for credentials on commit.
-
-```bash
-# macOS
-brew install pre-commit
-
-# or using pip
-pip install pre-commit
-
-# Install pre-commit hooks
-pre-commit install
+npm ci
 ```
 
 This automatically runs gitleaks on commit.
@@ -124,14 +98,11 @@ It checks for sensitive information like API keys or tokens.
 ## Development Commands
 
 ```bash
-# Type check + bundle (outputs to dist/ directory)
-bun run build
+# Bundle for operation in a workflow
+npm run build
 
-# Run unit tests (Bun test runner)
-bun test
-
-# Code formatting (Prettier)
-bun run fix
+# Run unit tests (Node test runner)
+npm test
 ```
 
 ## Project Structure

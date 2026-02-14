@@ -11,8 +11,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref }}-${{ github.ref }}
   cancel-in-progress: true
 permissions:
-  contents: read
-  actions: read
+  contents: read # To clone the repository
+  actions: read # To retrieve information about the workflow run and jobs
 jobs:
   test-basic:
     name: Test Basic Usage
@@ -29,7 +29,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: "24"
 
@@ -85,7 +85,7 @@ jobs:
           dd if=/dev/zero of=/tmp/test-5gb-file.bin bs=1M count=5120 status=progress
           echo "5GB file created at /tmp/test-5gb-file.bin"
           ls -lh /tmp/test-5gb-file.bin
-          
+
           node -e "
           const startTime = Date.now();
           const endTime = startTime + 20000;
@@ -98,7 +98,7 @@ jobs:
           }
           console.log('CPU-intensive activity completed. Count:', count);
           "
-          
+
           echo "Removing 5GB test file..."
           rm -f /tmp/test-5gb-file.bin
           echo "Test file removed."
@@ -109,14 +109,14 @@ jobs:
           node -e "
           const arrays = [];
           const startTime = Date.now();
-          
+
           // Allocate ~500MB of memory
           console.log('Allocating memory...');
           for (let i = 0; i < 50; i++) {
             arrays.push(new Array(10 * 1024 * 1024).fill(Math.random()));
           }
           console.log('Memory allocated:', arrays.length, 'arrays');
-          
+
           // Hold memory for 20 seconds
           const endTime = startTime + 20000;
           while (Date.now() < endTime) {
@@ -125,7 +125,7 @@ jobs:
               arrays[0][0] = Math.random();
             }
           }
-          
+
           // Free memory
           console.log('Freeing memory...');
           arrays.length = 0;

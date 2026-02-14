@@ -1,0 +1,38 @@
+name: Zizmor Security Audit
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read # To clone the repository
+
+jobs:
+  zizmor:
+    name: Zizmor
+    runs-on: ubuntu-24.04
+    permissions:
+      security-events: write # Required for upload-sarif (used by zizmor-action) to upload SARIF files.
+      contents: read # Only needed for private repos. Needed to clone the repo.
+      actions: read # Only needed for private repos. Needed for upload-sarif to read workflow run info.
+    steps:
+      - name: Start Workflow Telemetry
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout Code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Run zizmor
+        uses: zizmorcore/zizmor-action@0dce2577a4760a2749d8cfb7a84b7d5585ebcb7d # v0.5.0
+        with:
+          persona: auditor

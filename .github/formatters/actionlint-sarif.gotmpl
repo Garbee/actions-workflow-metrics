@@ -1,0 +1,64 @@
+{
+    "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+    "version": "2.1.0",
+    "runs": [
+        {
+            "tool": {
+                "driver": {
+                    "name": "actionlint",
+                    "version": {{- replace (json getVersion) "\\n" "" -}},
+                    "informationUri": "https://github.com/rhysd/actionlint",
+                    "rules": [ {{ $first := true }} {{ range $ := allKinds }}
+                        {{ if $first }}{{ $first = false }}{{ else }},{{ end }}
+                        {
+                            "id": {{- replace (json $.Name) "\\n" "" -}},
+                            "name": {{- replace (json (toPascalCase $.Name)) "\\n" "" -}},
+                            "defaultConfiguration": {
+                                "level": "error"
+                            },
+                            "properties": {
+                                "description": {{- replace (json $.Description) "\\n" "" -}},
+                                "queryURI": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+                            },
+                            "fullDescription": {
+                                "text": {{- replace (json $.Description) "\\n" "" -}}
+                            },
+                            "helpUri": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+                        }
+                        {{ end }}
+                    ]
+                }
+            },
+            "results": [
+                {{ $first := true }}
+                {{ range $ := . }}
+                    {{ if $first }}{{ $first = false }}{{ else }},{{ end }}
+                    {
+                        "ruleId": {{- replace (json $.Kind) "\\n" "" -}},
+                        "message": {
+                            "text": {{- replace (json $.Message) "\\n" "" -}}
+                        },
+                        "locations": [
+                            {
+                                "physicalLocation": {
+                                    "artifactLocation": {
+                                        "uri": {{- replace (json $.Filepath) "\\n" "" -}},
+                                        "uriBaseId": "%SRCROOT%"
+                                    },
+                                    "region": {
+                                        "startLine": {{ $.Line }},
+                                        "startColumn": {{ $.Column }},
+                                        "endColumn": {{ $.EndColumn }},
+                                        "snippet": {
+                                            "text": {{- replace (json $.Snippet) "\\n" "" -}}
+                                        }
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                {{ end }}
+            ]
+        }
+    ]
+}

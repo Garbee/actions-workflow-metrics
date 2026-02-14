@@ -1,0 +1,32 @@
+name: Actionlint
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read # To clone the repository
+
+jobs:
+  actionlint:
+    name: Run Actionlint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Run Actionlint
+        uses: reviewdog/action-actionlint@67c968ad08ea46e945d10f94a38f7c7f407a0b55 # v1.59.0
+        with:
+          fail_on_error: true
