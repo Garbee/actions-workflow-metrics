@@ -75,7 +75,8 @@ export async function collectFinalMetrics(): Promise<void> {
       metricsData.diskUsageGBs.push({
         unixTimeMs,
         used: rootDisk.used / bytesPerGB,
-        free: rootDisk.available / bytesPerGB,
+        available: rootDisk.available / bytesPerGB,
+        size: rootDisk.size / bytesPerGB,
       });
     } else {
       console.warn('Root filesystem not found in final metrics collection. Disk metrics will be incomplete.');
@@ -250,9 +251,9 @@ export function detectAlerts(
     });
   }
 
-  // Check disk usage (used / (used + free) * 100)
+  // Check disk usage (used / (used + available) * 100)
   for (const disk of metricsData.diskUsageGBs) {
-    const total = disk.used + disk.free;
+    const total = disk.used + disk.available;
     const utilizationPercent = (disk.used / total) * 100;
 
     if (utilizationPercent > diskThreshold) {
@@ -331,34 +332,10 @@ export function render(
           title: "MB",
         },
       },
-      {
-        title: "Disk Usages",
-        metricsInfoList: [
-          {
-            color: "Cyan",
-            name: "Free",
-            data: metricsData.diskUsageGBs.map(
-              ({ free }: { free: number }): number => free,
-            ),
-          },
-          {
-            color: "Purple",
-            name: "Used",
-            data: metricsData.diskUsageGBs.map(
-              ({ used }: { used: number }): number => used,
-            ),
-          },
-        ],
-        times: metricsData.diskUsageGBs.map(
-          ({ unixTimeMs }: { unixTimeMs: number }): number => unixTimeMs,
-        ),
-        yAxis: {
-          title: "GB",
-        },
-      },
     ]),
     metricsID,
     metricsData.stepMarkers,
     alerts,
+    metricsData.diskUsageGBs,
   );
 }

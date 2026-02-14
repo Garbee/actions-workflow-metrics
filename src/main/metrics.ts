@@ -87,7 +87,8 @@ export class Metrics {
         this.data.diskUsageGBs.push({
           unixTimeMs,
           used: rootDisk.used / bytesPerGB,
-          free: rootDisk.available / bytesPerGB,
+          available: rootDisk.available / bytesPerGB,
+          size: rootDisk.size / bytesPerGB,
         });
       } else {
         console.warn('Root filesystem not found in disk list. Disk metrics will be incomplete.');

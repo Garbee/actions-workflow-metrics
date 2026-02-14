@@ -50767,8 +50767,7 @@ config(en_default());
 
 // src/lib.ts
 var bytesPerMB = 1024 * 1024;
-var DISK_SCALING_FACTOR = 10;
-var bytesPerGB = 1024 * 1024 * 1024 * DISK_SCALING_FACTOR;
+var bytesPerGB = 1024 * 1024 * 1024;
 var cpuLoadPercentageSchema = external_exports.object({
   unixTimeMs: external_exports.number(),
   user: external_exports.number().nonnegative().max(100),
@@ -50784,7 +50783,8 @@ var memoryUsageMBsSchema = external_exports.array(memoryUsageMBSchema);
 var diskUsageGBSchema = external_exports.object({
   unixTimeMs: external_exports.number(),
   used: external_exports.number().nonnegative(),
-  free: external_exports.number().nonnegative()
+  available: external_exports.number().nonnegative(),
+  size: external_exports.number().nonnegative()
 });
 var diskUsageGBsSchema = external_exports.array(diskUsageGBSchema);
 var stepMarkerSchema = external_exports.object({
@@ -50879,7 +50879,8 @@ var Metrics = class {
         this.data.diskUsageGBs.push({
           unixTimeMs,
           used: rootDisk.used / bytesPerGB,
-          free: rootDisk.available / bytesPerGB
+          available: rootDisk.available / bytesPerGB,
+          size: rootDisk.size / bytesPerGB
         });
       } else {
         console.warn("Root filesystem not found in disk list. Disk metrics will be incomplete.");

@@ -5,7 +5,7 @@ import type {
   metricsInfoListSchema,
   metricsInfoSchema,
 } from "./lib.js";
-import type { stepMarkerSchema, Alert } from "../lib.js";
+import type { stepMarkerSchema, Alert, diskUsageGBSchema } from "../lib.js";
 
 export class Renderer {
   render(
@@ -13,9 +13,11 @@ export class Renderer {
     metricsID: string,
     stepMarkers: z.TypeOf<typeof stepMarkerSchema>[] = [],
     alerts: Alert[] = [],
+    diskUsageGBs: z.TypeOf<typeof diskUsageGBSchema>[] = [],
   ): string {
     const stepSummary = this.generateStepSummary(stepMarkers);
     const alertsSection = this.generateAlertsSection(alerts);
+    const diskUsageSection = this.generateDiskUsageSection(diskUsageGBs, stepMarkers);
 
     // Get times from the first chart for step annotations
     const filteredParams = renderParamsList.filter(
@@ -37,7 +39,7 @@ export class Renderer {
 
 ${metricsID}
 
-${alertsSection}${stepSummary}${filteredParams
+${alertsSection}${stepSummary}${diskUsageSection}${filteredParams
       .map((p: z.TypeOf<typeof renderParamsSchema>): string => {
         const colors: string[] = p.metricsInfoList.map(
           ({ color }: { color: string }): string => color,
@@ -279,6 +281,76 @@ ${rows}
 
 > [!WARNING]
 ${alertItems.join("\n")}
+
+`;
+  }
+
+  private generateDiskUsageSection(
+    diskUsageGBs: z.TypeOf<typeof diskUsageGBSchema>[],
+    stepMarkers: z.TypeOf<typeof stepMarkerSchema>[],
+  ): string {
+    if (diskUsageGBs.length === 0) {
+      return "";
+    }
+
+    // Get initial disk metrics
+    const initialDisk = diskUsageGBs[0];
+    
+    // Create a map of step names to their disk metrics
+    const stepDiskMap = new Map<string, z.TypeOf<typeof diskUsageGBSchema>>();
+    
+    // Build step ranges
+    const stepRanges: { start: number; end: number; name: string }[] = [];
+    const stepStarts = new Map<string, number>();
+    const stepEnds = new Map<string, number>();
+
+    for (const marker of stepMarkers) {
+      if (marker.status === "start") {
+        stepStarts.set(marker.stepName, marker.unixTimeMs);
+      } else if (marker.status === "end") {
+        stepEnds.set(marker.stepName, marker.unixTimeMs);
+      }
+    }
+
+    for (const [stepName, startTime] of stepStarts.entries()) {
+      const endTime = stepEnds.get(stepName);
+      if (endTime) {
+        stepRanges.push({ start: startTime, end: endTime, name: stepName });
+      }
+    }
+
+    // Map disk metrics to steps
+    for (const disk of diskUsageGBs) {
+      for (const range of stepRanges) {
+        if (disk.unixTimeMs >= range.start && disk.unixTimeMs < range.end) {
+          // Use the first metric that falls within the step
+          if (!stepDiskMap.has(range.name)) {
+            stepDiskMap.set(range.name, disk);
+          }
+          break;
+        }
+      }
+    }
+
+    // Generate the disk usage table
+    const rows: string[] = [];
+    
+    // Add initialization row
+    rows.push(`| Initialization | ${initialDisk.size.toFixed(2)} GB | ${initialDisk.used.toFixed(2)} GB | ${initialDisk.available.toFixed(2)} GB |`);
+    
+    // Add rows for each step that has disk metrics
+    for (const range of stepRanges) {
+      const disk = stepDiskMap.get(range.name);
+      if (disk) {
+        rows.push(`| ${range.name} | ${disk.size.toFixed(2)} GB | ${disk.used.toFixed(2)} GB | ${disk.available.toFixed(2)} GB |`);
+      }
+    }
+
+    return `### Disk Usage
+
+| Step | Total Size | Used | Available |
+|------|------------|------|-----------|
+${rows.join("\n")}
 
 `;
   }

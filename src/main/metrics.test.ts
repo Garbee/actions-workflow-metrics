@@ -156,7 +156,8 @@ describe("Metrics", () => {
     assert.ok(data.diskUsageGBs.length > 0);
     assert.strictEqual(typeof data.diskUsageGBs[0].unixTimeMs, "number");
     assert.ok(data.diskUsageGBs[0].used !== undefined);
-    assert.ok(data.diskUsageGBs[0].free !== undefined);
+    assert.ok(data.diskUsageGBs[0].available !== undefined);
+    assert.ok(data.diskUsageGBs[0].size !== undefined);
   });
 
   it("should have correct CPU metrics format", async () => {
@@ -214,13 +215,14 @@ describe("Metrics", () => {
 
     assert.strictEqual(typeof diskData.unixTimeMs, "number");
     assert.strictEqual(typeof diskData.used, "number");
-    assert.strictEqual(typeof diskData.free, "number");
+    assert.strictEqual(typeof diskData.available, "number");
+    assert.strictEqual(typeof diskData.size, "number");
 
-    // Bytes to GB conversion check with 10x scaling factor
-    // Root filesystem (mount="/"): 30 GB used / 10 = 3 GB, 70 GB free / 10 = 7 GB
-    // Scaling matches GitHub runner documented storage (~14GB) vs actual VM size (~145GB)
-    assert.strictEqual(diskData.used, 3);
-    assert.strictEqual(diskData.free, 7);
+    // Bytes to GB conversion check (no scaling factor)
+    // Root filesystem (mount="/"): 30 GB used, 70 GB available, 100 GB size
+    assert.strictEqual(diskData.used, 30);
+    assert.strictEqual(diskData.available, 70);
+    assert.strictEqual(diskData.size, 100);
   });
 
   it("should accumulate metrics data over time", async () => {

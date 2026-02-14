@@ -122258,9 +122258,10 @@ var import_systeminformation = __toESM(require_lib3(), 1);
 
 // src/post/renderer.ts
 var Renderer = class {
-  render(renderParamsList, metricsID, stepMarkers = [], alerts = []) {
+  render(renderParamsList, metricsID, stepMarkers = [], alerts = [], diskUsageGBs = []) {
     const stepSummary = this.generateStepSummary(stepMarkers);
     const alertsSection = this.generateAlertsSection(alerts);
+    const diskUsageSection = this.generateDiskUsageSection(diskUsageGBs, stepMarkers);
     const filteredParams = renderParamsList.filter(
       ({
         metricsInfoList
@@ -122273,7 +122274,7 @@ var Renderer = class {
 
 ${metricsID}
 
-${alertsSection}${stepSummary}${filteredParams.map((p) => {
+${alertsSection}${stepSummary}${diskUsageSection}${filteredParams.map((p) => {
       const colors = p.metricsInfoList.map(
         ({ color }) => color
       );
@@ -122448,14 +122449,61 @@ ${alertItems.join("\n")}
 
 `;
   }
+  generateDiskUsageSection(diskUsageGBs, stepMarkers) {
+    if (diskUsageGBs.length === 0) {
+      return "";
+    }
+    const initialDisk = diskUsageGBs[0];
+    const stepDiskMap = /* @__PURE__ */ new Map();
+    const stepRanges = [];
+    const stepStarts = /* @__PURE__ */ new Map();
+    const stepEnds = /* @__PURE__ */ new Map();
+    for (const marker2 of stepMarkers) {
+      if (marker2.status === "start") {
+        stepStarts.set(marker2.stepName, marker2.unixTimeMs);
+      } else if (marker2.status === "end") {
+        stepEnds.set(marker2.stepName, marker2.unixTimeMs);
+      }
+    }
+    for (const [stepName, startTime] of stepStarts.entries()) {
+      const endTime = stepEnds.get(stepName);
+      if (endTime) {
+        stepRanges.push({ start: startTime, end: endTime, name: stepName });
+      }
+    }
+    for (const disk of diskUsageGBs) {
+      for (const range2 of stepRanges) {
+        if (disk.unixTimeMs >= range2.start && disk.unixTimeMs < range2.end) {
+          if (!stepDiskMap.has(range2.name)) {
+            stepDiskMap.set(range2.name, disk);
+          }
+          break;
+        }
+      }
+    }
+    const rows = [];
+    rows.push(`| Initialization | ${initialDisk.size.toFixed(2)} GB | ${initialDisk.used.toFixed(2)} GB | ${initialDisk.available.toFixed(2)} GB |`);
+    for (const range2 of stepRanges) {
+      const disk = stepDiskMap.get(range2.name);
+      if (disk) {
+        rows.push(`| ${range2.name} | ${disk.size.toFixed(2)} GB | ${disk.used.toFixed(2)} GB | ${disk.available.toFixed(2)} GB |`);
+      }
+    }
+    return `### Disk Usage
+
+| Step | Total Size | Used | Available |
+|------|------------|------|-----------|
+${rows.join("\n")}
+
+`;
+  }
 };
 
 // src/lib.ts
 import { tmpdir } from "node:os";
 import { join as join2 } from "node:path";
 var bytesPerMB = 1024 * 1024;
-var DISK_SCALING_FACTOR = 10;
-var bytesPerGB = 1024 * 1024 * 1024 * DISK_SCALING_FACTOR;
+var bytesPerGB = 1024 * 1024 * 1024;
 var cpuLoadPercentageSchema = external_exports.object({
   unixTimeMs: external_exports.number(),
   user: external_exports.number().nonnegative().max(100),
@@ -122471,7 +122519,8 @@ var memoryUsageMBsSchema = external_exports.array(memoryUsageMBSchema);
 var diskUsageGBSchema = external_exports.object({
   unixTimeMs: external_exports.number(),
   used: external_exports.number().nonnegative(),
-  free: external_exports.number().nonnegative()
+  available: external_exports.number().nonnegative(),
+  size: external_exports.number().nonnegative()
 });
 var diskUsageGBsSchema = external_exports.array(diskUsageGBSchema);
 var stepMarkerSchema = external_exports.object({
@@ -122555,7 +122604,8 @@ async function collectFinalMetrics() {
       metricsData.diskUsageGBs.push({
         unixTimeMs,
         used: rootDisk.used / bytesPerGB,
-        free: rootDisk.available / bytesPerGB
+        available: rootDisk.available / bytesPerGB,
+        size: rootDisk.size / bytesPerGB
       });
     } else {
       console.warn("Root filesystem not found in final metrics collection. Disk metrics will be incomplete.");
@@ -122689,7 +122739,7 @@ function detectAlerts(metricsData) {
     });
   }
   for (const disk of metricsData.diskUsageGBs) {
-    const total = disk.used + disk.free;
+    const total = disk.used + disk.available;
     const utilizationPercent = disk.used / total * 100;
     if (utilizationPercent > diskThreshold) {
       const step = getStepForTime(disk.unixTimeMs);
@@ -122759,36 +122809,12 @@ function render(metricsData, metricsID, alerts = []) {
         yAxis: {
           title: "MB"
         }
-      },
-      {
-        title: "Disk Usages",
-        metricsInfoList: [
-          {
-            color: "Cyan",
-            name: "Free",
-            data: metricsData.diskUsageGBs.map(
-              ({ free }) => free
-            )
-          },
-          {
-            color: "Purple",
-            name: "Used",
-            data: metricsData.diskUsageGBs.map(
-              ({ used }) => used
-            )
-          }
-        ],
-        times: metricsData.diskUsageGBs.map(
-          ({ unixTimeMs }) => unixTimeMs
-        ),
-        yAxis: {
-          title: "GB"
-        }
       }
     ]),
     metricsID,
     metricsData.stepMarkers,
-    alerts
+    alerts,
+    metricsData.diskUsageGBs
   );
 }
 

@@ -40,8 +40,8 @@ describe("detectAlerts", () => {
         { unixTimeMs: 6000, used: 1500, free: 2500 }, // 37.5% usage
       ],
       diskUsageGBs: [
-        { unixTimeMs: 1000, used: 20, free: 80 }, // 20% usage
-        { unixTimeMs: 6000, used: 30, free: 70 }, // 30% usage
+        { unixTimeMs: 1000, used: 20, available: 80, size: 100 }, // 20% usage
+        { unixTimeMs: 6000, used: 30, available: 70, size: 100 }, // 30% usage
       ],
       stepMarkers: [
         { unixTimeMs: 0, stepName: "Test Step", status: "start" },
@@ -61,7 +61,7 @@ describe("detectAlerts", () => {
         { unixTimeMs: 6000, used: 3500, free: 1000 }, // 77.8% usage - OK
         { unixTimeMs: 11000, used: 4100, free: 900 }, // 82% usage - Alert!
       ],
-      diskUsageGBs: [{ unixTimeMs: 1000, used: 20, free: 80 }],
+      diskUsageGBs: [{ unixTimeMs: 1000, used: 20, available: 80, size: 100 }],
       stepMarkers: [
         { unixTimeMs: 10000, stepName: "Memory Intensive", status: "start" },
         { unixTimeMs: 15000, stepName: "Memory Intensive", status: "end" },
@@ -81,8 +81,8 @@ describe("detectAlerts", () => {
       cpuLoadPercentages: [{ unixTimeMs: 1000, user: 30, system: 20 }],
       memoryUsageMBs: [{ unixTimeMs: 1000, used: 1000, free: 3000 }],
       diskUsageGBs: [
-        { unixTimeMs: 1000, used: 20, free: 80 }, // 20% usage - OK
-        { unixTimeMs: 6000, used: 92, free: 8 }, // 92% usage - Alert!
+        { unixTimeMs: 1000, used: 20, available: 80, size: 100 }, // 20% usage - OK
+        { unixTimeMs: 6000, used: 92, available: 8, size: 100 }, // 92% usage - Alert!
       ],
       stepMarkers: [
         { unixTimeMs: 5000, stepName: "Disk Heavy", status: "start" },
@@ -117,7 +117,7 @@ describe("detectAlerts", () => {
         { unixTimeMs: 66000, user: 30, system: 20 }, // 50% - drops
       ],
       memoryUsageMBs: [{ unixTimeMs: 1000, used: 1000, free: 3000 }],
-      diskUsageGBs: [{ unixTimeMs: 1000, used: 20, free: 80 }],
+      diskUsageGBs: [{ unixTimeMs: 1000, used: 20, available: 80, size: 100 }],
       stepMarkers: [
         { unixTimeMs: 0, stepName: "CPU Intensive", status: "start" },
         { unixTimeMs: 70000, stepName: "CPU Intensive", status: "end" },
@@ -152,7 +152,7 @@ describe("detectAlerts", () => {
         { unixTimeMs: 66000, user: 30, system: 20 }, // 50%
       ],
       memoryUsageMBs: [{ unixTimeMs: 1000, used: 1000, free: 3000 }],
-      diskUsageGBs: [{ unixTimeMs: 1000, used: 20, free: 80 }],
+      diskUsageGBs: [{ unixTimeMs: 1000, used: 20, available: 80, size: 100 }],
       stepMarkers: [
         { unixTimeMs: 0, stepName: "Step 1", status: "start" },
         { unixTimeMs: 30000, stepName: "Step 1", status: "end" },
@@ -179,7 +179,7 @@ describe("detectAlerts", () => {
         { unixTimeMs: 21000, user: 30, system: 20 }, // 50% - drops before 60s
       ],
       memoryUsageMBs: [{ unixTimeMs: 1000, used: 1000, free: 3000 }],
-      diskUsageGBs: [{ unixTimeMs: 1000, used: 20, free: 80 }],
+      diskUsageGBs: [{ unixTimeMs: 1000, used: 20, available: 80, size: 100 }],
       stepMarkers: [
         { unixTimeMs: 0, stepName: "Short CPU Burst", status: "start" },
         { unixTimeMs: 25000, stepName: "Short CPU Burst", status: "end" },
@@ -212,8 +212,8 @@ describe("detectAlerts", () => {
         { unixTimeMs: 6000, used: 4100, free: 900 }, // 82% - Alert!
       ],
       diskUsageGBs: [
-        { unixTimeMs: 1000, used: 20, free: 80 }, // 20% - OK
-        { unixTimeMs: 6000, used: 92, free: 8 }, // 92% - Alert!
+        { unixTimeMs: 1000, used: 20, available: 80, size: 100 }, // 20% - OK
+        { unixTimeMs: 6000, used: 92, available: 8, size: 100 }, // 92% - Alert!
       ],
       stepMarkers: [
         { unixTimeMs: 0, stepName: "Heavy Load", status: "start" },
@@ -241,7 +241,7 @@ describe("detectAlerts", () => {
     const metricsData = {
       cpuLoadPercentages: [{ unixTimeMs: 1000, user: 50, system: 40 }],
       memoryUsageMBs: [{ unixTimeMs: 1000, used: 4100, free: 900 }], // 82%
-      diskUsageGBs: [{ unixTimeMs: 1000, used: 20, free: 80 }],
+      diskUsageGBs: [{ unixTimeMs: 1000, used: 20, available: 80, size: 100 }],
       stepMarkers: [],
     };
 
@@ -259,7 +259,7 @@ describe("detectAlerts", () => {
         { unixTimeMs: 6000, used: 4500, free: 500 }, // 90% - Should not create second alert
         { unixTimeMs: 11000, used: 4800, free: 200 }, // 96% - Should not create third alert
       ],
-      diskUsageGBs: [{ unixTimeMs: 1000, used: 20, free: 80 }],
+      diskUsageGBs: [{ unixTimeMs: 1000, used: 20, available: 80, size: 100 }],
       stepMarkers: [
         { unixTimeMs: 0, stepName: "Test", status: "start" },
         { unixTimeMs: 15000, stepName: "Test", status: "end" },
@@ -276,9 +276,9 @@ describe("detectAlerts", () => {
       cpuLoadPercentages: [{ unixTimeMs: 1000, user: 30, system: 20 }],
       memoryUsageMBs: [{ unixTimeMs: 1000, used: 1000, free: 3000 }],
       diskUsageGBs: [
-        { unixTimeMs: 1000, used: 92, free: 8 }, // 92% - First alert
-        { unixTimeMs: 6000, used: 95, free: 5 }, // 95% - Should not create second alert
-        { unixTimeMs: 11000, used: 98, free: 2 }, // 98% - Should not create third alert
+        { unixTimeMs: 1000, used: 92, available: 8, size: 100 }, // 92% - First alert
+        { unixTimeMs: 6000, used: 95, available: 5, size: 100 }, // 95% - Should not create second alert
+        { unixTimeMs: 11000, used: 98, available: 2, size: 100 }, // 98% - Should not create third alert
       ],
       stepMarkers: [
         { unixTimeMs: 0, stepName: "Test", status: "start" },
