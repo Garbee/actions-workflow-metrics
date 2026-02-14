@@ -1,8 +1,10 @@
 {
   "type": "module",
   "scripts": {
-    "build": "bun run fix && tsc && bun run scripts/build.ts",
-    "fix": "prettier --write ."
+    "build": "pnpm run fix && tsc && tsx scripts/build.ts",
+    "fix": "prettier --write .",
+    "test": "vitest run",
+    "tsc": "tsc"
   },
   "dependencies": {
     "@actions/artifact": "^6.0.0",
@@ -14,8 +16,8 @@
   "devDependencies": {
     "@proofdict/textlint-rule-proofdict": "3.1.2",
     "@textlint-ja/textlint-rule-no-insert-dropping-sa": "2.0.1",
-    "@types/bun": "1.3.8",
     "@types/node": "25.2.1",
+    "@vitest/ui": "^3.0.0",
     "esbuild": "^0.27.3",
     "node-fetch": "2.6.12",
     "prettier": "3.8.1",
@@ -33,7 +35,9 @@
     "textlint-rule-preset-ja-spacing": "2.4.3",
     "textlint-rule-preset-ja-technical-writing": "12.0.2",
     "textlint-rule-terminology": "5.2.16",
-    "typescript": "5.9.3"
+    "tsx": "^4.19.2",
+    "typescript": "5.9.3",
+    "vitest": "^3.0.0"
   },
   "engines": {
     "node": "24.13.0"

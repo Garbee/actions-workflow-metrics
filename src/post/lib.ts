@@ -25,7 +25,7 @@ export async function getMetricsData(): Promise<
   z.TypeOf<typeof metricsDataSchema>
 > {
   const controller: AbortController = new AbortController();
-  const timer: Timer = setTimeout(() => controller.abort(), 10 * 1000); // 10 seconds
+  const timer: NodeJS.Timeout = setTimeout(() => controller.abort(), 10 * 1000); // 10 seconds
   try {
     const res: Response = await fetch(
       `http://localhost:${serverPort}/metrics`,

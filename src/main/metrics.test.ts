@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, mock } from "bun:test";
+import { describe, expect, it, beforeEach, vi } from "vitest";
 import { Metrics } from "./metrics";
 import type { Systeminformation } from "systeminformation";
 import type { z } from "zod";
@@ -9,15 +9,15 @@ import type {
 } from "../lib";
 
 // Mock systeminformation
-mock.module("systeminformation", () => ({
-  currentLoad: mock(
+vi.mock("systeminformation", () => ({
+  currentLoad: vi.fn(
     async (): Promise<Systeminformation.CurrentLoadData> =>
       Promise.resolve({
         currentLoadUser: 25.5,
         currentLoadSystem: 10.3,
       } as Systeminformation.CurrentLoadData),
   ),
-  mem: mock(
+  mem: vi.fn(
     async (): Promise<Systeminformation.MemData> =>
       Promise.resolve({
         active: 4096 * 1024 * 1024, // 4096 MB in bytes
@@ -28,7 +28,7 @@ mock.module("systeminformation", () => ({
 
 describe("Metrics", () => {
   // Clear timers
-  beforeEach(() => mock.restore());
+  beforeEach(() => vi.restoreAllMocks());
 
   it("should return JSON string from get()", () => {
     const metrics: Metrics = new Metrics();

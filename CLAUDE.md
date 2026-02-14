@@ -16,15 +16,15 @@ When updating one, update the other accordingly. Note that action.yml's descript
 
 ## Development Commands
 
-Requires Node.js 24.x and Bun.
+Requires Node.js 24.x and pnpm.
 
 ```bash
-bun install                         # Install dependencies
-bun run build                       # Type check + bundle to dist/
-bun run fix                         # Auto-format with Prettier
-bun test                            # Run all tests
-bun test src/main/metrics.test.ts   # Run specific test file
-bun test --coverage                 # Show coverage
+pnpm install                         # Install dependencies
+pnpm run build                       # Type check + bundle to dist/
+pnpm run fix                         # Auto-format with Prettier
+pnpm test                            # Run all tests
+pnpm test src/main/metrics.test.ts   # Run specific test file
+pnpm test --coverage                 # Show coverage
 ```
 
 ## Architecture
@@ -60,13 +60,13 @@ Entry points: `src/main/index.ts`, `src/main/server.ts`, `src/post/index.ts` →
 
 ## Writing Tests
 
-Uses Bun test runner. Call `mock.restore()` in `beforeEach` for test isolation.
+Uses Vitest test runner. Call `vi.restoreAllMocks()` in `beforeEach` for test isolation.
 
 ```typescript
-import { describe, expect, it, beforeEach, mock } from "bun:test";
+import { describe, expect, it, beforeEach, vi } from "vitest";
 
 describe("MyTest", () => {
-  beforeEach(() => mock.restore());
+  beforeEach(() => vi.restoreAllMocks());
   // tests...
 });
 ```
@@ -76,8 +76,8 @@ describe("MyTest", () => {
 **systeminformation**: Type assertion required for partial objects:
 
 ```typescript
-mock.module("systeminformation", () => ({
-  currentLoad: mock(
+vi.mock("systeminformation", () => ({
+  currentLoad: vi.fn(
     async () =>
       ({
         currentLoadUser: 25.5,
@@ -90,7 +90,7 @@ mock.module("systeminformation", () => ({
 **fetch**: Double type assertion required:
 
 ```typescript
-globalThis.fetch = mock(
+globalThis.fetch = vi.fn(
   async () => ({ ok: true, json: () => Promise.resolve({}) }) as Response,
 ) as unknown as typeof fetch;
 ```

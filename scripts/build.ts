@@ -1,31 +1,30 @@
 import { promises as fs } from "node:fs";
 import { join } from "node:path";
-import type { BuildOutput } from "bun";
+import * as esbuild from "esbuild";
 
 const entrypoints: { dirName: string; baseFileName: string }[] = [
   { dirName: "main", baseFileName: "index" },
   { dirName: "main", baseFileName: "server" },
   { dirName: "post", baseFileName: "index" },
 ];
-const result: BuildOutput = await Bun.build({
-  entrypoints: entrypoints.map((e) =>
-    join("src", e.dirName, `${e.baseFileName}.ts`),
-  ),
-  outdir: "dist",
-  target: "node",
-  format: "esm",
-  sourcemap: "linked",
-  naming: "[dir]/[name].bundle.[ext]",
-  external: ["net", "tls", "http", "https", "stream", "zlib"],
-});
 
-if (!result.success) {
-  console.error("Build failed:");
-
-  for (const log of result.logs) {
-    console.error(log);
-  }
-
+try {
+  await esbuild.build({
+    entryPoints: entrypoints.map((e) =>
+      join("src", e.dirName, `${e.baseFileName}.ts`),
+    ),
+    outdir: "dist",
+    platform: "node",
+    format: "esm",
+    sourcemap: "linked",
+    bundle: true,
+    entryNames: "[dir]/[name].bundle",
+    banner: {
+      js: `import { createRequire } from 'module';const require = createRequire(import.meta.url);`,
+    },
+  });
+} catch (error) {
+  console.error("Build failed:", error);
   process.exit(1);
 }
 
