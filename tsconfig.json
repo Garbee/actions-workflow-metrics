@@ -7,8 +7,14 @@
     "erasableSyntaxOnly": true,
     "rewriteRelativeImportExtensions": true,
     "verbatimModuleSyntax": true,
+    "strict": true,
     "module": "nodenext",
     "moduleResolution": "nodenext",
-    "target": "esnext"
-  }
+    "target": "esnext",
+    "rootDir": "./src",
+    "outDir": "./dist",
+  },
+  "exclude": [
+    "**/*.test.ts"
+  ]
 }
