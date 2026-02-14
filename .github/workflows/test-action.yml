@@ -93,6 +93,9 @@ jobs:
 
       - name: Install Dependencies with Manual Markers
         run: |
+          # Wait for server to be ready
+          sleep 2
+
           curl -X POST http://localhost:7777/mark-step \
             -H "Content-Type: application/json" \
             -d '{"stepName":"Install Dependencies","status":"start"}'
