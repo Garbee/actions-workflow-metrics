@@ -36989,12 +36989,8 @@ function error(message, properties = {}) {
 }
 
 // src/main/metrics.ts
-import { writeFile as writeFile2, mkdir as mkdir2 } from "node:fs/promises";
-import { dirname } from "node:path";
 var import_systeminformation = __toESM(require_lib(), 1);
-
-// src/lib.ts
-import { tmpdir } from "node:os";
+import { writeFile as writeFile2 } from "node:fs/promises";
 import { join } from "node:path";
 
 // node_modules/zod/v4/classic/external.js
@@ -50807,22 +50803,26 @@ var alertSchema = external_exports.object({
   value: external_exports.number(),
   threshold: external_exports.number()
 });
-function getMetricsFilePath() {
-  const runId = process.env.GITHUB_RUN_ID || "local";
-  const job = process.env.GITHUB_JOB || "default";
-  return join(tmpdir(), `metrics-${runId}-${job}.json`);
-}
 
 // src/main/metrics.ts
 var Metrics = class {
   data;
   intervalMs;
-  filePath;
+  stateFile;
   timeoutId = null;
   stopped = false;
   constructor() {
     this.data = { cpuLoadPercentages: [], memoryUsageMBs: [], diskUsageGBs: [], stepMarkers: [] };
-    this.filePath = getMetricsFilePath();
+    const githubStateFile = process.env.GITHUB_STATE;
+    const runId = process.env.GITHUB_RUN_ID || "local";
+    const job = process.env.GITHUB_JOB || "default";
+    if (githubStateFile) {
+      const stateDir = join(githubStateFile, "..");
+      this.stateFile = join(stateDir, `metrics-state-${runId}-${job}.json`);
+    } else {
+      const runnerTemp = process.env.RUNNER_TEMP || process.env.TMPDIR || "/tmp";
+      this.stateFile = join(runnerTemp, `metrics-state-${runId}-${job}.json`);
+    }
     this.intervalMs = 5 * 1e3;
     const intervalSecondsInput = process.env.METRICS_INTERVAL_SECONDS;
     if (intervalSecondsInput) {
@@ -50834,12 +50834,6 @@ var Metrics = class {
     this.initialize().catch(setFailed);
   }
   async initialize() {
-    try {
-      await mkdir2(dirname(this.filePath), { recursive: true });
-      await this.writeData();
-    } catch (error49) {
-      setFailed(error49);
-    }
     this.append(Date.now()).catch(setFailed);
   }
   stop() {
@@ -50848,13 +50842,19 @@ var Metrics = class {
       clearTimeout(this.timeoutId);
       this.timeoutId = null;
     }
+    this.saveState();
   }
   get() {
     return JSON.stringify(this.data);
   }
-  async writeData() {
-    const content = JSON.stringify(this.data);
-    await writeFile2(this.filePath, content, "utf-8");
+  saveState() {
+    try {
+      writeFile2(this.stateFile, JSON.stringify(this.data), "utf-8").catch((error49) => {
+        console.warn("Failed to save metrics state:", error49);
+      });
+    } catch (error49) {
+      console.warn("Failed to save metrics state:", error49);
+    }
   }
   async append(unixTimeMs) {
     try {
@@ -50885,7 +50885,7 @@ var Metrics = class {
       } else {
         console.warn("Root filesystem not found in disk list. Disk metrics will be incomplete.");
       }
-      await this.writeData();
+      this.saveState();
     } catch (error49) {
       setFailed(error49);
     } finally {
@@ -50902,13 +50902,19 @@ var Metrics = class {
 
 // src/main/collector.ts
 async function collector() {
+  let metrics = null;
   try {
-    new Metrics();
+    metrics = new Metrics();
     process.on("SIGTERM", () => {
+      metrics?.stop();
       process.exit(0);
     });
     process.on("SIGINT", () => {
+      metrics?.stop();
       process.exit(0);
+    });
+    process.on("beforeExit", () => {
+      metrics?.stop();
     });
   } catch (error49) {
     setFailed(error49);

@@ -14,7 +14,7 @@ describe("Metrics", () => {
   let mockModule;
   let mockFsModule;
   const metricsInstances: any[] = [];
-  const fileWrites: string[] = [];
+  const fileWrites: Map<string, string> = new Map();
 
   before(async () => {
     // Enable timer mocking BEFORE importing the module
@@ -63,16 +63,16 @@ describe("Metrics", () => {
     mockFsModule = mock.module("node:fs/promises", {
       namedExports: {
         writeFile: async (path: string, content: string): Promise<void> => {
-          fileWrites.push(content);
+          fileWrites.set(path, content);
           return Promise.resolve();
         },
         readFile: async (path: string): Promise<string> => {
-          if (fileWrites.length > 0) {
-            return Promise.resolve(fileWrites[fileWrites.length - 1]);
+          const content = fileWrites.get(path);
+          if (content) {
+            return Promise.resolve(content);
           }
           throw new Error("ENOENT: no such file or directory");
         },
-        mkdir: async (): Promise<void> => Promise.resolve(),
       },
     });
 
@@ -81,7 +81,7 @@ describe("Metrics", () => {
 
   beforeEach(() => {
     // Clear file writes between tests
-    fileWrites.length = 0;
+    fileWrites.clear();
   });
 
   afterEach(() => {

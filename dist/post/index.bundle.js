@@ -27475,8 +27475,8 @@ var require_graceful_fs = __commonJS({
         }
       }
       var fs$writeFile = fs7.writeFile;
-      fs7.writeFile = writeFile3;
-      function writeFile3(path2, data, options, cb) {
+      fs7.writeFile = writeFile2;
+      function writeFile2(path2, data, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$writeFile(path2, data, options, cb);
@@ -108482,9 +108482,6 @@ If the error persists, please check whether Actions and API requests are operati
 // node_modules/@actions/artifact/lib/artifact.js
 var client = new DefaultArtifactClient();
 
-// src/post/lib.ts
-import { readFile, writeFile as writeFile2 } from "node:fs/promises";
-
 // node_modules/zod/v4/classic/external.js
 var external_exports = {};
 __export(external_exports, {
@@ -122255,6 +122252,8 @@ config(en_default());
 
 // src/post/lib.ts
 var import_systeminformation = __toESM(require_lib3(), 1);
+import { readFile } from "node:fs/promises";
+import { join as join2 } from "node:path";
 
 // src/post/renderer.ts
 var Renderer = class {
@@ -122521,8 +122520,6 @@ ${rows.join("\n")}
 };
 
 // src/lib.ts
-import { tmpdir } from "node:os";
-import { join as join2 } from "node:path";
 var bytesPerMB = 1024 * 1024;
 var bytesPerGB = 1024 * 1024 * 1024;
 var cpuLoadPercentageSchema = external_exports.object({
@@ -122564,29 +122561,32 @@ var alertSchema = external_exports.object({
   value: external_exports.number(),
   threshold: external_exports.number()
 });
-function getMetricsFilePath() {
-  const runId = process.env.GITHUB_RUN_ID || "local";
-  const job = process.env.GITHUB_JOB || "default";
-  return join2(tmpdir(), `metrics-${runId}-${job}.json`);
-}
 
 // src/post/lib.ts
 async function getMetricsData() {
-  const filePath = getMetricsFilePath();
   try {
-    const content = await readFile(filePath, "utf-8");
+    const githubStateFile = process.env.GITHUB_STATE;
+    const runId = process.env.GITHUB_RUN_ID || "local";
+    const job = process.env.GITHUB_JOB || "default";
+    let stateFile;
+    if (githubStateFile) {
+      const stateDir = join2(githubStateFile, "..");
+      stateFile = join2(stateDir, `metrics-state-${runId}-${job}.json`);
+    } else {
+      const runnerTemp = process.env.RUNNER_TEMP || process.env.TMPDIR || "/tmp";
+      stateFile = join2(runnerTemp, `metrics-state-${runId}-${job}.json`);
+    }
+    const content = await readFile(stateFile, "utf-8");
     return metricsDataSchema.parse(JSON.parse(content));
   } catch (error49) {
     throw new Error(
-      `Failed to read metrics file at ${filePath}: ${error49 instanceof Error ? error49.message : String(error49)}`
+      `Failed to read metrics from state file: ${error49 instanceof Error ? error49.message : String(error49)}`
     );
   }
 }
 async function collectFinalMetrics() {
-  const filePath = getMetricsFilePath();
   try {
-    const content = await readFile(filePath, "utf-8");
-    const metricsData = metricsDataSchema.parse(JSON.parse(content));
+    const metricsData = await getMetricsData();
     const unixTimeMs = Date.now();
     const {
       currentLoadUser,
@@ -122615,9 +122615,10 @@ async function collectFinalMetrics() {
     } else {
       console.warn("Root filesystem not found in final metrics collection. Disk metrics will be incomplete.");
     }
-    await writeFile2(filePath, JSON.stringify(metricsData, null, 2), "utf-8");
+    return metricsData;
   } catch (error49) {
     console.warn(`Failed to collect final metrics: ${error49 instanceof Error ? error49.message : String(error49)}`);
+    return getMetricsData();
   }
 }
 async function fetchWorkflowSteps() {
@@ -122780,18 +122781,7 @@ function render(metricsData, metricsID, alerts = []) {
 async function index() {
   const maxRetryCount = 10;
   let metricsData;
-  await collectFinalMetrics();
-  for (let i = 0; i < maxRetryCount; i++) {
-    try {
-      metricsData = await getMetricsData();
-      break;
-    } catch (error49) {
-      if (maxRetryCount - 2 < i || !(error49 instanceof Error) || !error49.message.includes("Failed to read metrics file")) {
-        setFailed(error49);
-      }
-    }
-    await setTimeout2(1e3);
-  }
+  metricsData = await collectFinalMetrics();
   try {
     const apiSteps = await fetchWorkflowSteps();
     metricsData.stepMarkers = apiSteps;

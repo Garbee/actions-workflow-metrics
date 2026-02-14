@@ -10,25 +10,8 @@ async function index(): Promise<void> {
   const maxRetryCount: number = 10;
   let metricsData: z.TypeOf<typeof metricsDataSchema>;
 
-  // Collect one final set of metrics before reading the data
-  await collectFinalMetrics();
-
-  for (let i = 0; i < maxRetryCount; i++) {
-    try {
-      metricsData = await getMetricsData();
-      break;
-    } catch (error) {
-      if (
-        maxRetryCount - 2 < i ||
-        !(error instanceof Error) ||
-        !error.message.includes("Failed to read metrics file")
-      ) {
-        setFailed(error);
-      }
-    }
-
-    await setTimeout(1000);
-  }
+  // Collect one final set of metrics and get the complete data
+  metricsData = await collectFinalMetrics();
 
   try {
     // Fetch workflow steps from GitHub API (required)

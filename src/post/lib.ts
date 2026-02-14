@@ -1,33 +1,45 @@
-import { readFile, writeFile } from "node:fs/promises";
 import { z } from "zod";
 import { getInput } from "@actions/core";
 import { context, getOctokit } from "@actions/github";
 import { currentLoad, mem, fsSize } from "systeminformation";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { Renderer } from "./renderer.ts";
-import { metricsDataSchema, getMetricsFilePath, stepMarkerSchema, bytesPerMB, bytesPerGB, type Alert } from "../lib.ts";
+import { metricsDataSchema, stepMarkerSchema, bytesPerMB, bytesPerGB, type Alert } from "../lib.ts";
 
 export async function getMetricsData(): Promise<
   z.TypeOf<typeof metricsDataSchema>
 > {
-  const filePath = getMetricsFilePath();
-  
   try {
-    const content = await readFile(filePath, "utf-8");
+    // Read from state file in GitHub state directory
+    const githubStateFile = process.env.GITHUB_STATE;
+    const runId = process.env.GITHUB_RUN_ID || "local";
+    const job = process.env.GITHUB_JOB || "default";
+    
+    let stateFile: string;
+    if (githubStateFile) {
+      // Use the directory containing the GitHub state file
+      const stateDir = join(githubStateFile, '..');
+      stateFile = join(stateDir, `metrics-state-${runId}-${job}.json`);
+    } else {
+      // Fallback for local testing
+      const runnerTemp = process.env.RUNNER_TEMP || process.env.TMPDIR || '/tmp';
+      stateFile = join(runnerTemp, `metrics-state-${runId}-${job}.json`);
+    }
+    
+    const content = await readFile(stateFile, "utf-8");
     return metricsDataSchema.parse(JSON.parse(content));
   } catch (error) {
     throw new Error(
-      `Failed to read metrics file at ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
+      `Failed to read metrics from state file: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }
 
-export async function collectFinalMetrics(): Promise<void> {
-  const filePath = getMetricsFilePath();
-  
+export async function collectFinalMetrics(): Promise<z.TypeOf<typeof metricsDataSchema>> {
   try {
-    // Read existing metrics
-    const content = await readFile(filePath, "utf-8");
-    const metricsData = metricsDataSchema.parse(JSON.parse(content));
+    // Read existing metrics from state
+    const metricsData = await getMetricsData();
     
     // Collect one final set of metrics
     const unixTimeMs = Date.now();
@@ -65,12 +77,13 @@ export async function collectFinalMetrics(): Promise<void> {
       console.warn('Root filesystem not found in final metrics collection. Disk metrics will be incomplete.');
     }
     
-    // Write updated metrics back to file
-    await writeFile(filePath, JSON.stringify(metricsData, null, 2), "utf-8");
+    return metricsData;
   } catch (error) {
     // If we can't collect final metrics, log but don't fail
     // The action should still work with the metrics collected so far
     console.warn(`Failed to collect final metrics: ${error instanceof Error ? error.message : String(error)}`);
+    // Return existing data without final metrics
+    return getMetricsData();
   }
 }
 

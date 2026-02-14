@@ -1,5 +1,3 @@
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { z } from "zod";
 
 export const bytesPerMB: number = 1024 * 1024;
@@ -47,13 +45,3 @@ export const alertSchema = z.object({
 });
 
 export type Alert = z.infer<typeof alertSchema>;
-
-/**
- * Gets the path to the metrics file in the temporary directory.
- * Uses GITHUB_RUN_ID and GITHUB_JOB to ensure uniqueness across runs and jobs.
- */
-export function getMetricsFilePath(): string {
-  const runId = process.env.GITHUB_RUN_ID || "local";
-  const job = process.env.GITHUB_JOB || "default";
-  return join(tmpdir(), `metrics-${runId}-${job}.json`);
-}

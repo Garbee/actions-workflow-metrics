@@ -1,8 +1,6 @@
-import { describe, it, before, after } from "node:test";
+import { describe, it, before, after, mock, beforeEach } from "node:test";
 import * as assert from "node:assert/strict";
-import { writeFile, unlink } from "node:fs/promises";
-import { getMetricsData, render } from "./lib.ts";
-import { getMetricsFilePath } from "../lib.ts";
+import { join } from "node:path";
 import type { z } from "zod";
 import type { metricsDataSchema } from "../lib.js";
 
@@ -27,6 +25,43 @@ const sampleMetricsData: z.TypeOf<typeof metricsDataSchema> = {
     { unixTimeMs: 1704067206000, stepName: "Test Step", status: "end" as const },
   ],
 };
+
+// Shared state for mocking
+const fileReads: Map<string, string> = new Map();
+let render;
+let getMetricsData;
+
+before(async () => {
+  // Mock @actions/core module once for all tests
+  mock.module("@actions/core", {
+    namedExports: {
+      getInput: () => "",
+    },
+  });
+
+  // Mock node:fs/promises module
+  mock.module("node:fs/promises", {
+    namedExports: {
+      readFile: async (path: string): Promise<string> => {
+        const content = fileReads.get(path);
+        if (content) {
+          return Promise.resolve(content);
+        }
+        throw new Error("ENOENT: no such file or directory");
+      },
+    },
+  });
+
+  // Import after mocking
+  const lib = await import("./lib.ts");
+  render = lib.render;
+  getMetricsData = lib.getMetricsData;
+});
+
+beforeEach(() => {
+  // Clear file reads between tests
+  fileReads.clear();
+});
 
 describe("render", () => {
   const testMetricsID: string = "1234567890";
@@ -110,20 +145,22 @@ describe("render", () => {
 });
 
 describe("getMetricsData", () => {
-  const testFilePath = getMetricsFilePath();
-
-  after(async () => {
-    // Clean up test file
-    try {
-      await unlink(testFilePath);
-    } catch {
-      // Ignore errors
+  it("should read metrics data from state file", async () => {
+    // Compute the same path that the implementation would use
+    const githubStateFile = process.env.GITHUB_STATE;
+    const runId = process.env.GITHUB_RUN_ID || "local";
+    const job = process.env.GITHUB_JOB || "default";
+    
+    let stateFile: string;
+    if (githubStateFile) {
+      const stateDir = join(githubStateFile, '..');
+      stateFile = join(stateDir, `metrics-state-${runId}-${job}.json`);
+    } else {
+      const runnerTemp = process.env.RUNNER_TEMP || process.env.TMPDIR || '/tmp';
+      stateFile = join(runnerTemp, `metrics-state-${runId}-${job}.json`);
     }
-  });
-
-  it("should read metrics data from file", async () => {
-    // Write test data to file
-    await writeFile(testFilePath, JSON.stringify(sampleMetricsData), "utf-8");
+    
+    fileReads.set(stateFile, JSON.stringify(sampleMetricsData));
 
     const result = await getMetricsData();
 
@@ -131,34 +168,56 @@ describe("getMetricsData", () => {
   });
 
   it("should throw error for invalid metrics data", async () => {
-    // Write invalid data
-    await writeFile(testFilePath, JSON.stringify({
+    // Compute the same path that the implementation would use
+    const githubStateFile = process.env.GITHUB_STATE;
+    const runId = process.env.GITHUB_RUN_ID || "local";
+    const job = process.env.GITHUB_JOB || "default";
+    
+    let stateFile: string;
+    if (githubStateFile) {
+      const stateDir = join(githubStateFile, '..');
+      stateFile = join(stateDir, `metrics-state-${runId}-${job}.json`);
+    } else {
+      const runnerTemp = process.env.RUNNER_TEMP || process.env.TMPDIR || '/tmp';
+      stateFile = join(runnerTemp, `metrics-state-${runId}-${job}.json`);
+    }
+    
+    fileReads.set(stateFile, JSON.stringify({
       cpuLoadPercentages: "not an array",
       memoryUsageMBs: [],
-    }), "utf-8");
+    }));
 
     await assert.rejects(getMetricsData());
   });
 
-  it("should throw error when file doesn't exist", async () => {
-    // Remove the file
-    try {
-      await unlink(testFilePath);
-    } catch {
-      // Ignore if already deleted
-    }
+  it("should throw error when state file doesn't exist", async () => {
+    // Clear file reads
+    fileReads.clear();
 
     await assert.rejects(getMetricsData(), { 
-      message: /Failed to read metrics file/
+      message: /Failed to read metrics from state file/
     });
   });
 
   it("should throw error when JSON is invalid", async () => {
-    // Write invalid JSON
-    await writeFile(testFilePath, "invalid json{", "utf-8");
+    // Compute the same path that the implementation would use
+    const githubStateFile = process.env.GITHUB_STATE;
+    const runId = process.env.GITHUB_RUN_ID || "local";
+    const job = process.env.GITHUB_JOB || "default";
+    
+    let stateFile: string;
+    if (githubStateFile) {
+      const stateDir = join(githubStateFile, '..');
+      stateFile = join(stateDir, `metrics-state-${runId}-${job}.json`);
+    } else {
+      const runnerTemp = process.env.RUNNER_TEMP || process.env.TMPDIR || '/tmp';
+      stateFile = join(runnerTemp, `metrics-state-${runId}-${job}.json`);
+    }
+    
+    fileReads.set(stateFile, "invalid json{");
 
     await assert.rejects(getMetricsData(), {
-      message: /Failed to read metrics file/
+      message: /Failed to read metrics from state file/
     });
   });
 });

@@ -1,20 +1,35 @@
-import { writeFile, mkdir } from "node:fs/promises";
-import { dirname } from "node:path";
 import { setFailed } from "@actions/core";
 import { currentLoad, mem, fsSize } from "systeminformation";
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import type { z } from "zod";
-import { metricsDataSchema, getMetricsFilePath, bytesPerMB, bytesPerGB } from "../lib.ts";
+import { metricsDataSchema, bytesPerMB, bytesPerGB } from "../lib.ts";
 
 export class Metrics {
   private readonly data: z.TypeOf<typeof metricsDataSchema>;
   private readonly intervalMs: number;
-  private readonly filePath: string;
+  private readonly stateFile: string;
   private timeoutId: NodeJS.Timeout | null = null;
   private stopped: boolean = false;
 
   constructor() {
     this.data = { cpuLoadPercentages: [], memoryUsageMBs: [], diskUsageGBs: [], stepMarkers: [] };
-    this.filePath = getMetricsFilePath();
+    
+    // Use GitHub state directory since it's less likely to be cleared
+    // GITHUB_STATE points to a state file, so we use its directory
+    const githubStateFile = process.env.GITHUB_STATE;
+    const runId = process.env.GITHUB_RUN_ID || "local";
+    const job = process.env.GITHUB_JOB || "default";
+    
+    if (githubStateFile) {
+      // Use the directory containing the GitHub state file
+      const stateDir = join(githubStateFile, '..');
+      this.stateFile = join(stateDir, `metrics-state-${runId}-${job}.json`);
+    } else {
+      // Fallback for local testing
+      const runnerTemp = process.env.RUNNER_TEMP || process.env.TMPDIR || '/tmp';
+      this.stateFile = join(runnerTemp, `metrics-state-${runId}-${job}.json`);
+    }
 
     this.intervalMs = 5 * 1000;
     const intervalSecondsInput: string | undefined =
@@ -27,18 +42,12 @@ export class Metrics {
       }
     }
 
-    // Ensure directory exists and start async processing
+    // Start async processing
     this.initialize().catch(setFailed);
   }
 
   private async initialize(): Promise<void> {
-    try {
-      await mkdir(dirname(this.filePath), { recursive: true });
-      await this.writeData();
-    } catch (error) {
-      setFailed(error);
-    }
-    // Start collection after initialization
+    // Start collection
     this.append(Date.now()).catch(setFailed);
   }
 
@@ -48,15 +57,22 @@ export class Metrics {
       clearTimeout(this.timeoutId);
       this.timeoutId = null;
     }
+    // Save final state to file for post action
+    this.saveState();
   }
 
   get(): string {
     return JSON.stringify(this.data);
   }
 
-  private async writeData(): Promise<void> {
-    const content = JSON.stringify(this.data);
-    await writeFile(this.filePath, content, "utf-8");
+  private saveState(): void {
+    try {
+      writeFile(this.stateFile, JSON.stringify(this.data), "utf-8").catch((error) => {
+        console.warn("Failed to save metrics state:", error);
+      });
+    } catch (error) {
+      console.warn("Failed to save metrics state:", error);
+    }
   }
 
   private async append(unixTimeMs: number): Promise<void> {
@@ -94,8 +110,8 @@ export class Metrics {
         console.warn('Root filesystem not found in disk list. Disk metrics will be incomplete.');
       }
 
-      // Write to file after collecting metrics
-      await this.writeData();
+      // Save state after each collection to ensure it's available even if process is killed
+      this.saveState();
     } catch (error) {
       setFailed(error);
     } finally {
