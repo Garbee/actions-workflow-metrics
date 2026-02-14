@@ -3,12 +3,17 @@ import { join } from "node:path";
 import { z } from "zod";
 
 export const bytesPerMB: number = 1024 * 1024;
-// Disk metrics scaling factor: GitHub runners are documented as having 14GB storage,
-// but the actual VM disk is ~145GB (ratio ~10.36x). We use a 10x scaling factor for simplicity
-// to adjust disk metrics to match the documented storage capacity that users expect to see.
-// Both "used" and "free" are scaled proportionally to maintain accurate usage patterns and percentages.
-// Note: This means a 5GB file will display as 0.5GB, but the usage percentage remains accurate.
-export const bytesPerGB: number = 1024 * 1024 * 1024 * 10;
+
+// Disk metrics scaling configuration
+// GitHub documents runners with 14GB storage, but actual VM disks are ~145GB.
+// This creates a ~10.36x ratio. We use 10x as a round approximation because:
+// 1. VM sizes can vary slightly between runner instances
+// 2. The 3.6% precision loss is acceptable for monitoring purposes
+// 3. Round numbers are easier to reason about in charts
+// This scaling ensures charts show the documented 14GB storage users expect,
+// rather than the underlying VM infrastructure size.
+const DISK_SCALING_FACTOR = 10;
+export const bytesPerGB: number = 1024 * 1024 * 1024 * DISK_SCALING_FACTOR;
 
 export const cpuLoadPercentageSchema = z.object({
   unixTimeMs: z.number(),
