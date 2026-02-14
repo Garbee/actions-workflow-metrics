@@ -7,26 +7,34 @@ on:
   pull_request:
     branches:
       - main
-  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'push' }}
 
-permissions:
-  contents: read # To clone the repository
+permissions: {}
 
 jobs:
   actionlint:
-    name: Run Actionlint
-    runs-on: ubuntu-latest
+    name: Actionlint
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read # Only needed for private repos. Needed to clone the repo.
+      actions: read # Only needed for private repos. Needed for upload-sarif to read workflow run info.
+      security-events: write # Required for upload-sarif to upload SARIF files.
     steps:
-      - name: Checkout Code
+      - name: Start Workflow Telemetry
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-
-      - name: Run Actionlint
-        uses: reviewdog/action-actionlint@67c968ad08ea46e945d10f94a38f7c7f407a0b55 # v1.59.0
+      - name: Check workflow files
+        run: actionlint -format "$(cat .github/formatters/actionlint-sarif.gotmpl)" .github/workflows/*.yml > actionlint.sarif
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@45cbd0c69e560cd9e7cd7f8c32362050c9b7ded2 # v4.32.2
         with:
-          fail_on_error: true
+          sarif_file: actionlint.sarif
+          category: actionlint
