@@ -13,8 +13,10 @@ const result: BuildOutput = await Bun.build({
   ),
   outdir: "dist",
   target: "node",
+  format: "esm",
   sourcemap: "linked",
   naming: "[dir]/[name].bundle.[ext]",
+  external: ["net", "tls", "http", "https", "stream", "zlib"],
 });
 
 if (!result.success) {
