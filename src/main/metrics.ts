@@ -1,16 +1,20 @@
+import { writeFile, mkdir } from "node:fs/promises";
+import { dirname } from "node:path";
 import { setFailed } from "@actions/core";
 import { currentLoad, mem } from "systeminformation";
 import type { z } from "zod";
-import type { metricsDataSchema } from "../lib.ts";
+import { metricsDataSchema, getMetricsFilePath } from "../lib.ts";
 
 export class Metrics {
   private readonly data: z.TypeOf<typeof metricsDataSchema>;
   private readonly intervalMs: number;
+  private readonly filePath: string;
   private timeoutId: NodeJS.Timeout | null = null;
   private stopped: boolean = false;
 
   constructor() {
     this.data = { cpuLoadPercentages: [], memoryUsageMBs: [], stepMarkers: [] };
+    this.filePath = getMetricsFilePath();
 
     this.intervalMs = 5 * 1000;
     const intervalSecondsInput: string | undefined =
@@ -23,7 +27,18 @@ export class Metrics {
       }
     }
 
-    // Start async processing immediately (don't await in constructor)
+    // Ensure directory exists and start async processing
+    this.initialize().catch(setFailed);
+  }
+
+  private async initialize(): Promise<void> {
+    try {
+      await mkdir(dirname(this.filePath), { recursive: true });
+      await this.writeData();
+    } catch (error) {
+      setFailed(error);
+    }
+    // Start collection after initialization
     this.append(Date.now()).catch(setFailed);
   }
 
@@ -39,12 +54,9 @@ export class Metrics {
     return JSON.stringify(this.data);
   }
 
-  markStep(stepName: string, status: "start" | "end"): void {
-    this.data.stepMarkers.push({
-      unixTimeMs: Date.now(),
-      stepName,
-      status,
-    });
+  private async writeData(): Promise<void> {
+    const content = JSON.stringify(this.data);
+    await writeFile(this.filePath, content, "utf-8");
   }
 
   private async append(unixTimeMs: number): Promise<void> {
@@ -68,6 +80,9 @@ export class Metrics {
         used: active / bytesPerMB,
         free: available / bytesPerMB,
       });
+
+      // Write to file after collecting metrics
+      await this.writeData();
     } catch (error) {
       setFailed(error);
     } finally {

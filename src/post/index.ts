@@ -1,10 +1,8 @@
 import fs from "node:fs/promises";
 import { setTimeout } from "node:timers/promises";
-import { setTimeout as setTimeoutCallback } from "node:timers";
 import { DefaultArtifactClient } from "@actions/artifact";
 import { info, setFailed, summary } from "@actions/core";
 import { getMetricsData, render, fetchWorkflowSteps } from "./lib.ts";
-import { serverPort } from "../lib.ts";
 import type { z } from "zod";
 import type { metricsDataSchema } from "../lib.ts";
 
@@ -19,8 +17,8 @@ async function index(): Promise<void> {
     } catch (error) {
       if (
         maxRetryCount - 2 < i ||
-        !(error instanceof TypeError) ||
-        error.message !== "fetch failed"
+        !(error instanceof Error) ||
+        !error.message.includes("Failed to read metrics file")
       ) {
         setFailed(error);
       }
@@ -30,13 +28,9 @@ async function index(): Promise<void> {
   }
 
   try {
-    // Fetch workflow steps from GitHub API and merge with manual markers
+    // Fetch workflow steps from GitHub API (required)
     const apiSteps = await fetchWorkflowSteps();
-
-    // Merge API steps with manual markers (manual markers take precedence)
-    if (apiSteps.length > 0 && metricsData.stepMarkers.length === 0) {
-      metricsData.stepMarkers = apiSteps;
-    }
+    metricsData.stepMarkers = apiSteps;
 
     const fileBaseName: string = "workflow_metrics";
     const fileName: string = `${fileBaseName}.json`;
@@ -71,29 +65,10 @@ async function index(): Promise<void> {
 
     // Render metrics
     await summary.addRaw(render(metricsData, metricsID)).write();
+    
+    info("Metrics collection completed successfully");
   } catch (error) {
     setFailed(error);
-  } finally {
-    const controller: AbortController = new AbortController();
-    const timer: NodeJS.Timeout = setTimeoutCallback(() => controller.abort(), 10 * 1000);
-
-    // Stop the metrics server
-    try {
-      const res: Response = await fetch(
-        `http://localhost:${serverPort}/finish`,
-        {
-          signal: controller.signal,
-        },
-      );
-
-      if (res.ok) {
-        info("Server finished");
-      } else {
-        setFailed(`Failed to finish server: ${res.status} ${res.statusText}`);
-      }
-    } finally {
-      clearTimeout(timer);
-    }
   }
 }
 

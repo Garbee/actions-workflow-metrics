@@ -37,6 +37,8 @@ This action is designed to be executed at the **beginning** of a workflow.
 
 ### Basic Usage
 
+A GitHub token is required to automatically track workflow steps and correlate metrics with each step.
+
 ```yaml
 name: Example Workflow
 
@@ -49,6 +51,8 @@ jobs:
       # Run actions-workflow-metrics at the beginning of the workflow
       - name: Start Workflow Telemetry
         uses: garbee/actions-workflow-metrics@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # Subsequent regular steps
       - name: Checkout
@@ -60,69 +64,25 @@ jobs:
       # ... other steps
 ```
 
-### Advanced Usage: Step-Level Tracking
-
-#### Option 1: Automatic Step Detection (Recommended)
-
-Provide a GitHub token to automatically fetch step information from the GitHub API:
-
-```yaml
-- name: Start Workflow Telemetry
-  uses: garbee/actions-workflow-metrics@v1
-  with:
-    github-token: ${{ secrets.GITHUB_TOKEN }}
-```
-
-This will automatically correlate metrics with workflow steps and show:
-
-- Step summary table with start/end times and durations
-- Step timeline annotations on charts
-
-#### Option 2: Manual Step Markers
-
-For more precise control, manually mark step boundaries:
-
-```yaml
-- name: Start Workflow Telemetry
-  uses: garbee/actions-workflow-metrics@v1
-
-- name: Build Project
-  run: |
-    curl -X POST http://localhost:7777/mark-step \
-      -H "Content-Type: application/json" \
-      -d '{"stepName":"Build Project","status":"start"}'
-
-    npm run build
-
-    curl -X POST http://localhost:7777/mark-step \
-      -H "Content-Type: application/json" \
-      -d '{"stepName":"Build Project","status":"end"}'
-
-- name: Run Tests
-  run: |
-    curl -X POST http://localhost:7777/mark-step \
-      -H "Content-Type: application/json" \
-      -d '{"stepName":"Run Tests","status":"start"}'
-
-    npm test
-
-    curl -X POST http://localhost:7777/mark-step \
-      -H "Content-Type: application/json" \
-      -d '{"stepName":"Run Tests","status":"end"}'
-```
+The action will automatically:
+- Collect CPU load and memory usage metrics
+- Fetch workflow step information from the GitHub API
+- Correlate metrics with workflow steps
+- Generate step summary table with start/end times and durations
+- Create step timeline annotations on charts
 
 ### Configuration Options
 
 | Input              | Description                                         | Required | Default |
 | ------------------ | --------------------------------------------------- | -------- | ------- |
 | `interval_seconds` | Interval between metrics collection in seconds      | No       | `5`     |
-| `github-token`     | GitHub token for fetching workflow step information | No       | -       |
+| `github-token`     | GitHub token for fetching workflow step information | Yes      | -       |
 
 ### Execution Flow
 
-1. **main** (workflow start): Starts metrics collection server in the background
+1. **main** (workflow start): Starts metrics collection as a background process that writes to a temporary file
 2. **Workflow steps**: Execute normally while metrics are collected in the background
-3. **post** (workflow end): Fetches step information (if token provided), renders collected metrics as Mermaid charts with step annotations, and outputs to job summary
+3. **post** (workflow end): Reads collected metrics from file, fetches step information (if token provided), renders metrics as Mermaid charts with step annotations, and outputs to job summary
 
 ## Tech Stack
 
@@ -197,19 +157,17 @@ src/
 ### main Execution
 
 1. `src/main/index.ts` is executed
-2. Node.js spawns `src/main/server.ts` as a detached process
-3. Server starts serving metrics JSON at `localhost:7777` with endpoints:
-   - `GET /metrics`: Returns collected metrics data
-   - `POST /mark-step`: Accepts manual step markers
-   - `GET /finish`: Shuts down the server
-4. `Metrics` class collects CPU/memory information every 5 seconds using `systeminformation` library
+2. Node.js spawns `src/main/collector.ts` as a detached background process
+3. `Metrics` class collects CPU/memory information every 5 seconds using `systeminformation` library
+4. Metrics data is continuously written to a temporary file in the system temp directory
+5. File path is unique per workflow run and job using `GITHUB_RUN_ID` and `GITHUB_JOB` environment variables
 
 ### post Execution
 
 1. `src/post/index.ts` is executed
-2. Fetches metrics JSON from `localhost:7777` (timeout: 10 seconds)
+2. Reads metrics data from the temporary file
 3. Optionally fetches workflow step information from GitHub API (if token provided)
-4. Merges API-based step information with manual markers (manual markers take precedence)
+4. Merges API-based step information with any manual markers (manual markers take precedence)
 5. `Renderer` class generates Mermaid charts with step annotations
 6. Outputs to job summary using `@actions/core` `summary` API, including:
    - Step summary table with durations

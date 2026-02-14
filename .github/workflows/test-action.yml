@@ -22,6 +22,8 @@ jobs:
 
       - name: Start Workflow Telemetry
         uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
@@ -58,65 +60,6 @@ jobs:
 
       - name: Run Tests
         run: npm test
-
-  test-manual-step-markers:
-    name: Test Manual Step Markers
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-
-      - name: Start Workflow Telemetry
-        uses: ./
-        with:
-          interval_seconds: "3"
-
-      - name: Wait for Server
-        run: |
-          echo "Waiting for metrics server to be ready on port 7777..."
-          timeout=30
-          elapsed=0
-          while ! curl -s -f http://localhost:7777/metrics > /dev/null 2>&1; do
-            if [ $elapsed -ge $timeout ]; then
-              echo "Timeout waiting for server to start"
-              exit 1
-            fi
-            echo "Server not ready yet, waiting... ($elapsed/$timeout seconds)"
-            sleep 1
-            elapsed=$((elapsed + 1))
-          done
-          echo "Server is ready!"
-
-      - name: Setup Node.js
-        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
-        with:
-          node-version: "24"
-
-      - name: Install Dependencies with Manual Markers
-        run: |
-          curl -X POST http://localhost:7777/mark-step \
-            -H "Content-Type: application/json" \
-            -d '{"stepName":"Install Dependencies","status":"start"}'
-
-          npm ci
-
-          curl -X POST http://localhost:7777/mark-step \
-            -H "Content-Type: application/json" \
-            -d '{"stepName":"Install Dependencies","status":"end"}'
-
-      - name: Test with Manual Markers
-        run: |
-          curl -X POST http://localhost:7777/mark-step \
-            -H "Content-Type: application/json" \
-            -d '{"stepName":"Run Tests","status":"start"}'
-
-          npm test
-
-          curl -X POST http://localhost:7777/mark-step \
-            -H "Content-Type: application/json" \
-            -d '{"stepName":"Run Tests","status":"end"}'
 
   test-custom-interval:
     name: Test Custom Interval

@@ -11,7 +11,9 @@ import {
 describe("Metrics", () => {
   let Metrics;
   let mockModule;
+  let mockFsModule;
   const metricsInstances: any[] = [];
+  const fileWrites: string[] = [];
 
   before(async () => {
     // Enable timer mocking BEFORE importing the module
@@ -33,11 +35,29 @@ describe("Metrics", () => {
       },
     });
 
+    // Mock node:fs/promises module
+    mockFsModule = mock.module("node:fs/promises", {
+      namedExports: {
+        writeFile: async (path: string, content: string): Promise<void> => {
+          fileWrites.push(content);
+          return Promise.resolve();
+        },
+        readFile: async (path: string): Promise<string> => {
+          if (fileWrites.length > 0) {
+            return Promise.resolve(fileWrites[fileWrites.length - 1]);
+          }
+          throw new Error("ENOENT: no such file or directory");
+        },
+        mkdir: async (): Promise<void> => Promise.resolve(),
+      },
+    });
+
     ({ Metrics } = await import("./metrics.ts"));
   })
 
   beforeEach(() => {
-    // Don't restore mocks - keep timer and module mocks active
+    // Clear file writes between tests
+    fileWrites.length = 0;
   });
 
   afterEach(() => {
@@ -50,6 +70,7 @@ describe("Metrics", () => {
 
   after(() => {
     mockModule.restore();
+    mockFsModule.restore();
     mock.timers.reset();
   })
 
@@ -85,9 +106,9 @@ describe("Metrics", () => {
   it("should collect initial metrics on construction", async () => {
     const metrics = createMetrics();
 
-    // Wait for the async append() to complete
+    // Wait for the async append() and file write to complete
     // Need to flush microtask queue for promises to resolve
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
@@ -110,7 +131,7 @@ describe("Metrics", () => {
     const metrics = createMetrics();
 
     // Wait for async processing to complete
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
@@ -130,7 +151,7 @@ describe("Metrics", () => {
     const metrics = createMetrics();
 
     // Wait for async processing to complete
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
@@ -151,7 +172,7 @@ describe("Metrics", () => {
     const metrics = createMetrics();
 
     // Wait for initial data collection
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
@@ -168,7 +189,7 @@ describe("Metrics", () => {
     // Advance time by 5 seconds to trigger next append
     await mock.timers.tick(5000);
     // Wait for promises to resolve
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
@@ -189,13 +210,13 @@ describe("Metrics", () => {
     const metrics = createMetrics();
 
     // Wait for initial data collection
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
     // Advance time by 5 seconds to trigger second data point
     await mock.timers.tick(5000);
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
@@ -221,7 +242,7 @@ describe("Metrics", () => {
     const metrics = createMetrics();
 
     // Wait for initial data collection
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
@@ -230,11 +251,11 @@ describe("Metrics", () => {
 
     // Advance time by 10 seconds (2 intervals)
     await mock.timers.tick(5000);
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
     }
     await mock.timers.tick(5000);
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
@@ -259,37 +280,5 @@ describe("Metrics", () => {
           finalData.memoryUsageMBs[i - 1].unixTimeMs,
       );
     }
-  });
-
-  it("should add step markers when markStep is called", () => {
-    const metrics = createMetrics();
-
-    metrics.markStep("Build", "start");
-    metrics.markStep("Test", "start");
-    metrics.markStep("Build", "end");
-
-    const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
-
-    assert.strictEqual(data.stepMarkers.length, 3);
-    assert.strictEqual(data.stepMarkers[0].stepName, "Build");
-    assert.strictEqual(data.stepMarkers[0].status, "start");
-    assert.strictEqual(data.stepMarkers[1].stepName, "Test");
-    assert.strictEqual(data.stepMarkers[1].status, "start");
-    assert.strictEqual(data.stepMarkers[2].stepName, "Build");
-    assert.strictEqual(data.stepMarkers[2].status, "end");
-  });
-
-  it("should include timestamp for step markers", () => {
-    const metrics = createMetrics();
-    const beforeTime = Date.now();
-
-    metrics.markStep("Deploy", "start");
-
-    const afterTime = Date.now();
-    const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
-
-    assert.strictEqual(data.stepMarkers.length, 1);
-    assert.ok(data.stepMarkers[0].unixTimeMs >= beforeTime);
-    assert.ok(data.stepMarkers[0].unixTimeMs <= afterTime);
   });
 });

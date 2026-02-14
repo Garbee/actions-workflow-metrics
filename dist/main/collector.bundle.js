@@ -19340,7 +19340,7 @@ var require_util9 = __commonJS({
     function getFilesInPath(source) {
       const lstatSync = fs2.lstatSync;
       const readdirSync = fs2.readdirSync;
-      const join = path.join;
+      const join2 = path.join;
       function isDirectory2(source2) {
         return lstatSync(source2).isDirectory();
       }
@@ -19349,12 +19349,12 @@ var require_util9 = __commonJS({
       }
       function getDirectories(source2) {
         return readdirSync(source2).map((name) => {
-          return join(source2, name);
+          return join2(source2, name);
         }).filter(isDirectory2);
       }
       function getFiles(source2) {
         return readdirSync(source2).map((name) => {
-          return join(source2, name);
+          return join2(source2, name);
         }).filter(isFile);
       }
       function getFilesRecursively(source2) {
@@ -36548,9 +36548,6 @@ var require_lib = __commonJS({
   }
 });
 
-// src/main/server.ts
-import { createServer } from "node:http";
-
 // node_modules/@actions/core/lib/command.js
 import * as os from "os";
 
@@ -36992,72 +36989,13 @@ function error(message, properties = {}) {
 }
 
 // src/main/metrics.ts
+import { writeFile as writeFile2, mkdir as mkdir2 } from "node:fs/promises";
+import { dirname } from "node:path";
 var import_systeminformation = __toESM(require_lib(), 1);
-var Metrics = class {
-  data;
-  intervalMs;
-  timeoutId = null;
-  stopped = false;
-  constructor() {
-    this.data = { cpuLoadPercentages: [], memoryUsageMBs: [], stepMarkers: [] };
-    this.intervalMs = 5 * 1e3;
-    const intervalSecondsInput = process.env.METRICS_INTERVAL_SECONDS;
-    if (intervalSecondsInput) {
-      const intervalSecondsVal = parseInt(intervalSecondsInput, 10);
-      if (Number.isInteger(intervalSecondsVal)) {
-        this.intervalMs = intervalSecondsVal * 1e3;
-      }
-    }
-    this.append(Date.now()).catch(setFailed);
-  }
-  stop() {
-    this.stopped = true;
-    if (this.timeoutId !== null) {
-      clearTimeout(this.timeoutId);
-      this.timeoutId = null;
-    }
-  }
-  get() {
-    return JSON.stringify(this.data);
-  }
-  markStep(stepName, status) {
-    this.data.stepMarkers.push({
-      unixTimeMs: Date.now(),
-      stepName,
-      status
-    });
-  }
-  async append(unixTimeMs) {
-    try {
-      const {
-        currentLoadUser,
-        currentLoadSystem
-      } = await (0, import_systeminformation.currentLoad)();
-      this.data.cpuLoadPercentages.push({
-        unixTimeMs,
-        user: currentLoadUser,
-        system: currentLoadSystem
-      });
-      const bytesPerMB = 1024 * 1024;
-      const { active, available } = await (0, import_systeminformation.mem)();
-      this.data.memoryUsageMBs.push({
-        unixTimeMs,
-        used: active / bytesPerMB,
-        free: available / bytesPerMB
-      });
-    } catch (error49) {
-      setFailed(error49);
-    } finally {
-      if (!this.stopped) {
-        const nextUNIXTimeMs = unixTimeMs + this.intervalMs;
-        this.timeoutId = setTimeout(
-          () => this.append(nextUNIXTimeMs).catch(setFailed),
-          Math.max(0, nextUNIXTimeMs - Date.now())
-        );
-      }
-    }
-  }
-};
+
+// src/lib.ts
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 // node_modules/zod/v4/classic/external.js
 var external_exports = {};
@@ -50851,81 +50789,104 @@ var metricsDataSchema = external_exports.object({
   memoryUsageMBs: memoryUsageMBsSchema,
   stepMarkers: stepMarkersSchema
 });
-var serverPort = 7777;
+function getMetricsFilePath() {
+  const runId = process.env.GITHUB_RUN_ID || "local";
+  const job = process.env.GITHUB_JOB || "default";
+  return join(tmpdir(), `metrics-${runId}-${job}.json`);
+}
 
-// src/main/server.ts
-async function server() {
-  const metrics = new Metrics();
-  const server2 = createServer(
-    (request, response) => {
-      try {
-        switch (request.url) {
-          case "/metrics":
-            response.setHeader("Content-Type", "application/json");
-            response.setHeader("Access-Control-Allow-Origin", "*");
-            response.statusCode = 200;
-            response.end(metrics.get());
-            break;
-          case "/mark-step":
-            if (request.method === "POST") {
-              let body = "";
-              request.on("data", (chunk) => {
-                body += chunk.toString();
-              });
-              request.on("end", () => {
-                try {
-                  const { stepName, status } = JSON.parse(body);
-                  if (typeof stepName === "string" && (status === "start" || status === "end")) {
-                    metrics.markStep(stepName, status);
-                    response.statusCode = 200;
-                    response.end();
-                  } else {
-                    response.statusCode = 400;
-                    response.setHeader("Content-Type", "application/json");
-                    response.end(
-                      JSON.stringify({
-                        error: "Invalid request body"
-                      })
-                    );
-                  }
-                } catch (error49) {
-                  response.statusCode = 400;
-                  response.setHeader("Content-Type", "application/json");
-                  response.end(
-                    JSON.stringify({
-                      error: "Invalid JSON"
-                    })
-                  );
-                }
-              });
-            } else {
-              response.statusCode = 405;
-              response.setHeader("Content-Type", "application/json");
-              response.end(
-                JSON.stringify({
-                  error: "Method not allowed"
-                })
-              );
-            }
-            break;
-          case "/finish":
-            response.statusCode = 200;
-            response.end();
-            server2.close(() => process.exit(0));
-            break;
-        }
-      } catch (error49) {
-        response.statusCode = 500;
-        response.setHeader("Content-Type", "application/json");
-        response.end(JSON.stringify({ error: "Internal server error" }));
-        setFailed(error49);
+// src/main/metrics.ts
+var Metrics = class {
+  data;
+  intervalMs;
+  filePath;
+  timeoutId = null;
+  stopped = false;
+  constructor() {
+    this.data = { cpuLoadPercentages: [], memoryUsageMBs: [], stepMarkers: [] };
+    this.filePath = getMetricsFilePath();
+    this.intervalMs = 5 * 1e3;
+    const intervalSecondsInput = process.env.METRICS_INTERVAL_SECONDS;
+    if (intervalSecondsInput) {
+      const intervalSecondsVal = parseInt(intervalSecondsInput, 10);
+      if (Number.isInteger(intervalSecondsVal)) {
+        this.intervalMs = intervalSecondsVal * 1e3;
       }
     }
-  );
-  server2.on("error", setFailed);
-  server2.listen(serverPort);
+    this.initialize().catch(setFailed);
+  }
+  async initialize() {
+    try {
+      await mkdir2(dirname(this.filePath), { recursive: true });
+      await this.writeData();
+    } catch (error49) {
+      setFailed(error49);
+    }
+    this.append(Date.now()).catch(setFailed);
+  }
+  stop() {
+    this.stopped = true;
+    if (this.timeoutId !== null) {
+      clearTimeout(this.timeoutId);
+      this.timeoutId = null;
+    }
+  }
+  get() {
+    return JSON.stringify(this.data);
+  }
+  async writeData() {
+    const content = JSON.stringify(this.data);
+    await writeFile2(this.filePath, content, "utf-8");
+  }
+  async append(unixTimeMs) {
+    try {
+      const {
+        currentLoadUser,
+        currentLoadSystem
+      } = await (0, import_systeminformation.currentLoad)();
+      this.data.cpuLoadPercentages.push({
+        unixTimeMs,
+        user: currentLoadUser,
+        system: currentLoadSystem
+      });
+      const bytesPerMB = 1024 * 1024;
+      const { active, available } = await (0, import_systeminformation.mem)();
+      this.data.memoryUsageMBs.push({
+        unixTimeMs,
+        used: active / bytesPerMB,
+        free: available / bytesPerMB
+      });
+      await this.writeData();
+    } catch (error49) {
+      setFailed(error49);
+    } finally {
+      if (!this.stopped) {
+        const nextUNIXTimeMs = unixTimeMs + this.intervalMs;
+        this.timeoutId = setTimeout(
+          () => this.append(nextUNIXTimeMs).catch(setFailed),
+          Math.max(0, nextUNIXTimeMs - Date.now())
+        );
+      }
+    }
+  }
+};
+
+// src/main/collector.ts
+async function collector() {
+  try {
+    new Metrics();
+    process.on("SIGTERM", () => {
+      process.exit(0);
+    });
+    process.on("SIGINT", () => {
+      process.exit(0);
+    });
+  } catch (error49) {
+    setFailed(error49);
+    process.exit(1);
+  }
 }
-await server();
+await collector();
 /*! Bundled license information:
 
 undici/lib/web/fetch/body.js:

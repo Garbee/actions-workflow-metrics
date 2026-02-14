@@ -1,6 +1,8 @@
-import { describe, it, beforeEach, mock } from "node:test";
+import { describe, it, before, after } from "node:test";
 import * as assert from "node:assert/strict";
+import { writeFile, unlink } from "node:fs/promises";
 import { getMetricsData, render } from "./lib.ts";
+import { getMetricsFilePath } from "../lib.ts";
 import type { z } from "zod";
 import type { metricsDataSchema } from "../lib.js";
 
@@ -18,20 +20,6 @@ const sampleMetricsData: z.TypeOf<typeof metricsDataSchema> = {
   ],
   stepMarkers: [],
 };
-
-/**
- * Creates a mock fetch function that returns the given metrics data.
- */
-function createMockFetch(
-  data: z.TypeOf<typeof metricsDataSchema>,
-): typeof fetch {
-  return async (): Promise<Response> =>
-    ({
-      ok: true,
-      json: (): Promise<z.TypeOf<typeof metricsDataSchema>> =>
-        Promise.resolve(data),
-    }) as Response;
-}
 
 describe("render", () => {
   const testMetricsID: string = "1234567890";
@@ -97,10 +85,20 @@ describe("render", () => {
 });
 
 describe("getMetricsData", () => {
-  beforeEach(() => mock.restoreAll());
+  const testFilePath = getMetricsFilePath();
 
-  it("should fetch metrics data from server", async () => {
-    globalThis.fetch = createMockFetch(sampleMetricsData);
+  after(async () => {
+    // Clean up test file
+    try {
+      await unlink(testFilePath);
+    } catch {
+      // Ignore errors
+    }
+  });
+
+  it("should read metrics data from file", async () => {
+    // Write test data to file
+    await writeFile(testFilePath, JSON.stringify(sampleMetricsData), "utf-8");
 
     const result = await getMetricsData();
 
@@ -108,35 +106,34 @@ describe("getMetricsData", () => {
   });
 
   it("should throw error for invalid metrics data", async () => {
-    globalThis.fetch = async (): Promise<Response> =>
-      ({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            cpuLoadPercentages: "not an array",
-            memoryUsageMBs: [],
-          }),
-      }) as Response;
+    // Write invalid data
+    await writeFile(testFilePath, JSON.stringify({
+      cpuLoadPercentages: "not an array",
+      memoryUsageMBs: [],
+    }), "utf-8");
 
     await assert.rejects(getMetricsData());
   });
 
-  it("should throw error when fetch fails", async () => {
-    globalThis.fetch = () => Promise.reject(new Error("Network error"));
+  it("should throw error when file doesn't exist", async () => {
+    // Remove the file
+    try {
+      await unlink(testFilePath);
+    } catch {
+      // Ignore if already deleted
+    }
 
-    await assert.rejects(getMetricsData(), { message: "Network error" });
+    await assert.rejects(getMetricsData(), { 
+      message: /Failed to read metrics file/
+    });
   });
 
-  it("should throw error when response is not ok", async () => {
-    globalThis.fetch = async (): Promise<Response> =>
-      ({
-        ok: false,
-        status: 500,
-        statusText: "Internal Server Error",
-      }) as Response;
+  it("should throw error when JSON is invalid", async () => {
+    // Write invalid JSON
+    await writeFile(testFilePath, "invalid json{", "utf-8");
 
     await assert.rejects(getMetricsData(), {
-      message: "Failed to fetch metrics: 500 Internal Server Error",
+      message: /Failed to read metrics file/
     });
   });
 });
