@@ -1,7 +1,8 @@
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { z } from "zod";
 import { getInput } from "@actions/core";
 import { context, getOctokit } from "@actions/github";
+import { currentLoad, mem } from "systeminformation";
 import { Renderer } from "./renderer.ts";
 import { metricsDataSchema, getMetricsFilePath, stepMarkerSchema } from "../lib.ts";
 
@@ -34,6 +35,46 @@ export async function getMetricsData(): Promise<
     throw new Error(
       `Failed to read metrics file at ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
     );
+  }
+}
+
+export async function collectFinalMetrics(): Promise<void> {
+  const filePath = getMetricsFilePath();
+  
+  try {
+    // Read existing metrics
+    const content = await readFile(filePath, "utf-8");
+    const metricsData = metricsDataSchema.parse(JSON.parse(content));
+    
+    // Collect one final set of metrics
+    const unixTimeMs = Date.now();
+    
+    const {
+      currentLoadUser,
+      currentLoadSystem,
+    }: { currentLoadUser: number; currentLoadSystem: number } =
+      await currentLoad();
+    metricsData.cpuLoadPercentages.push({
+      unixTimeMs,
+      user: currentLoadUser,
+      system: currentLoadSystem,
+    });
+
+    const bytesPerMB: number = 1024 * 1024;
+    const { active, available }: { active: number; available: number } =
+      await mem();
+    metricsData.memoryUsageMBs.push({
+      unixTimeMs,
+      used: active / bytesPerMB,
+      free: available / bytesPerMB,
+    });
+    
+    // Write updated metrics back to file
+    await writeFile(filePath, JSON.stringify(metricsData, null, 2), "utf-8");
+  } catch (error) {
+    // If we can't collect final metrics, log but don't fail
+    // The action should still work with the metrics collected so far
+    console.warn(`Failed to collect final metrics: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 

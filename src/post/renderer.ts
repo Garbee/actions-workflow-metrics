@@ -54,6 +54,9 @@ ${stepSummary}${renderParamsList
           stepMarkers,
           p.times,
         );
+        
+        // Generate X-axis labels based on step markers
+        const xAxisLabels = this.generateXAxisLabels(stepMarkers, p.times);
 
         return `### ${p.title}
 
@@ -80,11 +83,7 @@ ${p.metricsInfoList
 }%%
 xychart
 
-x-axis "Time" ${JSON.stringify(
-          p.times.map((d: Date): string =>
-            d.toLocaleTimeString("en-GB", { hour12: false }),
-          ),
-        )}
+x-axis "Workflow Steps" ${JSON.stringify(xAxisLabels)}
 y-axis "${p.yAxis.title}"${p.yAxis.range ? ` ${p.yAxis.range}` : ""}
 ${stackedDatum.map((d: number[]): string => `bar ${JSON.stringify(d)}`).join("\n")}
 \`\`\`
@@ -145,11 +144,88 @@ ${rows}
 `;
   }
 
+  private generateXAxisLabels(
+    stepMarkers: z.TypeOf<typeof stepMarkerSchema>[],
+    chartTimes: Date[],
+  ): string[] {
+    // Step markers are required (github-token is required)
+    if (stepMarkers.length === 0) {
+      throw new Error("Step markers are required for rendering. Ensure github-token is provided.");
+    }
+
+    const chartTimesMs = chartTimes.map((t) => t.getTime());
+    const labels: string[] = [];
+
+    // Create a map of time ranges for each step
+    const stepRanges: { start: number; end: number; name: string }[] = [];
+    const stepStarts = new Map<string, number>();
+    const stepEnds = new Map<string, number>();
+
+    for (const marker of stepMarkers) {
+      if (marker.status === "start") {
+        stepStarts.set(marker.stepName, marker.unixTimeMs);
+      } else if (marker.status === "end") {
+        stepEnds.set(marker.stepName, marker.unixTimeMs);
+      }
+    }
+
+    // Build step ranges
+    for (const [stepName, startTime] of stepStarts.entries()) {
+      const endTime = stepEnds.get(stepName);
+      if (endTime) {
+        stepRanges.push({ start: startTime, end: endTime, name: stepName });
+      }
+    }
+
+    // Sort step ranges by start time
+    stepRanges.sort((a, b) => a.start - b.start);
+
+    // For each chart time, find which step it belongs to
+    for (const timeMs of chartTimesMs) {
+      let label = "Pre-workflow";
+      let foundStep = false;
+      
+      for (let i = 0; i < stepRanges.length; i++) {
+        const range = stepRanges[i];
+        
+        if (timeMs >= range.start && timeMs < range.end) {
+          label = range.name;
+          foundStep = true;
+          break;
+        }
+        
+        // Check if time is between current step and next step
+        if (timeMs >= range.end) {
+          if (i < stepRanges.length - 1) {
+            const nextRange = stepRanges[i + 1];
+            if (timeMs < nextRange.start) {
+              label = `Between ${range.name} and ${nextRange.name}`;
+              foundStep = true;
+              break;
+            }
+          }
+        }
+      }
+      
+      // If not found within any step or between steps, check if it's after all steps
+      if (!foundStep && stepRanges.length > 0) {
+        const lastStep = stepRanges[stepRanges.length - 1];
+        if (timeMs >= lastStep.end) {
+          label = "Post-workflow";
+        }
+      }
+
+      labels.push(label);
+    }
+
+    return labels;
+  }
+
   private generateStepAnnotations(
     stepMarkers: z.TypeOf<typeof stepMarkerSchema>[],
     chartTimes: Date[],
   ): string {
-    if (stepMarkers.length === 0) {
+    if (stepMarkers.length === 0 || chartTimes.length === 0) {
       return "";
     }
 

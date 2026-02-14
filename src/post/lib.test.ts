@@ -18,7 +18,10 @@ const sampleMetricsData: z.TypeOf<typeof metricsDataSchema> = {
     { unixTimeMs: 1704067200000, used: 4096, free: 8192 },
     { unixTimeMs: 1704067205000, used: 4200, free: 8000 },
   ],
-  stepMarkers: [],
+  stepMarkers: [
+    { unixTimeMs: 1704067199000, stepName: "Test Step", status: "start" as const },
+    { unixTimeMs: 1704067206000, stepName: "Test Step", status: "end" as const },
+  ],
 };
 
 describe("render", () => {
@@ -39,7 +42,10 @@ describe("render", () => {
     const metricsData: z.TypeOf<typeof metricsDataSchema> = {
       cpuLoadPercentages: [],
       memoryUsageMBs: [],
-      stepMarkers: [],
+      stepMarkers: [
+        { unixTimeMs: 1704067199000, stepName: "Test Step", status: "start" as const },
+        { unixTimeMs: 1704067206000, stepName: "Test Step", status: "end" as const },
+      ],
     };
 
     const result: string = render(metricsData, testMetricsID);
@@ -58,7 +64,10 @@ describe("render", () => {
         { unixTimeMs: 1704067200000, used: 4000, free: 8000 },
         { unixTimeMs: 1704067205000, used: 4100, free: 7900 },
       ],
-      stepMarkers: [],
+      stepMarkers: [
+        { unixTimeMs: 1704067199000, stepName: "Test Step", status: "start" as const },
+        { unixTimeMs: 1704067206000, stepName: "Test Step", status: "end" as const },
+      ],
     };
 
     const result: string = render(metricsData, testMetricsID);
@@ -74,7 +83,10 @@ describe("render", () => {
         { unixTimeMs: 1704067200000, used: 5000, free: 10000 },
         { unixTimeMs: 1704067205000, used: 5500, free: 9500 },
       ],
-      stepMarkers: [],
+      stepMarkers: [
+        { unixTimeMs: 1704067199000, stepName: "Test Step", status: "start" as const },
+        { unixTimeMs: 1704067206000, stepName: "Test Step", status: "end" as const },
+      ],
     };
 
     const result: string = render(metricsData, testMetricsID);

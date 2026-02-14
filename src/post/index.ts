@@ -2,13 +2,16 @@ import fs from "node:fs/promises";
 import { setTimeout } from "node:timers/promises";
 import { DefaultArtifactClient } from "@actions/artifact";
 import { info, setFailed, summary } from "@actions/core";
-import { getMetricsData, render, fetchWorkflowSteps } from "./lib.ts";
+import { getMetricsData, render, fetchWorkflowSteps, collectFinalMetrics } from "./lib.ts";
 import type { z } from "zod";
 import type { metricsDataSchema } from "../lib.ts";
 
 async function index(): Promise<void> {
   const maxRetryCount: number = 10;
   let metricsData: z.TypeOf<typeof metricsDataSchema>;
+
+  // Collect one final set of metrics before reading the data
+  await collectFinalMetrics();
 
   for (let i = 0; i < maxRetryCount; i++) {
     try {
