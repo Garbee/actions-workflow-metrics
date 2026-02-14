@@ -122258,8 +122258,9 @@ var import_systeminformation = __toESM(require_lib3(), 1);
 
 // src/post/renderer.ts
 var Renderer = class {
-  render(renderParamsList, metricsID, stepMarkers = []) {
+  render(renderParamsList, metricsID, stepMarkers = [], alerts = []) {
     const stepSummary = this.generateStepSummary(stepMarkers);
+    const alertsSection = this.generateAlertsSection(alerts);
     const filteredParams = renderParamsList.filter(
       ({
         metricsInfoList
@@ -122272,7 +122273,7 @@ var Renderer = class {
 
 ${metricsID}
 
-${stepSummary}${filteredParams.map((p) => {
+${alertsSection}${stepSummary}${filteredParams.map((p) => {
       const colors = p.metricsInfoList.map(
         ({ color }) => color
       );
@@ -122426,6 +122427,26 @@ ${rows}
 ${annotations.join("\n")}
 </details>`;
   }
+  generateAlertsSection(alerts) {
+    if (alerts.length === 0) {
+      return "";
+    }
+    const alertItems = alerts.map((alert) => {
+      let stepInfo = "";
+      if (alert.step) {
+        stepInfo = ` in step **${alert.step}**`;
+      } else if (alert.steps && alert.steps.length > 0) {
+        stepInfo = ` in steps: ${alert.steps.map((s) => `**${s}**`).join(", ")}`;
+      }
+      const icon = alert.type === "memory" ? "\u26A0\uFE0F" : alert.type === "cpu" ? "\u{1F525}" : "\u{1F4BE}";
+      return `* ${icon} ${alert.message}${stepInfo} (${alert.value.toFixed(1)}%)`;
+    });
+    return `### Alerts
+
+${alertItems.join("\n")}
+
+`;
+  }
 };
 
 // src/lib.ts
@@ -122462,6 +122483,14 @@ var metricsDataSchema = external_exports.object({
   memoryUsageMBs: memoryUsageMBsSchema,
   diskUsageGBs: diskUsageGBsSchema,
   stepMarkers: stepMarkersSchema
+});
+var alertSchema = external_exports.object({
+  type: external_exports.enum(["memory", "cpu", "disk"]),
+  message: external_exports.string(),
+  step: external_exports.string().optional(),
+  steps: external_exports.array(external_exports.string()).optional(),
+  value: external_exports.number(),
+  threshold: external_exports.number()
 });
 function getMetricsFilePath() {
   const runId = process.env.GITHUB_RUN_ID || "local";
@@ -122571,7 +122600,107 @@ async function fetchWorkflowSteps() {
     );
   }
 }
-function render(metricsData, metricsID) {
+function detectAlerts(metricsData) {
+  const alerts = [];
+  const memoryThreshold = parseFloat(getInput("memory_alert_threshold") || "80");
+  const cpuThreshold = parseFloat(getInput("cpu_alert_threshold") || "85");
+  const cpuDuration = parseFloat(getInput("cpu_alert_duration") || "60") * 1e3;
+  const diskThreshold = parseFloat(getInput("disk_alert_threshold") || "90");
+  const getStepForTime = (timeMs) => {
+    const stepRanges = [];
+    const stepStarts = /* @__PURE__ */ new Map();
+    const stepEnds = /* @__PURE__ */ new Map();
+    for (const marker2 of metricsData.stepMarkers) {
+      if (marker2.status === "start") {
+        stepStarts.set(marker2.stepName, marker2.unixTimeMs);
+      } else if (marker2.status === "end") {
+        stepEnds.set(marker2.stepName, marker2.unixTimeMs);
+      }
+    }
+    for (const [stepName, startTime] of stepStarts.entries()) {
+      const endTime = stepEnds.get(stepName);
+      if (endTime) {
+        stepRanges.push({ start: startTime, end: endTime, name: stepName });
+      }
+    }
+    for (const range2 of stepRanges) {
+      if (timeMs >= range2.start && timeMs < range2.end) {
+        return range2.name;
+      }
+    }
+    return void 0;
+  };
+  for (const memory of metricsData.memoryUsageMBs) {
+    const total = memory.used + memory.free;
+    const utilizationPercent = memory.used / total * 100;
+    if (utilizationPercent > memoryThreshold) {
+      const step = getStepForTime(memory.unixTimeMs);
+      alerts.push({
+        type: "memory",
+        message: `Memory utilization exceeded ${memoryThreshold.toFixed(0)}%`,
+        step,
+        value: utilizationPercent,
+        threshold: memoryThreshold
+      });
+      break;
+    }
+  }
+  const sustainedCpuSteps = /* @__PURE__ */ new Set();
+  let sustainedStartTime = null;
+  const stepsInSustainedPeriod = /* @__PURE__ */ new Set();
+  for (let i = 0; i < metricsData.cpuLoadPercentages.length; i++) {
+    const cpu = metricsData.cpuLoadPercentages[i];
+    const totalCpu = cpu.user + cpu.system;
+    const currentStep = getStepForTime(cpu.unixTimeMs);
+    if (totalCpu > cpuThreshold) {
+      if (sustainedStartTime === null) {
+        sustainedStartTime = cpu.unixTimeMs;
+        stepsInSustainedPeriod.clear();
+      }
+      if (currentStep) {
+        stepsInSustainedPeriod.add(currentStep);
+      }
+      const duration4 = cpu.unixTimeMs - sustainedStartTime;
+      if (duration4 >= cpuDuration) {
+        for (const step of stepsInSustainedPeriod) {
+          sustainedCpuSteps.add(step);
+        }
+      }
+    } else {
+      sustainedStartTime = null;
+      stepsInSustainedPeriod.clear();
+    }
+  }
+  if (sustainedCpuSteps.size > 0) {
+    const maxCpu = Math.max(
+      ...metricsData.cpuLoadPercentages.map((cpu) => cpu.user + cpu.system)
+    );
+    alerts.push({
+      type: "cpu",
+      message: `Sustained CPU usage above ${cpuThreshold.toFixed(0)}% for more than ${(cpuDuration / 1e3).toFixed(0)} seconds`,
+      steps: Array.from(sustainedCpuSteps),
+      value: maxCpu,
+      threshold: cpuThreshold
+    });
+  }
+  for (const disk of metricsData.diskUsageGBs) {
+    const total = disk.used + disk.free;
+    const utilizationPercent = disk.used / total * 100;
+    if (utilizationPercent > diskThreshold) {
+      const step = getStepForTime(disk.unixTimeMs);
+      alerts.push({
+        type: "disk",
+        message: `Disk usage exceeded ${diskThreshold.toFixed(0)}%`,
+        step,
+        value: utilizationPercent,
+        threshold: diskThreshold
+      });
+      break;
+    }
+  }
+  return alerts;
+}
+function render(metricsData, metricsID, alerts = []) {
   const renderer = new Renderer();
   return renderer.render(
     renderParamsListSchema.parse([
@@ -122653,7 +122782,8 @@ function render(metricsData, metricsID) {
       }
     ]),
     metricsID,
-    metricsData.stepMarkers
+    metricsData.stepMarkers,
+    alerts
   );
 }
 
@@ -122676,6 +122806,7 @@ async function index() {
   try {
     const apiSteps = await fetchWorkflowSteps();
     metricsData.stepMarkers = apiSteps;
+    const alerts = detectAlerts(metricsData);
     const fileBaseName = "workflow_metrics";
     const fileName = `${fileBaseName}.json`;
     await fs5.writeFile(fileName, JSON.stringify(metricsData));
@@ -122699,7 +122830,7 @@ async function index() {
       }
       await setTimeout2(1e3);
     }
-    await summary.addRaw(render(metricsData, metricsID)).write();
+    await summary.addRaw(render(metricsData, metricsID, alerts)).write();
     info("Metrics collection completed successfully");
   } catch (error49) {
     setFailed(error49);

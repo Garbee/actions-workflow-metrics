@@ -12,6 +12,22 @@ inputs:
   github-token:
     description: "GitHub token for fetching workflow step information"
     required: true
+  memory_alert_threshold:
+    description: "Memory utilization threshold percentage for alerts (0-100)"
+    default: "80"
+    required: false
+  cpu_alert_threshold:
+    description: "Sustained CPU usage threshold percentage for alerts (0-100)"
+    default: "85"
+    required: false
+  cpu_alert_duration:
+    description: "Duration in seconds that CPU must be sustained above threshold to trigger alert"
+    default: "60"
+    required: false
+  disk_alert_threshold:
+    description: "Disk usage threshold percentage for alerts (0-100)"
+    default: "90"
+    required: false
 runs:
   using: node24
   main: dist/main/index.bundle.js

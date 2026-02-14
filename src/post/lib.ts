@@ -4,7 +4,7 @@ import { getInput } from "@actions/core";
 import { context, getOctokit } from "@actions/github";
 import { currentLoad, mem, fsSize } from "systeminformation";
 import { Renderer } from "./renderer.ts";
-import { metricsDataSchema, getMetricsFilePath, stepMarkerSchema, bytesPerMB, bytesPerGB } from "../lib.ts";
+import { metricsDataSchema, getMetricsFilePath, stepMarkerSchema, bytesPerMB, bytesPerGB, type Alert } from "../lib.ts";
 
 export const metricsInfoSchema = z.object({
   color: z.string(),
@@ -135,9 +135,144 @@ export async function fetchWorkflowSteps(): Promise<
   }
 }
 
+/**
+ * Detects threshold violations in metrics data and generates alerts.
+ */
+export function detectAlerts(
+  metricsData: z.TypeOf<typeof metricsDataSchema>,
+): Alert[] {
+  const alerts: Alert[] = [];
+
+  // Get thresholds from inputs (as percentages)
+  const memoryThreshold = parseFloat(getInput("memory_alert_threshold") || "80");
+  const cpuThreshold = parseFloat(getInput("cpu_alert_threshold") || "85");
+  const cpuDuration = parseFloat(getInput("cpu_alert_duration") || "60") * 1000; // Convert to ms
+  const diskThreshold = parseFloat(getInput("disk_alert_threshold") || "90");
+
+  // Helper to find step name for a given timestamp
+  const getStepForTime = (timeMs: number): string | undefined => {
+    const stepRanges: { start: number; end: number; name: string }[] = [];
+    const stepStarts = new Map<string, number>();
+    const stepEnds = new Map<string, number>();
+
+    for (const marker of metricsData.stepMarkers) {
+      if (marker.status === "start") {
+        stepStarts.set(marker.stepName, marker.unixTimeMs);
+      } else if (marker.status === "end") {
+        stepEnds.set(marker.stepName, marker.unixTimeMs);
+      }
+    }
+
+    for (const [stepName, startTime] of stepStarts.entries()) {
+      const endTime = stepEnds.get(stepName);
+      if (endTime) {
+        stepRanges.push({ start: startTime, end: endTime, name: stepName });
+      }
+    }
+
+    for (const range of stepRanges) {
+      if (timeMs >= range.start && timeMs < range.end) {
+        return range.name;
+      }
+    }
+
+    return undefined;
+  };
+
+  // Check memory utilization (used / (used + free) * 100)
+  for (const memory of metricsData.memoryUsageMBs) {
+    const total = memory.used + memory.free;
+    const utilizationPercent = (memory.used / total) * 100;
+
+    if (utilizationPercent > memoryThreshold) {
+      const step = getStepForTime(memory.unixTimeMs);
+      alerts.push({
+        type: "memory",
+        message: `Memory utilization exceeded ${memoryThreshold.toFixed(0)}%`,
+        step,
+        value: utilizationPercent,
+        threshold: memoryThreshold,
+      });
+      // Only report the first occurrence
+      break;
+    }
+  }
+
+  // Check sustained CPU usage (user + system combined)
+  // Find periods where CPU is sustained above threshold for the specified duration
+  const sustainedCpuSteps = new Set<string>();
+  let sustainedStartTime: number | null = null;
+  const stepsInSustainedPeriod = new Set<string>();
+
+  for (let i = 0; i < metricsData.cpuLoadPercentages.length; i++) {
+    const cpu = metricsData.cpuLoadPercentages[i];
+    const totalCpu = cpu.user + cpu.system;
+    const currentStep = getStepForTime(cpu.unixTimeMs);
+
+    if (totalCpu > cpuThreshold) {
+      if (sustainedStartTime === null) {
+        sustainedStartTime = cpu.unixTimeMs;
+        stepsInSustainedPeriod.clear();
+      }
+
+      // Track all steps during sustained period
+      if (currentStep) {
+        stepsInSustainedPeriod.add(currentStep);
+      }
+
+      const duration = cpu.unixTimeMs - sustainedStartTime;
+      if (duration >= cpuDuration) {
+        // Sustained threshold met - add all steps seen during this period
+        for (const step of stepsInSustainedPeriod) {
+          sustainedCpuSteps.add(step);
+        }
+      }
+    } else {
+      // Reset if CPU drops below threshold
+      sustainedStartTime = null;
+      stepsInSustainedPeriod.clear();
+    }
+  }
+
+  if (sustainedCpuSteps.size > 0) {
+    const maxCpu = Math.max(
+      ...metricsData.cpuLoadPercentages.map(cpu => cpu.user + cpu.system)
+    );
+    alerts.push({
+      type: "cpu",
+      message: `Sustained CPU usage above ${cpuThreshold.toFixed(0)}% for more than ${(cpuDuration / 1000).toFixed(0)} seconds`,
+      steps: Array.from(sustainedCpuSteps),
+      value: maxCpu,
+      threshold: cpuThreshold,
+    });
+  }
+
+  // Check disk usage (used / (used + free) * 100)
+  for (const disk of metricsData.diskUsageGBs) {
+    const total = disk.used + disk.free;
+    const utilizationPercent = (disk.used / total) * 100;
+
+    if (utilizationPercent > diskThreshold) {
+      const step = getStepForTime(disk.unixTimeMs);
+      alerts.push({
+        type: "disk",
+        message: `Disk usage exceeded ${diskThreshold.toFixed(0)}%`,
+        step,
+        value: utilizationPercent,
+        threshold: diskThreshold,
+      });
+      // Only report the first occurrence
+      break;
+    }
+  }
+
+  return alerts;
+}
+
 export function render(
   metricsData: z.TypeOf<typeof metricsDataSchema>,
   metricsID: string,
+  alerts: Alert[] = [],
 ): string {
   const renderer: Renderer = new Renderer();
   return renderer.render(
@@ -221,5 +356,6 @@ export function render(
     ]),
     metricsID,
     metricsData.stepMarkers,
+    alerts,
   );
 }

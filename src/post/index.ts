@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import { setTimeout } from "node:timers/promises";
 import { DefaultArtifactClient } from "@actions/artifact";
 import { info, setFailed, summary } from "@actions/core";
-import { getMetricsData, render, fetchWorkflowSteps, collectFinalMetrics } from "./lib.ts";
+import { getMetricsData, render, fetchWorkflowSteps, collectFinalMetrics, detectAlerts } from "./lib.ts";
 import type { z } from "zod";
 import type { metricsDataSchema } from "../lib.ts";
 
@@ -35,6 +35,9 @@ async function index(): Promise<void> {
     const apiSteps = await fetchWorkflowSteps();
     metricsData.stepMarkers = apiSteps;
 
+    // Detect alerts based on threshold violations
+    const alerts = detectAlerts(metricsData);
+
     const fileBaseName: string = "workflow_metrics";
     const fileName: string = `${fileBaseName}.json`;
     await fs.writeFile(fileName, JSON.stringify(metricsData));
@@ -66,9 +69,9 @@ async function index(): Promise<void> {
       await setTimeout(1000);
     }
 
-    // Render metrics
-    await summary.addRaw(render(metricsData, metricsID)).write();
-    
+    // Render metrics with alerts
+    await summary.addRaw(render(metricsData, metricsID, alerts)).write();
+
     info("Metrics collection completed successfully");
   } catch (error) {
     setFailed(error);
