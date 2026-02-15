@@ -10,7 +10,6 @@ export class Renderer {
     diskUsageGBs: z.TypeOf<typeof diskUsageGBSchema>[] = [],
     thresholds: { cpu: number; memory: number; disk: number } = { cpu: 85, memory: 80, disk: 90 },
   ): string {
-    const stepSummary = this.generateStepSummary(stepMarkers);
     const alertsSection = this.generateAlertsSection(alerts);
     const cpuUsageSection = this.generateCPUUsageSection(cpuLoadPercentages, stepMarkers, alerts, thresholds.cpu);
     const memoryUsageSection = this.generateMemoryUsageSection(memoryUsageMBs, stepMarkers, alerts, thresholds.memory);
@@ -18,59 +17,7 @@ export class Renderer {
 
     return `## Workflow Metrics
 
-${alertsSection}${stepSummary}${cpuUsageSection}${memoryUsageSection}${diskUsageSection}`;
-  }
-
-  private generateStepSummary(
-    stepMarkers: z.TypeOf<typeof stepMarkerSchema>[],
-  ): string {
-    if (stepMarkers.length === 0) {
-      return "";
-    }
-
-    // Group markers by step name and calculate duration
-    const stepMap = new Map<
-      string,
-      { start?: number; end?: number; duration?: number }
-    >();
-
-    for (const marker of stepMarkers) {
-      if (!stepMap.has(marker.stepName)) {
-        stepMap.set(marker.stepName, {});
-      }
-      const step = stepMap.get(marker.stepName)!;
-      if (marker.status === "start") {
-        step.start = marker.unixTimeMs;
-      } else if (marker.status === "end") {
-        step.end = marker.unixTimeMs;
-      }
-      if (step.start && step.end) {
-        step.duration = step.end - step.start;
-      }
-    }
-
-    const rows = Array.from(stepMap.entries())
-      .map(([name, { start, end, duration }]) => {
-        const startTime = start
-          ? new Date(start).toLocaleTimeString("en-GB", { hour12: false })
-          : "N/A";
-        const endTime = end
-          ? new Date(end).toLocaleTimeString("en-GB", { hour12: false })
-          : "N/A";
-        const durationStr = duration
-          ? `${(duration / 1000).toFixed(1)}s`
-          : "N/A";
-        return `| ${name} | ${startTime} | ${endTime} | ${durationStr} |`;
-      })
-      .join("\n");
-
-    return `### Workflow Steps
-
-| Step Name | Start Time | End Time | Duration |
-|-----------|------------|----------|----------|
-${rows}
-
-`;
+${alertsSection}${cpuUsageSection}${memoryUsageSection}${diskUsageSection}`;
   }
 
   private generateAlertsSection(alerts: Alert[]): string {

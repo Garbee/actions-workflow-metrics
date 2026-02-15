@@ -122258,47 +122258,13 @@ import { join as join2 } from "node:path";
 // src/post/renderer.ts
 var Renderer = class {
   render(stepMarkers = [], alerts = [], cpuLoadPercentages = [], memoryUsageMBs = [], diskUsageGBs = [], thresholds = { cpu: 85, memory: 80, disk: 90 }) {
-    const stepSummary = this.generateStepSummary(stepMarkers);
     const alertsSection = this.generateAlertsSection(alerts);
     const cpuUsageSection = this.generateCPUUsageSection(cpuLoadPercentages, stepMarkers, alerts, thresholds.cpu);
     const memoryUsageSection = this.generateMemoryUsageSection(memoryUsageMBs, stepMarkers, alerts, thresholds.memory);
     const diskUsageSection = this.generateDiskUsageSection(diskUsageGBs, stepMarkers, alerts, thresholds.disk);
     return `## Workflow Metrics
 
-${alertsSection}${stepSummary}${cpuUsageSection}${memoryUsageSection}${diskUsageSection}`;
-  }
-  generateStepSummary(stepMarkers) {
-    if (stepMarkers.length === 0) {
-      return "";
-    }
-    const stepMap = /* @__PURE__ */ new Map();
-    for (const marker2 of stepMarkers) {
-      if (!stepMap.has(marker2.stepName)) {
-        stepMap.set(marker2.stepName, {});
-      }
-      const step = stepMap.get(marker2.stepName);
-      if (marker2.status === "start") {
-        step.start = marker2.unixTimeMs;
-      } else if (marker2.status === "end") {
-        step.end = marker2.unixTimeMs;
-      }
-      if (step.start && step.end) {
-        step.duration = step.end - step.start;
-      }
-    }
-    const rows = Array.from(stepMap.entries()).map(([name, { start, end, duration: duration4 }]) => {
-      const startTime = start ? new Date(start).toLocaleTimeString("en-GB", { hour12: false }) : "N/A";
-      const endTime = end ? new Date(end).toLocaleTimeString("en-GB", { hour12: false }) : "N/A";
-      const durationStr = duration4 ? `${(duration4 / 1e3).toFixed(1)}s` : "N/A";
-      return `| ${name} | ${startTime} | ${endTime} | ${durationStr} |`;
-    }).join("\n");
-    return `### Workflow Steps
-
-| Step Name | Start Time | End Time | Duration |
-|-----------|------------|----------|----------|
-${rows}
-
-`;
+${alertsSection}${cpuUsageSection}${memoryUsageSection}${diskUsageSection}`;
   }
   generateAlertsSection(alerts) {
     if (alerts.length === 0) {
