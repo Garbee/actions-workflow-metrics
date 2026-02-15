@@ -115,12 +115,12 @@ jobs:
           
           # Determine memory allocation size based on OS
           # macOS runners have less memory available, so we allocate less
-          if [[ "${{ runner.os }}" == "macOS" ]]; then
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
             export ARRAY_COUNT=10
             echo "Running on macOS - allocating ~150MB of memory"
           else
             export ARRAY_COUNT=50
-            echo "Running on ${{ runner.os }} - allocating ~500MB of memory"
+            echo "Running on $RUNNER_OS - allocating ~500MB of memory"
           fi
           
           node -e "
@@ -149,6 +149,7 @@ jobs:
           console.log('Memory freed. Activity completed.');
           "
         env:
+          RUNNER_OS: ${{ runner.os }}
           ARRAY_COUNT: ${{ runner.os == 'macOS' && '10' || '50' }}
 
       - name: Idle Activity
