@@ -9,17 +9,19 @@ permissions:
 jobs:
   dump-fssize:
     name: Dump Filesystem Size Information
-    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-24.04
+          - windows-2025
+          - macos-26
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-
-      - name: Initialize Metrics
-        uses: ./
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
@@ -31,12 +33,3 @@ jobs:
 
       - name: Dump fsSize Information
         run: node scripts/dump-fssize.js
-
-      - name: Create Large File
-        run: fallocate -l 80G largefile.dat
-
-      - name: Sleep
-        run: sleep 10
-
-      - name: Remove large file
-        run: rm largefile.dat
