@@ -122259,9 +122259,9 @@ import { join as join2 } from "node:path";
 var Renderer = class {
   render(alerts = [], cpuLoadPercentages = [], memoryUsageMBs = [], diskUsageGBs = [], thresholds = { cpu: 85, memory: 80, disk: 90 }) {
     const alertsSection = this.generateAlertsSection(alerts);
-    const cpuUsageSection = this.generateCPUUsageSection(cpuLoadPercentages, thresholds.cpu);
-    const memoryUsageSection = this.generateMemoryUsageSection(memoryUsageMBs, thresholds.memory);
-    const diskUsageSection = this.generateDiskUsageSection(diskUsageGBs, thresholds.disk);
+    const cpuUsageSection = this.generateCPUUsageSection(cpuLoadPercentages);
+    const memoryUsageSection = this.generateMemoryUsageSection(memoryUsageMBs);
+    const diskUsageSection = this.generateDiskUsageSection(diskUsageGBs);
     return `## Resource Usage
 
 ${alertsSection}${cpuUsageSection}${memoryUsageSection}${diskUsageSection}`;
@@ -122285,7 +122285,7 @@ ${alertItems.join("\n")}
 
 `;
   }
-  generateCPUUsageSection(cpuLoadPercentages, threshold) {
+  generateCPUUsageSection(cpuLoadPercentages) {
     if (cpuLoadPercentages.length === 0) {
       return "";
     }
@@ -122307,7 +122307,7 @@ ${rows.join("\n")}
 
 `;
   }
-  generateMemoryUsageSection(memoryUsageMBs, threshold) {
+  generateMemoryUsageSection(memoryUsageMBs) {
     if (memoryUsageMBs.length === 0) {
       return "";
     }
@@ -122330,7 +122330,7 @@ ${rows.join("\n")}
 
 `;
   }
-  generateDiskUsageSection(diskUsageGBs, threshold) {
+  generateDiskUsageSection(diskUsageGBs) {
     if (diskUsageGBs.length === 0) {
       return "";
     }
@@ -122504,7 +122504,10 @@ function detectAlerts(metricsData) {
       const duration4 = cpu.unixTimeMs - sustainedStartTime;
       if (duration4 >= cpuDuration && timespansInSustainedPeriod.length > 0) {
         const maxCpu = Math.max(
-          ...metricsData.cpuLoadPercentages.map((cpu2) => cpu2.user + cpu2.system)
+          ...timespansInSustainedPeriod.map((ts) => {
+            const c = metricsData.cpuLoadPercentages.find((cpuPoint) => cpuPoint.unixTimeMs === ts);
+            return c ? c.user + c.system : 0;
+          })
         );
         alerts.push({
           type: "cpu",

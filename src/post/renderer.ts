@@ -10,9 +10,9 @@ export class Renderer {
     thresholds: { cpu: number; memory: number; disk: number } = { cpu: 85, memory: 80, disk: 90 },
   ): string {
     const alertsSection = this.generateAlertsSection(alerts);
-    const cpuUsageSection = this.generateCPUUsageSection(cpuLoadPercentages, thresholds.cpu);
-    const memoryUsageSection = this.generateMemoryUsageSection(memoryUsageMBs, thresholds.memory);
-    const diskUsageSection = this.generateDiskUsageSection(diskUsageGBs, thresholds.disk);
+    const cpuUsageSection = this.generateCPUUsageSection(cpuLoadPercentages);
+    const memoryUsageSection = this.generateMemoryUsageSection(memoryUsageMBs);
+    const diskUsageSection = this.generateDiskUsageSection(diskUsageGBs);
 
     return `## Resource Usage
 
@@ -44,7 +44,6 @@ ${alertItems.join("\n")}
 
   private generateCPUUsageSection(
     cpuLoadPercentages: Array<{ unixTimeMs: number; user: number; system: number }>,
-    threshold: number,
   ): string {
     if (cpuLoadPercentages.length === 0) {
       return "";
@@ -74,7 +73,6 @@ ${rows.join("\n")}
 
   private generateMemoryUsageSection(
     memoryUsageMBs: Array<{ unixTimeMs: number; used: number; free: number }>,
-    threshold: number,
   ): string {
     if (memoryUsageMBs.length === 0) {
       return "";
@@ -107,7 +105,6 @@ ${rows.join("\n")}
 
   private generateDiskUsageSection(
     diskUsageGBs: z.TypeOf<typeof diskUsageGBSchema>[],
-    threshold: number,
   ): string {
     if (diskUsageGBs.length === 0) {
       return "";
