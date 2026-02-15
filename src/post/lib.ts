@@ -271,7 +271,6 @@ export function detectAlerts(
 
 export function render(
   metricsData: z.TypeOf<typeof metricsDataSchema>,
-  metricsID: string,
   alerts: Alert[] = [],
 ): string {
   // Get thresholds from inputs
@@ -281,7 +280,6 @@ export function render(
 
   const renderer: Renderer = new Renderer();
   return renderer.render(
-    metricsID,
     metricsData.stepMarkers,
     alerts,
     metricsData.cpuLoadPercentages,

@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import { setTimeout } from "node:timers/promises";
 import { DefaultArtifactClient } from "@actions/artifact";
 import { info, setFailed, summary } from "@actions/core";
+import { context } from "@actions/github";
 import { getMetricsData, render, fetchWorkflowSteps, collectFinalMetrics, detectAlerts } from "./lib.ts";
 import type { z } from "zod";
 import type { metricsDataSchema } from "../lib.ts";
@@ -24,15 +25,18 @@ async function index(): Promise<void> {
     const fileBaseName: string = "workflow_metrics";
     const fileName: string = `${fileBaseName}.json`;
     await fs.writeFile(fileName, JSON.stringify(metricsData));
-    let metricsID: string = "";
+
+    // Build artifact name: workflow_metrics_{jobName}_{runId}_{runAttempt}
+    const baseArtifactName = `workflow_metrics_${context.job}_${context.runId}_${context.runAttempt}`;
 
     for (let i = 0; i < maxRetryCount; i++) {
-      metricsID = new Date().getTime().toString();
+      // Add retry suffix if needed (retry1, retry2, etc.)
+      const artifactName = i === 0 ? baseArtifactName : `${baseArtifactName}_retry${i}`;
 
       try {
         const client: DefaultArtifactClient = new DefaultArtifactClient();
         await client.uploadArtifact(
-          [fileBaseName, metricsID].join("_"),
+          artifactName,
           [fileName],
           ".",
         );
@@ -53,7 +57,7 @@ async function index(): Promise<void> {
     }
 
     // Render metrics with alerts
-    await summary.addRaw(render(metricsData, metricsID, alerts)).write();
+    await summary.addRaw(render(metricsData, alerts)).write();
 
     info("Metrics collection completed successfully");
   } catch (error) {
