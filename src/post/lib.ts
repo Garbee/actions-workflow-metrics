@@ -142,7 +142,10 @@ export function detectAlerts(
       if (duration >= cpuDuration && timespansInSustainedPeriod.length > 0) {
         // Sustained threshold met
         const maxCpu = Math.max(
-          ...metricsData.cpuLoadPercentages.map(cpu => cpu.user + cpu.system)
+          ...timespansInSustainedPeriod.map(ts => {
+            const c = metricsData.cpuLoadPercentages.find(cpuPoint => cpuPoint.unixTimeMs === ts);
+            return c ? c.user + c.system : 0;
+          })
         );
         alerts.push({
           type: "cpu",
