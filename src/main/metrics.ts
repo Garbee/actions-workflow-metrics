@@ -9,8 +9,10 @@ export class Metrics {
   private readonly data: z.TypeOf<typeof metricsDataSchema>;
   private readonly intervalMs: number;
   private readonly stateFile: string;
+  private readonly writeInterval: number; // How many collections before writing to disk
   private timeoutId: NodeJS.Timeout | null = null;
   private stopped: boolean = false;
+  private collectionsSinceWrite: number = 0;
 
   constructor() {
     this.data = { cpuLoadPercentages: [], memoryUsageMBs: [], diskUsageGBs: [], stepMarkers: [] };
@@ -41,6 +43,10 @@ export class Metrics {
         this.intervalMs = intervalSecondsVal * 1000;
       }
     }
+
+    // Write to disk every 3 collections minimum (reduces I/O by 3x)
+    // This prevents I/O thrashing when interval is set to 1 second
+    this.writeInterval = 3;
 
     // Start async processing
     this.initialize().catch(setFailed);
@@ -110,8 +116,14 @@ export class Metrics {
         console.warn('Root filesystem not found in disk list. Disk metrics will be incomplete.');
       }
 
-      // Save state after each collection to ensure it's available even if process is killed
-      this.saveState();
+      // Increment collections counter
+      this.collectionsSinceWrite++;
+
+      // Only write to disk every N collections to reduce I/O
+      if (this.collectionsSinceWrite >= this.writeInterval) {
+        this.saveState();
+        this.collectionsSinceWrite = 0;
+      }
     } catch (error) {
       setFailed(error);
     } finally {

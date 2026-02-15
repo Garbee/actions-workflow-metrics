@@ -31,7 +31,11 @@ sequenceDiagram
     Collector->>Collector: Start collection loop
     loop Every 5 seconds
         Collector->>Collector: Collect CPU, Memory, Disk metrics
-        Collector->>State: Write metrics to state file
+        Collector->>Collector: Increment collection counter
+        alt Counter reaches batch threshold (every 3 collections)
+            Collector->>State: Write metrics to state file
+            Collector->>Collector: Reset counter
+        end
     end
     
     User->>Steps: Execute workflow steps
@@ -60,7 +64,9 @@ For accessibility, here is a text description of the execution flow diagram abov
 
 2. **Collector Process**: The collector process (`dist/main/collector.js`) creates a Metrics instance and starts a collection loop that runs every 5 seconds. During each cycle, it:
    - Collects CPU, memory, and disk usage metrics using the `systeminformation` library
-   - Writes the metrics to a state file (`metrics-state-{runId}-{job}.json`)
+   - Stores the metrics in memory
+   - Increments a collection counter
+   - Writes the metrics to state file every 3 collections (batched writes to reduce I/O)
 
 3. **Workflow Steps Execution**: While the collector continues running in the background, the workflow executes its regular steps (checkout, build, test, etc.).
 
@@ -104,7 +110,8 @@ The core metrics collection component:
   - Memory usage (active and available in MB)
   - Disk usage (used and available in GB for root filesystem only)
 - **In-Memory Storage**: Stores all metrics in memory during collection
-- **Persistent Storage**: Writes to state file after each collection cycle
+- **Batched Writes**: Writes to state file every 3 collections to reduce disk I/O (reduces write frequency by 3x)
+- **Guaranteed Persistence**: Always writes to disk on stop/termination, regardless of batch counter
 - **Drift Compensation**: Uses `Math.max(0, nextUNIXTimeMs - Date.now())` for precise 5-second intervals
 
 ### Post Action (`src/post/index.ts` and `src/post/lib.ts`)
@@ -155,13 +162,16 @@ GitHub Actions' built-in `saveState()` and `getState()` from `@actions/core` do 
 
 **During Collection**:
 - Metrics stored in memory for fast access
-- Written to state file after every collection cycle (every 5 seconds)
-- Ensures data availability even with unexpected termination
+- Written to state file every 3 collections (batched writes)
+- Reduces disk I/O by 3x compared to writing on every collection
+- Prevents I/O thrashing when collection interval is set to 1 second
+- Still provides reasonably frequent persistence (every 15 seconds with default 5-second interval)
 
 **On Termination**:
 - Collector handles SIGTERM/SIGINT signals
 - Calls `stop()` method to ensure final state save
-- Guarantees all collected metrics are persisted
+- Writes to disk immediately, regardless of batch counter
+- Guarantees all collected metrics are persisted, even if batch threshold wasn't reached
 
 **In Post Action**:
 - Reads complete metrics history from state file
@@ -273,9 +283,14 @@ The action is designed for Node.js 24+ with:
 - 5-second interval balances accuracy vs. overhead
 
 ### Disk I/O
-- State file written every 5 seconds
+
+**Batched Writes**:
+- State file written every 3 collections (not every collection)
+- With default 5-second interval: writes every 15 seconds
+- With 1-second interval: writes every 3 seconds (vs. every 1 second without batching)
+- Reduces I/O operations by 3x across all interval settings
 - Small write operations (few KB per write)
-- Negligible impact on workflow performance
+- Minimal impact on workflow performance even with aggressive collection intervals
 
 ## Security Considerations
 

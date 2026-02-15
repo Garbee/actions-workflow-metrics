@@ -50809,8 +50809,11 @@ var Metrics = class {
   data;
   intervalMs;
   stateFile;
+  writeInterval;
+  // How many collections before writing to disk
   timeoutId = null;
   stopped = false;
+  collectionsSinceWrite = 0;
   constructor() {
     this.data = { cpuLoadPercentages: [], memoryUsageMBs: [], diskUsageGBs: [], stepMarkers: [] };
     const githubStateFile = process.env.GITHUB_STATE;
@@ -50831,6 +50834,7 @@ var Metrics = class {
         this.intervalMs = intervalSecondsVal * 1e3;
       }
     }
+    this.writeInterval = 3;
     this.initialize().catch(setFailed);
   }
   async initialize() {
@@ -50885,7 +50889,11 @@ var Metrics = class {
       } else {
         console.warn("Root filesystem not found in disk list. Disk metrics will be incomplete.");
       }
-      this.saveState();
+      this.collectionsSinceWrite++;
+      if (this.collectionsSinceWrite >= this.writeInterval) {
+        this.saveState();
+        this.collectionsSinceWrite = 0;
+      }
     } catch (error49) {
       setFailed(error49);
     } finally {
