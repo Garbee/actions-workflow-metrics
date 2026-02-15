@@ -12,6 +12,37 @@ A GitHub Action for collecting system metrics during workflows.
 - **Threshold Alerts**: Automatically detects and highlights when resource usage exceeds configurable thresholds
 - **Job Summary Output**: Automatically displays tables and alerts in GitHub Actions job summary
 
+## Why Use This Action?
+
+GitHub Actions runners have fixed resource limits. When workflows run slow or fail unexpectedly, it's often unclear whether you're hitting CPU, memory, or disk constraints. This action gives you immediate visibility into resource usage patterns during your workflow execution.
+
+**What you'll learn:**
+
+- **Identify bottlenecks**: See which steps consume the most CPU, memory, or disk space
+- **Optimize efficiency**: Spot opportunities to reduce resource usage in your builds or tests
+- **Make informed decisions**: Determine whether to optimize your workflow or upgrade to larger runners
+- **Prevent failures**: Catch resource exhaustion before it causes workflow failures
+
+The metrics are displayed directly in your GitHub Actions job summary—no external services or complex setup required. Your team can see the data immediately after each workflow run.
+
+## When to Use This vs Alternatives
+
+### Choose This Action When:
+
+- **Your team manages the project**: The same engineers writing code are monitoring workflows
+- **You need quick insights**: You want immediate feedback in GitHub Actions job summaries
+- **Simplicity matters**: You prefer zero-configuration monitoring without external dependencies
+- **Cost is a concern**: You want free, built-in monitoring without additional services
+
+### Choose Alternatives When:
+
+For comprehensive monitoring needs, consider enterprise solutions:
+
+- **[DataDog CI Visibility](https://www.datadoghq.com/product/ci-cd-monitoring/)**: When you need centralized monitoring across multiple repositories, historical trend analysis, and correlation with production metrics
+- **[OpenTelemetry](https://opentelemetry.io/)**: When you require standardized instrumentation, integration with existing observability platforms, or custom metrics collection
+
+**If an external team monitors CI/CD performance** or **you need rich historical analysis and alerting**, these enterprise solutions are more appropriate. This action is designed for teams who want straightforward, in-context resource monitoring without the overhead of external systems.
+
 ## Output Example
 
 The action outputs the following tables:
