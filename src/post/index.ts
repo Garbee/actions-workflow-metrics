@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import { setTimeout } from "node:timers/promises";
 import { DefaultArtifactClient } from "@actions/artifact";
 import { info, setFailed, summary } from "@actions/core";
+import { context } from "@actions/github";
 import { getMetricsData, render, fetchWorkflowSteps, collectFinalMetrics, detectAlerts } from "./lib.ts";
 import type { z } from "zod";
 import type { metricsDataSchema } from "../lib.ts";
@@ -21,18 +22,25 @@ async function index(): Promise<void> {
     // Detect alerts based on threshold violations
     const alerts = detectAlerts(metricsData);
 
-    const fileBaseName: string = "workflow_metrics";
-    const fileName: string = `${fileBaseName}.json`;
+    const fileName: string = "workflow_metrics.json";
     await fs.writeFile(fileName, JSON.stringify(metricsData));
-    let metricsID: string = "";
+
+    // Generate meaningful artifact name using job name, run ID, and run attempt
+    const jobName = process.env.GITHUB_JOB || "default";
+    const runId = context.runId.toString();
+    const runAttempt = process.env.GITHUB_RUN_ATTEMPT || "1";
+    const baseArtifactName = `workflow_metrics_${jobName}_${runId}_${runAttempt}`;
 
     for (let i = 0; i < maxRetryCount; i++) {
-      metricsID = new Date().getTime().toString();
+      // Add retry suffix only if this is a retry attempt (upload failure, not workflow re-run)
+      const artifactName = i === 0 
+        ? baseArtifactName 
+        : `${baseArtifactName}_retry${i}`;
 
       try {
         const client: DefaultArtifactClient = new DefaultArtifactClient();
         await client.uploadArtifact(
-          [fileBaseName, metricsID].join("_"),
+          artifactName,
           [fileName],
           ".",
         );
@@ -53,7 +61,7 @@ async function index(): Promise<void> {
     }
 
     // Render metrics with alerts
-    await summary.addRaw(render(metricsData, metricsID, alerts)).write();
+    await summary.addRaw(render(metricsData, alerts)).write();
 
     info("Metrics collection completed successfully");
   } catch (error) {

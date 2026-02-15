@@ -3,7 +3,6 @@ import type { stepMarkerSchema, Alert, diskUsageGBSchema } from "../lib.js";
 
 export class Renderer {
   render(
-    metricsID: string,
     stepMarkers: z.TypeOf<typeof stepMarkerSchema>[] = [],
     alerts: Alert[] = [],
     cpuLoadPercentages: Array<{ unixTimeMs: number; user: number; system: number }> = [],
@@ -18,10 +17,6 @@ export class Renderer {
     const diskUsageSection = this.generateDiskUsageSection(diskUsageGBs, stepMarkers, alerts, thresholds.disk);
 
     return `## Workflow Metrics
-
-### Metrics ID
-
-${metricsID}
 
 ${alertsSection}${stepSummary}${cpuUsageSection}${memoryUsageSection}${diskUsageSection}`;
   }

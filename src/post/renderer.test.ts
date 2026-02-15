@@ -4,8 +4,6 @@ import { Renderer } from "./renderer.ts";
 import type { Alert } from "../lib.ts";
 
 describe("Renderer", () => {
-  const testMetricsID: string = "1234567890";
-  
   // Common step markers for tests
   const defaultStepMarkers = [
     {
@@ -24,7 +22,6 @@ describe("Renderer", () => {
     const renderer: Renderer = new Renderer();
 
     const result = renderer.render(
-      testMetricsID,
       [],
       [],
       [],
@@ -33,8 +30,6 @@ describe("Renderer", () => {
     );
     
     assert.ok(result.includes("## Workflow Metrics"));
-    assert.ok(result.includes("### Metrics ID"));
-    assert.ok(result.includes(testMetricsID));
   });
 
   it("should render CPU usage table", () => {
@@ -45,7 +40,6 @@ describe("Renderer", () => {
     ];
     
     const result = renderer.render(
-      testMetricsID,
       defaultStepMarkers,
       [],
       cpuData,
@@ -68,7 +62,6 @@ describe("Renderer", () => {
     ];
     
     const result = renderer.render(
-      testMetricsID,
       defaultStepMarkers,
       [],
       [],
@@ -91,7 +84,6 @@ describe("Renderer", () => {
     ];
     
     const result = renderer.render(
-      testMetricsID,
       defaultStepMarkers,
       [],
       [],
@@ -111,7 +103,6 @@ describe("Renderer", () => {
   it("should render step summary when step markers are provided", () => {
     const renderer: Renderer = new Renderer();
     const result = renderer.render(
-      testMetricsID,
       defaultStepMarkers,
       [],
       [],
@@ -128,7 +119,6 @@ describe("Renderer", () => {
   it("should not render step sections when no markers provided", () => {
     const renderer: Renderer = new Renderer();
     const result = renderer.render(
-      testMetricsID,
       [],
       [],
       [],
@@ -143,7 +133,6 @@ describe("Renderer", () => {
   it("should not render alerts section when no alerts provided", () => {
     const renderer: Renderer = new Renderer();
     const result = renderer.render(
-      testMetricsID,
       defaultStepMarkers,
       [],
       [],
@@ -168,7 +157,6 @@ describe("Renderer", () => {
     ];
 
     const result = renderer.render(
-      testMetricsID,
       defaultStepMarkers,
       alerts,
       [],
@@ -203,7 +191,6 @@ describe("Renderer", () => {
     ];
 
     const result = renderer.render(
-      testMetricsID,
       defaultStepMarkers,
       alerts,
       [],
@@ -231,7 +218,6 @@ describe("Renderer", () => {
     ];
 
     const result = renderer.render(
-      testMetricsID,
       defaultStepMarkers,
       alerts,
       [],
@@ -261,7 +247,6 @@ describe("Renderer", () => {
     ];
 
     const result = renderer.render(
-      testMetricsID,
       [],
       alerts,
       [],

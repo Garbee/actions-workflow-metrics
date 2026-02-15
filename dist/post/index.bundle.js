@@ -122257,17 +122257,13 @@ import { join as join2 } from "node:path";
 
 // src/post/renderer.ts
 var Renderer = class {
-  render(metricsID, stepMarkers = [], alerts = [], cpuLoadPercentages = [], memoryUsageMBs = [], diskUsageGBs = [], thresholds = { cpu: 85, memory: 80, disk: 90 }) {
+  render(stepMarkers = [], alerts = [], cpuLoadPercentages = [], memoryUsageMBs = [], diskUsageGBs = [], thresholds = { cpu: 85, memory: 80, disk: 90 }) {
     const stepSummary = this.generateStepSummary(stepMarkers);
     const alertsSection = this.generateAlertsSection(alerts);
     const cpuUsageSection = this.generateCPUUsageSection(cpuLoadPercentages, stepMarkers, alerts, thresholds.cpu);
     const memoryUsageSection = this.generateMemoryUsageSection(memoryUsageMBs, stepMarkers, alerts, thresholds.memory);
     const diskUsageSection = this.generateDiskUsageSection(diskUsageGBs, stepMarkers, alerts, thresholds.disk);
     return `## Workflow Metrics
-
-### Metrics ID
-
-${metricsID}
 
 ${alertsSection}${stepSummary}${cpuUsageSection}${memoryUsageSection}${diskUsageSection}`;
   }
@@ -122761,13 +122757,12 @@ function detectAlerts(metricsData) {
   }
   return alerts;
 }
-function render(metricsData, metricsID, alerts = []) {
+function render(metricsData, alerts = []) {
   const cpuThreshold = parseFloat(getInput("cpu_alert_threshold") || "85");
   const memoryThreshold = parseFloat(getInput("memory_alert_threshold") || "80");
   const diskThreshold = parseFloat(getInput("disk_alert_threshold") || "90");
   const renderer = new Renderer();
   return renderer.render(
-    metricsID,
     metricsData.stepMarkers,
     alerts,
     metricsData.cpuLoadPercentages,
@@ -122786,16 +122781,18 @@ async function index() {
     const apiSteps = await fetchWorkflowSteps();
     metricsData.stepMarkers = apiSteps;
     const alerts = detectAlerts(metricsData);
-    const fileBaseName = "workflow_metrics";
-    const fileName = `${fileBaseName}.json`;
+    const fileName = "workflow_metrics.json";
     await fs5.writeFile(fileName, JSON.stringify(metricsData));
-    let metricsID = "";
+    const jobName = process.env.GITHUB_JOB || "default";
+    const runId = context4.runId.toString();
+    const runAttempt = process.env.GITHUB_RUN_ATTEMPT || "1";
+    const baseArtifactName = `workflow_metrics_${jobName}_${runId}_${runAttempt}`;
     for (let i = 0; i < maxRetryCount; i++) {
-      metricsID = (/* @__PURE__ */ new Date()).getTime().toString();
+      const artifactName = i === 0 ? baseArtifactName : `${baseArtifactName}_retry${i}`;
       try {
         const client2 = new DefaultArtifactClient();
         await client2.uploadArtifact(
-          [fileBaseName, metricsID].join("_"),
+          artifactName,
           [fileName],
           "."
         );
@@ -122809,7 +122806,7 @@ async function index() {
       }
       await setTimeout2(1e3);
     }
-    await summary.addRaw(render(metricsData, metricsID, alerts)).write();
+    await summary.addRaw(render(metricsData, alerts)).write();
     info("Metrics collection completed successfully");
   } catch (error49) {
     setFailed(error49);
