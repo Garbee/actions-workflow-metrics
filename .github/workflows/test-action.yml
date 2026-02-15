@@ -88,6 +88,8 @@ jobs:
 
       - name: CPU and Storage Intensive Activity
         shell: bash
+        env:
+          RUNNER_OS: ${{ runner.os }}
         run: |
           set -euo pipefail
           echo "Starting CPU-intensive activity for 15 seconds..."
@@ -130,11 +132,11 @@ jobs:
             rm -f /tmp/test-5gb-file.bin
             echo "Test file removed."
           fi
-        env:
-          RUNNER_OS: ${{ runner.os }}
 
       - name: Memory Intensive Activity
         shell: bash
+        env:
+          RUNNER_OS: ${{ runner.os }}
         run: |
           set -euo pipefail
           echo "Starting memory-intensive activity for 15 seconds..."
@@ -174,8 +176,6 @@ jobs:
           arrays.length = 0;
           console.log('Memory freed. Activity completed.');
           "
-        env:
-          RUNNER_OS: ${{ runner.os }}
 
       - name: Idle Activity
         shell: bash
