@@ -122292,17 +122292,15 @@ ${alertItems.join("\n")}
     const rows = [];
     for (const cpu of cpuLoadPercentages) {
       const timestamp = this.formatTimestamp(cpu.unixTimeMs);
-      const total = 100;
       const used = cpu.user + cpu.system;
       const available = 100 - used;
-      const availablePercent = available.toFixed(2);
-      rows.push(`| ${timestamp} | ${total.toFixed(2)}% | ${used.toFixed(2)}% | ${available.toFixed(2)}% | ${availablePercent}% |`);
+      rows.push(`| ${timestamp} | ${used.toFixed(2)}% | ${available.toFixed(2)}% |`);
     }
     return `<details>
 <summary><h3>CPU Usage</h3></summary>
 
-| Timestamp | Total | Used | Available | Available % |
-|-----------|-------|------|-----------|-------------|
+| Timestamp | Used | Available |
+|-----------|------|-----------|
 ${rows.join("\n")}
 
 </details>
@@ -122313,18 +122311,19 @@ ${rows.join("\n")}
     if (memoryUsageMBs.length === 0) {
       return "";
     }
+    const total = memoryUsageMBs[0].used + memoryUsageMBs[0].free;
     const rows = [];
     for (const memory of memoryUsageMBs) {
       const timestamp = this.formatTimestamp(memory.unixTimeMs);
-      const total = memory.used + memory.free;
-      const availablePercent = (memory.free / total * 100).toFixed(2);
-      rows.push(`| ${timestamp} | ${total.toFixed(2)} MB | ${memory.used.toFixed(2)} MB | ${memory.free.toFixed(2)} MB | ${availablePercent}% |`);
+      rows.push(`| ${timestamp} | ${memory.used.toFixed(2)} MB | ${memory.free.toFixed(2)} MB |`);
     }
     return `<details>
 <summary><h3>Memory Usage</h3></summary>
 
-| Timestamp | Total | Used | Available | Available % |
-|-----------|-------|------|-----------|-------------|
+**Total Memory:** ${total.toFixed(2)} MB
+
+| Timestamp | Used | Available |
+|-----------|------|-----------|
 ${rows.join("\n")}
 
 </details>
@@ -122335,17 +122334,19 @@ ${rows.join("\n")}
     if (diskUsageGBs.length === 0) {
       return "";
     }
+    const totalSize = diskUsageGBs[0].size;
     const rows = [];
     for (const disk of diskUsageGBs) {
       const timestamp = this.formatTimestamp(disk.unixTimeMs);
-      const availablePercent = (disk.available / disk.size * 100).toFixed(2);
-      rows.push(`| ${timestamp} | ${disk.size.toFixed(2)} GB | ${disk.used.toFixed(2)} GB | ${disk.available.toFixed(2)} GB | ${availablePercent}% |`);
+      rows.push(`| ${timestamp} | ${disk.used.toFixed(2)} GB | ${disk.available.toFixed(2)} GB |`);
     }
     return `<details>
 <summary><h3>Disk Usage</h3></summary>
 
-| Timestamp | Total Size | Used | Available | Available % |
-|-----------|------------|------|-----------|-------------|
+**Total Disk Size:** ${totalSize.toFixed(2)} GB
+
+| Timestamp | Used | Available |
+|-----------|------|-----------|
 ${rows.join("\n")}
 
 </details>
