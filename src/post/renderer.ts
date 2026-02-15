@@ -20,6 +20,44 @@ export class Renderer {
 ${alertsSection}${cpuUsageSection}${memoryUsageSection}${diskUsageSection}`;
   }
 
+  /**
+   * Find the metric that best represents a step's execution.
+   * Prefers metrics collected during the step, falls back to closest available.
+   */
+  private findMetricForStep<T extends { unixTimeMs: number }>(
+    metrics: T[],
+    stepStart: number,
+    stepEnd: number,
+  ): T | undefined {
+    if (metrics.length === 0) {
+      return undefined;
+    }
+
+    // First, try to find a metric within the step's time range
+    for (const metric of metrics) {
+      if (metric.unixTimeMs >= stepStart && metric.unixTimeMs <= stepEnd) {
+        return metric;
+      }
+    }
+
+    // If no metric falls within the step, find the closest one
+    let closest = metrics[0];
+    let minDistance = Math.abs(metrics[0].unixTimeMs - stepStart);
+
+    for (const metric of metrics) {
+      // Calculate distance from metric to step's midpoint
+      const stepMidpoint = (stepStart + stepEnd) / 2;
+      const distance = Math.abs(metric.unixTimeMs - stepMidpoint);
+      
+      if (distance < minDistance) {
+        minDistance = distance;
+        closest = metric;
+      }
+    }
+
+    return closest;
+  }
+
   private generateAlertsSection(alerts: Alert[]): string {
     if (alerts.length === 0) {
       return "";
@@ -58,9 +96,6 @@ ${alertItems.join("\n")}
     // Get initial CPU metrics
     const initialCPU = cpuLoadPercentages[0];
     
-    // Create a map of step names to their CPU metrics
-    const stepCPUMap = new Map<string, { unixTimeMs: number; user: number; system: number }>();
-    
     // Build step ranges
     const stepRanges: { start: number; end: number; name: string }[] = [];
     const stepStarts = new Map<string, number>();
@@ -78,19 +113,6 @@ ${alertItems.join("\n")}
       const endTime = stepEnds.get(stepName);
       if (endTime) {
         stepRanges.push({ start: startTime, end: endTime, name: stepName });
-      }
-    }
-
-    // Map CPU metrics to steps
-    for (const cpu of cpuLoadPercentages) {
-      for (const range of stepRanges) {
-        if (cpu.unixTimeMs >= range.start && cpu.unixTimeMs < range.end) {
-          // Use the first metric that falls within the step
-          if (!stepCPUMap.has(range.name)) {
-            stepCPUMap.set(range.name, cpu);
-          }
-          break;
-        }
       }
     }
 
@@ -117,9 +139,9 @@ ${alertItems.join("\n")}
     const initExceeded = initUsed > threshold ? "Yes" : "";
     rows.push(`| Initialization | ${initTotal.toFixed(2)}% | ${initUsed.toFixed(2)}% | ${initAvailable.toFixed(2)}% | ${initAvailablePercent}% | ${initExceeded} |`);
     
-    // Add rows for each step that has CPU metrics
+    // Add rows for ALL steps, using closest metric if needed
     for (const range of stepRanges) {
-      const cpu = stepCPUMap.get(range.name);
+      const cpu = this.findMetricForStep(cpuLoadPercentages, range.start, range.end);
       if (cpu) {
         const total = 100;
         const used = cpu.user + cpu.system;
@@ -152,9 +174,6 @@ ${rows.join("\n")}
     // Get initial memory metrics
     const initialMemory = memoryUsageMBs[0];
     
-    // Create a map of step names to their memory metrics
-    const stepMemoryMap = new Map<string, { unixTimeMs: number; used: number; free: number }>();
-    
     // Build step ranges
     const stepRanges: { start: number; end: number; name: string }[] = [];
     const stepStarts = new Map<string, number>();
@@ -172,19 +191,6 @@ ${rows.join("\n")}
       const endTime = stepEnds.get(stepName);
       if (endTime) {
         stepRanges.push({ start: startTime, end: endTime, name: stepName });
-      }
-    }
-
-    // Map memory metrics to steps
-    for (const memory of memoryUsageMBs) {
-      for (const range of stepRanges) {
-        if (memory.unixTimeMs >= range.start && memory.unixTimeMs < range.end) {
-          // Use the first metric that falls within the step
-          if (!stepMemoryMap.has(range.name)) {
-            stepMemoryMap.set(range.name, memory);
-          }
-          break;
-        }
       }
     }
 
@@ -207,9 +213,9 @@ ${rows.join("\n")}
     const initExceeded = initUtilization > threshold ? "Yes" : "";
     rows.push(`| Initialization | ${initTotal.toFixed(2)} MB | ${initialMemory.used.toFixed(2)} MB | ${initialMemory.free.toFixed(2)} MB | ${initAvailablePercent}% | ${initExceeded} |`);
     
-    // Add rows for each step that has memory metrics
+    // Add rows for ALL steps, using closest metric if needed
     for (const range of stepRanges) {
-      const memory = stepMemoryMap.get(range.name);
+      const memory = this.findMetricForStep(memoryUsageMBs, range.start, range.end);
       if (memory) {
         const total = memory.used + memory.free;
         const utilization = (memory.used / total * 100);
@@ -241,9 +247,6 @@ ${rows.join("\n")}
     // Get initial disk metrics
     const initialDisk = diskUsageGBs[0];
     
-    // Create a map of step names to their disk metrics
-    const stepDiskMap = new Map<string, z.TypeOf<typeof diskUsageGBSchema>>();
-    
     // Build step ranges
     const stepRanges: { start: number; end: number; name: string }[] = [];
     const stepStarts = new Map<string, number>();
@@ -261,19 +264,6 @@ ${rows.join("\n")}
       const endTime = stepEnds.get(stepName);
       if (endTime) {
         stepRanges.push({ start: startTime, end: endTime, name: stepName });
-      }
-    }
-
-    // Map disk metrics to steps
-    for (const disk of diskUsageGBs) {
-      for (const range of stepRanges) {
-        if (disk.unixTimeMs >= range.start && disk.unixTimeMs < range.end) {
-          // Use the first metric that falls within the step
-          if (!stepDiskMap.has(range.name)) {
-            stepDiskMap.set(range.name, disk);
-          }
-          break;
-        }
       }
     }
 
@@ -295,9 +285,9 @@ ${rows.join("\n")}
     const initExceeded = initUtilization > threshold ? "Yes" : "";
     rows.push(`| Initialization | ${initialDisk.size.toFixed(2)} GB | ${initialDisk.used.toFixed(2)} GB | ${initialDisk.available.toFixed(2)} GB | ${initAvailablePercent}% | ${initExceeded} |`);
     
-    // Add rows for each step that has disk metrics
+    // Add rows for ALL steps, using closest metric if needed
     for (const range of stepRanges) {
-      const disk = stepDiskMap.get(range.name);
+      const disk = this.findMetricForStep(diskUsageGBs, range.start, range.end);
       if (disk) {
         const utilization = (disk.used / disk.size * 100);
         const availablePercent = (disk.available / disk.size * 100).toFixed(2);

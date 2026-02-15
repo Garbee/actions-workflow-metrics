@@ -122266,6 +122266,31 @@ var Renderer = class {
 
 ${alertsSection}${cpuUsageSection}${memoryUsageSection}${diskUsageSection}`;
   }
+  /**
+   * Find the metric that best represents a step's execution.
+   * Prefers metrics collected during the step, falls back to closest available.
+   */
+  findMetricForStep(metrics, stepStart, stepEnd) {
+    if (metrics.length === 0) {
+      return void 0;
+    }
+    for (const metric of metrics) {
+      if (metric.unixTimeMs >= stepStart && metric.unixTimeMs <= stepEnd) {
+        return metric;
+      }
+    }
+    let closest = metrics[0];
+    let minDistance = Math.abs(metrics[0].unixTimeMs - stepStart);
+    for (const metric of metrics) {
+      const stepMidpoint = (stepStart + stepEnd) / 2;
+      const distance = Math.abs(metric.unixTimeMs - stepMidpoint);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closest = metric;
+      }
+    }
+    return closest;
+  }
   generateAlertsSection(alerts) {
     if (alerts.length === 0) {
       return "";
@@ -122292,7 +122317,6 @@ ${alertItems.join("\n")}
       return "";
     }
     const initialCPU = cpuLoadPercentages[0];
-    const stepCPUMap = /* @__PURE__ */ new Map();
     const stepRanges = [];
     const stepStarts = /* @__PURE__ */ new Map();
     const stepEnds = /* @__PURE__ */ new Map();
@@ -122307,16 +122331,6 @@ ${alertItems.join("\n")}
       const endTime = stepEnds.get(stepName);
       if (endTime) {
         stepRanges.push({ start: startTime, end: endTime, name: stepName });
-      }
-    }
-    for (const cpu of cpuLoadPercentages) {
-      for (const range2 of stepRanges) {
-        if (cpu.unixTimeMs >= range2.start && cpu.unixTimeMs < range2.end) {
-          if (!stepCPUMap.has(range2.name)) {
-            stepCPUMap.set(range2.name, cpu);
-          }
-          break;
-        }
       }
     }
     const cpuAlertSteps = /* @__PURE__ */ new Set();
@@ -122337,7 +122351,7 @@ ${alertItems.join("\n")}
     const initExceeded = initUsed > threshold ? "Yes" : "";
     rows.push(`| Initialization | ${initTotal.toFixed(2)}% | ${initUsed.toFixed(2)}% | ${initAvailable.toFixed(2)}% | ${initAvailablePercent}% | ${initExceeded} |`);
     for (const range2 of stepRanges) {
-      const cpu = stepCPUMap.get(range2.name);
+      const cpu = this.findMetricForStep(cpuLoadPercentages, range2.start, range2.end);
       if (cpu) {
         const total = 100;
         const used = cpu.user + cpu.system;
@@ -122360,7 +122374,6 @@ ${rows.join("\n")}
       return "";
     }
     const initialMemory = memoryUsageMBs[0];
-    const stepMemoryMap = /* @__PURE__ */ new Map();
     const stepRanges = [];
     const stepStarts = /* @__PURE__ */ new Map();
     const stepEnds = /* @__PURE__ */ new Map();
@@ -122377,16 +122390,6 @@ ${rows.join("\n")}
         stepRanges.push({ start: startTime, end: endTime, name: stepName });
       }
     }
-    for (const memory of memoryUsageMBs) {
-      for (const range2 of stepRanges) {
-        if (memory.unixTimeMs >= range2.start && memory.unixTimeMs < range2.end) {
-          if (!stepMemoryMap.has(range2.name)) {
-            stepMemoryMap.set(range2.name, memory);
-          }
-          break;
-        }
-      }
-    }
     let memoryAlertStep;
     for (const alert of alerts) {
       if (alert.type === "memory" && alert.step) {
@@ -122401,7 +122404,7 @@ ${rows.join("\n")}
     const initExceeded = initUtilization > threshold ? "Yes" : "";
     rows.push(`| Initialization | ${initTotal.toFixed(2)} MB | ${initialMemory.used.toFixed(2)} MB | ${initialMemory.free.toFixed(2)} MB | ${initAvailablePercent}% | ${initExceeded} |`);
     for (const range2 of stepRanges) {
-      const memory = stepMemoryMap.get(range2.name);
+      const memory = this.findMetricForStep(memoryUsageMBs, range2.start, range2.end);
       if (memory) {
         const total = memory.used + memory.free;
         const utilization = memory.used / total * 100;
@@ -122423,7 +122426,6 @@ ${rows.join("\n")}
       return "";
     }
     const initialDisk = diskUsageGBs[0];
-    const stepDiskMap = /* @__PURE__ */ new Map();
     const stepRanges = [];
     const stepStarts = /* @__PURE__ */ new Map();
     const stepEnds = /* @__PURE__ */ new Map();
@@ -122440,16 +122442,6 @@ ${rows.join("\n")}
         stepRanges.push({ start: startTime, end: endTime, name: stepName });
       }
     }
-    for (const disk of diskUsageGBs) {
-      for (const range2 of stepRanges) {
-        if (disk.unixTimeMs >= range2.start && disk.unixTimeMs < range2.end) {
-          if (!stepDiskMap.has(range2.name)) {
-            stepDiskMap.set(range2.name, disk);
-          }
-          break;
-        }
-      }
-    }
     let diskAlertStep;
     for (const alert of alerts) {
       if (alert.type === "disk" && alert.step) {
@@ -122463,7 +122455,7 @@ ${rows.join("\n")}
     const initExceeded = initUtilization > threshold ? "Yes" : "";
     rows.push(`| Initialization | ${initialDisk.size.toFixed(2)} GB | ${initialDisk.used.toFixed(2)} GB | ${initialDisk.available.toFixed(2)} GB | ${initAvailablePercent}% | ${initExceeded} |`);
     for (const range2 of stepRanges) {
-      const disk = stepDiskMap.get(range2.name);
+      const disk = this.findMetricForStep(diskUsageGBs, range2.start, range2.end);
       if (disk) {
         const utilization = disk.used / disk.size * 100;
         const availablePercent = (disk.available / disk.size * 100).toFixed(2);
