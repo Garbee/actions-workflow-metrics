@@ -36990,7 +36990,7 @@ function error(message, properties = {}) {
 
 // src/main/metrics.ts
 var import_systeminformation = __toESM(require_lib(), 1);
-import { writeFile as writeFile2 } from "node:fs/promises";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 // node_modules/zod/v4/classic/external.js
@@ -50809,8 +50809,12 @@ var Metrics = class {
   data;
   intervalMs;
   stateFile;
+  writeInterval;
+  // How many collections before writing to disk
   timeoutId = null;
   stopped = false;
+  collectionsSinceWrite = 0;
+  isFirstCollection = true;
   constructor() {
     this.data = { cpuLoadPercentages: [], memoryUsageMBs: [], diskUsageGBs: [], stepMarkers: [] };
     const githubStateFile = process.env.GITHUB_STATE;
@@ -50831,6 +50835,7 @@ var Metrics = class {
         this.intervalMs = intervalSecondsVal * 1e3;
       }
     }
+    this.writeInterval = 5;
     this.initialize().catch(setFailed);
   }
   async initialize() {
@@ -50849,9 +50854,7 @@ var Metrics = class {
   }
   saveState() {
     try {
-      writeFile2(this.stateFile, JSON.stringify(this.data), "utf-8").catch((error49) => {
-        console.warn("Failed to save metrics state:", error49);
-      });
+      writeFileSync(this.stateFile, JSON.stringify(this.data), "utf-8");
     } catch (error49) {
       console.warn("Failed to save metrics state:", error49);
     }
@@ -50885,7 +50888,14 @@ var Metrics = class {
       } else {
         console.warn("Root filesystem not found in disk list. Disk metrics will be incomplete.");
       }
-      this.saveState();
+      this.collectionsSinceWrite++;
+      if (this.isFirstCollection) {
+        this.saveState();
+        this.isFirstCollection = false;
+      } else if (this.collectionsSinceWrite >= this.writeInterval) {
+        this.saveState();
+        this.collectionsSinceWrite = 0;
+      }
     } catch (error49) {
       setFailed(error49);
     } finally {

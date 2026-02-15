@@ -13,8 +13,10 @@ describe("Metrics", () => {
   let Metrics;
   let mockModule;
   let mockFsModule;
+  let mockFsSyncModule;
   const metricsInstances: any[] = [];
   const fileWrites: Map<string, string> = new Map();
+  let writeCount = 0; // Track total number of writes
 
   before(async () => {
     // Enable timer mocking BEFORE importing the module
@@ -64,6 +66,7 @@ describe("Metrics", () => {
       namedExports: {
         writeFile: async (path: string, content: string): Promise<void> => {
           fileWrites.set(path, content);
+          writeCount++; // Increment write counter
           return Promise.resolve();
         },
         readFile: async (path: string): Promise<string> => {
@@ -76,12 +79,36 @@ describe("Metrics", () => {
       },
     });
 
+    // Mock node:fs module for synchronous operations
+    mockFsSyncModule = mock.module("node:fs", {
+      namedExports: {
+        writeFileSync: (path: string, content: string): void => {
+          fileWrites.set(path, content);
+          writeCount++; // Increment write counter
+        },
+        constants: {
+          F_OK: 0,
+          R_OK: 4,
+          W_OK: 2,
+          X_OK: 1,
+        },
+        promises: {
+          writeFile: async (path: string, content: string): Promise<void> => {
+            fileWrites.set(path, content);
+            writeCount++;
+            return Promise.resolve();
+          },
+        },
+      },
+    });
+
     ({ Metrics } = await import("./metrics.ts"));
   })
 
   beforeEach(() => {
     // Clear file writes between tests
     fileWrites.clear();
+    writeCount = 0; // Reset write count
   });
 
   afterEach(() => {
@@ -95,6 +122,7 @@ describe("Metrics", () => {
   after(() => {
     mockModule.restore();
     mockFsModule.restore();
+    mockFsSyncModule.restore();
     mock.timers.reset();
   })
 
@@ -353,5 +381,122 @@ describe("Metrics", () => {
           finalData.diskUsageGBs[i - 1].unixTimeMs,
       );
     }
+  });
+
+  it("should batch disk writes to reduce I/O", async () => {
+    const metrics = createMetrics();
+
+    // Wait for initial data collection
+    for (let i = 0; i < 10; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
+
+    // Initial collection should write immediately to ensure file exists for short workflows
+    assert.strictEqual(writeCount, 1, "First collection should write immediately");
+
+    // Advance time by 5 seconds (2nd collection)
+    await mock.timers.tick(5000);
+    for (let i = 0; i < 10; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
+
+    assert.strictEqual(writeCount, 1, "Second collection should not write yet");
+
+    // Advance time by 5 seconds (3rd collection)
+    await mock.timers.tick(5000);
+    for (let i = 0; i < 10; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
+
+    assert.strictEqual(writeCount, 1, "Third collection should not write yet");
+
+    // Advance time by 5 seconds (4th collection)
+    await mock.timers.tick(5000);
+    for (let i = 0; i < 10; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
+
+    assert.strictEqual(writeCount, 1, "Fourth collection should not write yet");
+
+    // Advance time by 5 seconds (5th collection - should trigger write)
+    await mock.timers.tick(5000);
+    for (let i = 0; i < 10; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
+
+    assert.strictEqual(writeCount, 2, "Fifth collection should trigger second write");
+
+    // Verify data is collected correctly despite batched writes
+    const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
+    assert.strictEqual(data.cpuLoadPercentages.length, 5, "Should have 5 CPU data points");
+    assert.strictEqual(data.memoryUsageMBs.length, 5, "Should have 5 memory data points");
+    assert.strictEqual(data.diskUsageGBs.length, 5, "Should have 5 disk data points");
+  });
+
+  it("should write to disk on stop even if batch threshold not reached", async () => {
+    const metrics = createMetrics();
+
+    // Wait for initial data collection
+    for (let i = 0; i < 10; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
+
+    // First collection should have written
+    assert.strictEqual(writeCount, 1, "First collection should write immediately");
+
+    // Stop the metrics - should force another write
+    metrics.stop();
+
+    // Wait for file write to complete
+    for (let i = 0; i < 10; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
+
+    // Should have written on stop
+    assert.strictEqual(writeCount, 2, "Should write on stop to ensure final data is saved");
+
+    // Verify the written data contains our metrics
+    const stateFilePath = Array.from(fileWrites.keys())[0];
+    const writtenContent = fileWrites.get(stateFilePath);
+    assert.ok(writtenContent, "Should have written content");
+
+    const writtenData: z.TypeOf<typeof metricsDataSchema> = JSON.parse(writtenContent);
+    assert.strictEqual(writtenData.cpuLoadPercentages.length, 1, "Written data should have 1 CPU data point");
+  });
+
+  it("should continue batching writes after first batch", async () => {
+    const metrics = createMetrics();
+
+    // Wait for initial data collection
+    for (let i = 0; i < 10; i++) {
+      await new Promise(resolve => queueMicrotask(resolve));
+    }
+
+    // First collection writes immediately
+    assert.strictEqual(writeCount, 1, "Should have 1 write after first collection");
+
+    // Collect 4 more times to trigger second write (total 5 collections)
+    for (let j = 0; j < 4; j++) {
+      await mock.timers.tick(5000);
+      for (let i = 0; i < 10; i++) {
+        await new Promise(resolve => queueMicrotask(resolve));
+      }
+    }
+
+    assert.strictEqual(writeCount, 2, "Should have 2 writes after 5 collections");
+
+    // Collect 5 more times to trigger third write (total 10 collections)
+    for (let j = 0; j < 5; j++) {
+      await mock.timers.tick(5000);
+      for (let i = 0; i < 10; i++) {
+        await new Promise(resolve => queueMicrotask(resolve));
+      }
+    }
+
+    assert.strictEqual(writeCount, 3, "Should have 3 writes after 10 collections");
+
+    // Verify all 10 data points are in memory
+    const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
+    assert.strictEqual(data.cpuLoadPercentages.length, 10, "Should have 10 CPU data points");
   });
 });
