@@ -108,7 +108,7 @@ describe("Renderer", () => {
     assert.ok(result.includes("%"));
   });
 
-  it("should render step summary when step markers are provided", () => {
+  it("should not render step summary section", () => {
     const renderer: Renderer = new Renderer();
     const result = renderer.render(
       testMetricsID,
@@ -120,9 +120,7 @@ describe("Renderer", () => {
       { cpu: 85, memory: 80, disk: 90 },
     );
 
-    assert.ok(result.includes("### Workflow Steps"));
-    assert.ok(result.includes("| Step Name | Start Time | End Time | Duration |"));
-    assert.ok(result.includes("Test Step"));
+    assert.ok(!result.includes("### Workflow Steps"));
   });
 
   it("should not render step sections when no markers provided", () => {
@@ -218,7 +216,7 @@ describe("Renderer", () => {
     assert.ok(result.includes("Memory Heavy Step"));
   });
 
-  it("should render alerts before workflow steps", () => {
+  it("should render alerts before CPU section", () => {
     const renderer: Renderer = new Renderer();
     const alerts: Alert[] = [
       {
@@ -229,23 +227,28 @@ describe("Renderer", () => {
         threshold: 85,
       },
     ];
+    
+    const cpuData = [
+      { unixTimeMs: new Date("2024-01-01T00:00:00Z").getTime(), user: 10, system: 5 },
+      { unixTimeMs: new Date("2024-01-01T00:00:01Z").getTime(), user: 20, system: 10 },
+    ];
 
     const result = renderer.render(
       testMetricsID,
       defaultStepMarkers,
       alerts,
-      [],
+      cpuData,
       [],
       [],
       { cpu: 85, memory: 80, disk: 90 },
     );
 
     const alertsIndex = result.indexOf("### Alerts");
-    const stepsIndex = result.indexOf("### Workflow Steps");
+    const cpuIndex = result.indexOf("### CPU Usage");
     
-    // Alerts should appear before steps (or steps might not be in output if empty data)
-    if (stepsIndex !== -1) {
-      assert.ok(alertsIndex < stepsIndex);
+    // Alerts should appear before CPU section
+    if (cpuIndex !== -1) {
+      assert.ok(alertsIndex < cpuIndex);
     }
   });
 
