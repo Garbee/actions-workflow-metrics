@@ -55,14 +55,15 @@ You are an expert GitHub Actions engineer and security reviewer. Your goal is to
 
 ### Concurrency
 
-- **Concurrency Block:** Workflows that run on both `push` and `pull_request` events should define a `concurrency` block to prevent resource conflicts.
-- **Group Pattern:** Use `group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}` to ensure PR runs use the branch name (via `github.head_ref`) and push runs use the branch/tag name (via `github.ref_name`).
-  - `github.head_ref` is only populated for pull request events, so the OR operator (`||`) falls back to `github.ref_name` for push events.
-  - `github.ref_name` provides a succinct name (e.g., `main`) instead of the full ref path (e.g., `refs/heads/main`).
-  - This ensures PR runs are grouped separately from target branch runs (e.g., `Workflow-feature-branch` vs `Workflow-main`).
-- **Cancel in Progress:** Use `cancel-in-progress: ${{ github.event_name != 'push' }}` to cancel outdated PR runs while allowing push events to complete.
+- **Concurrency Block:** Workflows that run on `push`, `pull_request`, and/or tag creation events should define a `concurrency` block to prevent resource conflicts.
+- **Group Pattern:** Use `group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}` to ensure PR runs use the branch name (via `github.head_ref`) and push/tag runs use the branch/tag name (via `github.ref_name`).
+  - `github.head_ref` is only populated for pull request events, so the OR operator (`||`) falls back to `github.ref_name` for push and tag creation events.
+  - `github.ref_name` provides a succinct name (e.g., `main` for branches, `v1.0.0` for tags) instead of the full ref path (e.g., `refs/heads/main` or `refs/tags/v1.0.0`).
+  - This ensures PR runs are grouped separately from branch/tag runs (e.g., `Workflow-feature-branch` vs `Workflow-main` vs `Workflow-v1.0.0`).
+- **Cancel in Progress:** Use `cancel-in-progress: ${{ !contains(fromJSON('["push", "create"]'), github.event_name) }}` to cancel outdated PR runs while allowing push and tag events to complete.
   - PR runs benefit from cancellation when new commits are pushed.
   - Push events to protected branches should complete to ensure deployment pipelines finish.
+  - Tag creation events (`create` with `github.ref_type == 'tag'`) should queue and complete to ensure releases are properly built and deployed.
 
 ---
 
@@ -181,21 +182,24 @@ You are an expert GitHub Actions engineer and security reviewer. Your goal is to
 
 ### Concurrency Pattern
 
-**Recommended pattern for workflows that run on both push and pull_request:**
+**Recommended pattern for workflows that run on push, pull_request, and/or tag events:**
 
 ```yaml
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: ${{ github.event_name != 'push' }}
+  cancel-in-progress: ${{ !contains(fromJSON('["push", "create"]'), github.event_name) }}
 ```
 
 This ensures:
 - PR runs: `CI Workflow-feature-branch` (using the branch name from `github.head_ref`)
 - Push runs: `CI Workflow-main` (using the branch/tag name from `github.ref_name`)
+- Tag runs: `CI Workflow-v1.0.0` (using the tag name from `github.ref_name`)
 - PRs don't conflict with target branch runs
-- Only PR runs are cancelled when new commits are pushed; push events complete fully
+- Only PR runs are cancelled when new commits are pushed
+- Push events to protected branches complete fully to ensure deployment pipelines finish
+- Tag creation events (`create` with `github.ref_type == 'tag'`) queue and complete to ensure releases are properly built
 
-Note: `github.workflow` contains the workflow name exactly as defined in the `name` field.
+**Note:** `github.workflow` contains the workflow name exactly as defined in the `name` field. The `create` event is triggered when a Git ref (branch or tag) is created; we check for both push and create events to allow both branch pushes and tag creations to complete without cancellation.
 
 ### Permission Patterns
 
@@ -224,13 +228,16 @@ on:
   push:
     branches:
       - main
+  create:
+    tags:
+      - 'v*'
 
 permissions:
   contents: read # Needed to clone the repository
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: ${{ github.event_name != 'push' }}
+  cancel-in-progress: ${{ !contains(fromJSON('["push", "create"]'), github.event_name) }}
 
 jobs:
   test:
