@@ -76,6 +76,12 @@ jobs:
             else
               DRIVE=$(echo "$TEMP" | sed -n 's/^\([A-Za-z]:\).*/\1/p')
             fi
+            
+            if [ -z "$DRIVE" ]; then
+              echo "Error: Could not determine drive letter from TEMP=$TEMP"
+              exit 1
+            fi
+            
             echo "Drive: $DRIVE"
             echo "Volume information for $DRIVE:"
             fsutil volume diskfree "$DRIVE"
