@@ -122269,15 +122269,22 @@ ${alertsSection}${cpuUsageSection}${memoryUsageSection}${diskUsageSection}`;
   /**
    * Find the metric that best represents a step's execution.
    * Prefers metrics collected during the step, falls back to closest available.
+   * 
+   * @param strategy - 'first': earliest metric in range (default for CPU/memory)
+   *                   'last': latest metric in range (better for disk, captures end state)
    */
-  findMetricForStep(metrics, stepStart, stepEnd) {
+  findMetricForStep(metrics, stepStart, stepEnd, strategy = "first") {
     if (metrics.length === 0) {
       return void 0;
     }
+    const metricsInRange = [];
     for (const metric of metrics) {
       if (metric.unixTimeMs >= stepStart && metric.unixTimeMs <= stepEnd) {
-        return metric;
+        metricsInRange.push(metric);
       }
+    }
+    if (metricsInRange.length > 0) {
+      return strategy === "last" ? metricsInRange[metricsInRange.length - 1] : metricsInRange[0];
     }
     let closest = metrics[0];
     let minDistance = Math.abs(metrics[0].unixTimeMs - stepStart);
@@ -122455,7 +122462,7 @@ ${rows.join("\n")}
     const initExceeded = initUtilization > threshold ? "Yes" : "";
     rows.push(`| Initialization | ${initialDisk.size.toFixed(2)} GB | ${initialDisk.used.toFixed(2)} GB | ${initialDisk.available.toFixed(2)} GB | ${initAvailablePercent}% | ${initExceeded} |`);
     for (const range2 of stepRanges) {
-      const disk = this.findMetricForStep(diskUsageGBs, range2.start, range2.end);
+      const disk = this.findMetricForStep(diskUsageGBs, range2.start, range2.end, "last");
       if (disk) {
         const utilization = disk.used / disk.size * 100;
         const availablePercent = (disk.available / disk.size * 100).toFixed(2);

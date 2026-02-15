@@ -23,21 +23,33 @@ ${alertsSection}${cpuUsageSection}${memoryUsageSection}${diskUsageSection}`;
   /**
    * Find the metric that best represents a step's execution.
    * Prefers metrics collected during the step, falls back to closest available.
+   * 
+   * @param strategy - 'first': earliest metric in range (default for CPU/memory)
+   *                   'last': latest metric in range (better for disk, captures end state)
    */
   private findMetricForStep<T extends { unixTimeMs: number }>(
     metrics: T[],
     stepStart: number,
     stepEnd: number,
+    strategy: 'first' | 'last' = 'first',
   ): T | undefined {
     if (metrics.length === 0) {
       return undefined;
     }
 
-    // First, try to find a metric within the step's time range
+    // Collect all metrics within the step's time range
+    const metricsInRange: T[] = [];
     for (const metric of metrics) {
       if (metric.unixTimeMs >= stepStart && metric.unixTimeMs <= stepEnd) {
-        return metric;
+        metricsInRange.push(metric);
       }
+    }
+
+    // If we found metrics within the step, return based on strategy
+    if (metricsInRange.length > 0) {
+      return strategy === 'last' 
+        ? metricsInRange[metricsInRange.length - 1]
+        : metricsInRange[0];
     }
 
     // If no metric falls within the step, find the closest one
@@ -285,9 +297,9 @@ ${rows.join("\n")}
     const initExceeded = initUtilization > threshold ? "Yes" : "";
     rows.push(`| Initialization | ${initialDisk.size.toFixed(2)} GB | ${initialDisk.used.toFixed(2)} GB | ${initialDisk.available.toFixed(2)} GB | ${initAvailablePercent}% | ${initExceeded} |`);
     
-    // Add rows for ALL steps, using closest metric if needed
+    // Add rows for ALL steps, using last metric in range (better captures disk growth)
     for (const range of stepRanges) {
-      const disk = this.findMetricForStep(diskUsageGBs, range.start, range.end);
+      const disk = this.findMetricForStep(diskUsageGBs, range.start, range.end, 'last');
       if (disk) {
         const utilization = (disk.used / disk.size * 100);
         const availablePercent = (disk.available / disk.size * 100).toFixed(2);
