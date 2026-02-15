@@ -31,5 +31,72 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Dump fsSize Information
-        run: node scripts/dump-fssize.js
+      - name: Dump Initial fsSize Information
+        run: |
+          echo "=== Initial Filesystem Size Information ==="
+          node scripts/dump-fssize.js
+
+      - name: Create 10GB Test File
+        env:
+          RUNNER_OS: ${{ runner.os }}
+        run: |
+          echo "Creating 10GB test file..."
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            # Windows: Use fsutil to create a sparse file
+            TEST_FILE="$TEMP/test-10gb-file.bin"
+            fsutil file createnew "$TEST_FILE" 10737418240
+            echo "10GB file created at: $TEST_FILE"
+          else
+            # Unix-like (Linux/macOS): Use dd
+            TEST_FILE="/tmp/test-10gb-file.bin"
+            dd if=/dev/zero of="$TEST_FILE" bs=1M count=10240 status=progress
+            echo "10GB file created at: $TEST_FILE"
+            ls -lh "$TEST_FILE"
+          fi
+          echo "TEST_FILE=$TEST_FILE" >> $GITHUB_ENV
+
+      - name: Dump fsSize Information After File Creation
+        run: |
+          echo "=== Filesystem Size Information After 10GB File Creation ==="
+          node scripts/dump-fssize.js
+
+      - name: Determine and Log Mount Point
+        env:
+          RUNNER_OS: ${{ runner.os }}
+        run: |
+          echo "=== Determining Mount Point for Test File ==="
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            # Windows: Extract drive letter and show volume info
+            TEST_FILE="$TEST_FILE"
+            echo "Test file location: $TEST_FILE"
+            DRIVE=$(echo "$TEST_FILE" | sed -n 's/^\([A-Za-z]:\).*/\1/p')
+            echo "Drive: $DRIVE"
+            echo "Volume information for $DRIVE:"
+            fsutil volume diskfree "$DRIVE"
+          else
+            # Unix-like: Use df to find mount point
+            TEST_FILE="${TEST_FILE:-/tmp/test-10gb-file.bin}"
+            echo "Test file location: $TEST_FILE"
+            echo "Mount point information:"
+            df -h "$TEST_FILE"
+            echo ""
+            echo "Mount point: $(df "$TEST_FILE" | tail -n 1 | awk '{print $NF}')"
+          fi
+
+      - name: Cleanup Test File
+        if: always()
+        env:
+          RUNNER_OS: ${{ runner.os }}
+        run: |
+          echo "Cleaning up test file..."
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            TEST_FILE="${TEST_FILE:-$TEMP/test-10gb-file.bin}"
+          else
+            TEST_FILE="${TEST_FILE:-/tmp/test-10gb-file.bin}"
+          fi
+          if [ -f "$TEST_FILE" ]; then
+            rm -f "$TEST_FILE"
+            echo "Test file removed: $TEST_FILE"
+          else
+            echo "Test file not found: $TEST_FILE"
+          fi
