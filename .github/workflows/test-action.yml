@@ -19,8 +19,16 @@ permissions:
 
 jobs:
   test-basic:
-    name: Test Basic Usage
-    runs-on: ubuntu-24.04
+    name: Test Basic Usage (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
+          - windows-2025
+          - macos-26
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 5
     steps:
       - name: Checkout Repository
@@ -45,8 +53,16 @@ jobs:
         run: npm test
 
   test-custom-interval:
-    name: Test Custom Interval
-    runs-on: ubuntu-24.04
+    name: Test Custom Interval (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
+          - windows-2025
+          - macos-26
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 5
     steps:
       - name: Checkout Repository
@@ -61,6 +77,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Simulate Workload
+        shell: bash
         run: |
           set -euo pipefail
           echo "Simulating CPU and memory intensive workload"
@@ -68,8 +85,16 @@ jobs:
           echo "Workload simulation complete"
 
   test-resource-load:
-    name: Test with Resources Under Load
-    runs-on: ubuntu-24.04
+    name: Test with Resources Under Load (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
+          - windows-2025
+          - macos-26
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 5
     steps:
       - name: Checkout Repository
@@ -87,6 +112,7 @@ jobs:
           disk_alert_threshold: "10"
 
       - name: CPU and Storage Intensive Activity
+        shell: bash
         run: |
           set -euo pipefail
           echo "Starting CPU-intensive activity for 15 seconds..."
@@ -113,6 +139,7 @@ jobs:
           echo "Test file removed."
 
       - name: Memory Intensive Activity
+        shell: bash
         run: |
           set -euo pipefail
           echo "Starting memory-intensive activity for 15 seconds..."
@@ -143,6 +170,7 @@ jobs:
           "
 
       - name: Idle Activity
+        shell: bash
         run: |
           set -euo pipefail
           echo "Starting idle period for 5 seconds..."
