@@ -65,13 +65,14 @@ jobs:
             # Unix-like (Linux/macOS): Use dd
             TEST_FILE="/tmp/test-10gb-file.bin"
             # Note: status=progress is not supported on macOS (BSD dd)
-            # Also, macOS uses lowercase 'm' for megabytes (base-10, 1,000,000 bytes)
-            # vs Linux 'M' (base-2, 1,048,576 bytes)
+            # Both macOS (BSD dd) and Linux (GNU dd) use similar units for count
             if [ "$RUNNER_OS" = "macOS" ]; then
-              # macOS: bs=1m count=10240 creates 10,240,000,000 bytes (~10.24GB)
+              # macOS: bs=1m (lowercase 'm') count=10240
+              # Creates approximately 10GB file
               dd if=/dev/zero of="$TEST_FILE" bs=1m count=10240
             else
-              # Linux: bs=1M count=10240 creates 10,737,418,240 bytes (exactly 10GB in base-2)
+              # Linux: bs=1M (uppercase 'M') count=10240
+              # Creates 10,737,418,240 bytes (exactly 10GiB)
               dd if=/dev/zero of="$TEST_FILE" bs=1M count=10240 status=progress
             fi
             echo "10GB file created at: $TEST_FILE"
@@ -149,7 +150,7 @@ jobs:
               TEST_FILE_WIN="$TEST_FILE"
               if command -v cygpath &> /dev/null; then
                 # If TEST_FILE is Windows-style, convert to Unix; if already Unix-style, use as-is
-                if [[ "$TEST_FILE" =~ ^[A-Za-z]:[/\\] ]]; then
+                if [[ "$TEST_FILE" =~ ^[A-Za-z]:[/\\\\] ]]; then
                   TEST_FILE_UNIX=$(cygpath -u "$TEST_FILE")
                 else
                   TEST_FILE_UNIX="$TEST_FILE"
