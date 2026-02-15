@@ -50,7 +50,12 @@ jobs:
           else
             # Unix-like (Linux/macOS): Use dd
             TEST_FILE="/tmp/test-10gb-file.bin"
-            dd if=/dev/zero of="$TEST_FILE" bs=1M count=10240 status=progress
+            # Note: status=progress is not supported on macOS (BSD dd), so we check OS
+            if [ "$RUNNER_OS" = "macOS" ]; then
+              dd if=/dev/zero of="$TEST_FILE" bs=1m count=10240
+            else
+              dd if=/dev/zero of="$TEST_FILE" bs=1M count=10240 status=progress
+            fi
             echo "10GB file created at: $TEST_FILE"
             ls -lh "$TEST_FILE"
           fi
