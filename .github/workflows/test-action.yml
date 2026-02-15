@@ -52,38 +52,6 @@ jobs:
       - name: Run Tests
         run: npm test
 
-  test-custom-interval:
-    name: Test Custom Interval (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - ubuntu-24.04
-          - ubuntu-24.04-arm
-          - windows-2025
-          - macos-26
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 5
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-
-      - name: Start Workflow Telemetry with Custom Interval
-        uses: ./
-        with:
-          interval_seconds: "2"
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Simulate Workload
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "Simulating CPU and memory intensive workload"
-          sleep 10
-          echo "Workload simulation complete"
-
   test-resource-load:
     name: Test with Resources Under Load (${{ matrix.os }})
     strategy:
@@ -106,6 +74,7 @@ jobs:
         uses: ./
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          interval_seconds: "1"
           memory_alert_threshold: "5"
           cpu_alert_threshold: "10"
           cpu_alert_duration: "10"
