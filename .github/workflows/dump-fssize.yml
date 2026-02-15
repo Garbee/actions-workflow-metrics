@@ -73,12 +73,13 @@ jobs:
             # Extract drive letter from TEMP path (Git Bash format: /c/... or Windows format: C:\...)
             if [[ "$TEMP" =~ ^/([a-zA-Z])/ ]]; then
               DRIVE="${BASH_REMATCH[1]}:"
-            else
-              DRIVE=$(echo "$TEMP" | sed -n 's/^\([A-Za-z]:\).*/\1/p')
+            elif [[ "$TEMP" =~ ^([A-Za-z]):[\\/] ]]; then
+              DRIVE="${BASH_REMATCH[1]}:"
             fi
             
             if [ -z "$DRIVE" ]; then
               echo "Error: Could not determine drive letter from TEMP=$TEMP"
+              echo "Expected format: /c/... (Git Bash) or C:\... (Windows)"
               exit 1
             fi
             
