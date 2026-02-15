@@ -19,8 +19,19 @@ permissions:
 
 jobs:
   test-basic:
-    name: Test Basic Usage
-    runs-on: ubuntu-24.04
+    name: Test Basic Usage (${{ matrix.os }})
+    permissions:
+      contents: read # To clone the repository
+      actions: read # To retrieve information about the workflow run and jobs
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
+          - windows-2025
+          - macos-26
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 5
     steps:
       - name: Checkout Repository
@@ -45,8 +56,19 @@ jobs:
         run: npm test
 
   test-resource-load:
-    name: Test with Resources Under Load
-    runs-on: ubuntu-24.04
+    name: Test with Resources Under Load (${{ matrix.os }})
+    permissions:
+      contents: read # To clone the repository
+      actions: read # To retrieve information about the workflow run and jobs
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
+          - windows-2025
+          - macos-26
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 5
     steps:
       - name: Checkout Repository
@@ -65,13 +87,27 @@ jobs:
           disk_alert_threshold: "10"
 
       - name: CPU and Storage Intensive Activity
+        shell: bash
+        env:
+          RUNNER_OS: ${{ runner.os }}
         run: |
           set -euo pipefail
           echo "Starting CPU-intensive activity for 15 seconds..."
-          echo "Creating 5GB test file to demonstrate disk usage..."
-          dd if=/dev/zero of=/tmp/test-5gb-file.bin bs=1M count=5120 status=progress
-          echo "5GB file created at /tmp/test-5gb-file.bin"
-          ls -lh /tmp/test-5gb-file.bin
+          
+          # Create test file based on OS
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            echo "Creating 5GB test file on Windows..."
+            # Use fsutil on Windows (requires absolute path)
+            TEST_FILE="$TEMP/test-5gb-file.bin"
+            fsutil file createnew "$TEST_FILE" 5368709120
+            echo "5GB file created at $TEST_FILE"
+            ls -lh "$TEST_FILE"
+          else
+            echo "Creating 5GB test file to demonstrate disk usage..."
+            dd if=/dev/zero of=/tmp/test-5gb-file.bin bs=1M count=5120 status=progress
+            echo "5GB file created at /tmp/test-5gb-file.bin"
+            ls -lh /tmp/test-5gb-file.bin
+          fi
 
           node -e "
           const startTime = Date.now();
@@ -86,21 +122,42 @@ jobs:
           console.log('CPU-intensive activity completed. Count:', count);
           "
 
-          echo "Removing 5GB test file..."
-          rm -f /tmp/test-5gb-file.bin
-          echo "Test file removed."
+          # Remove test file based on OS
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            echo "Removing 5GB test file..."
+            rm -f "$TEMP/test-5gb-file.bin"
+            echo "Test file removed."
+          else
+            echo "Removing 5GB test file..."
+            rm -f /tmp/test-5gb-file.bin
+            echo "Test file removed."
+          fi
 
       - name: Memory Intensive Activity
+        shell: bash
+        env:
+          RUNNER_OS: ${{ runner.os }}
         run: |
           set -euo pipefail
           echo "Starting memory-intensive activity for 15 seconds..."
+          
+          # Determine memory allocation size based on OS
+          # macOS runners have less memory available, so we allocate less
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            export ARRAY_COUNT=10
+            echo "Running on macOS - allocating ~150MB of memory"
+          else
+            export ARRAY_COUNT=50
+            echo "Running on $RUNNER_OS - allocating ~500MB of memory"
+          fi
+          
           node -e "
           const arrays = [];
           const startTime = Date.now();
+          const arrayCount = parseInt(process.env.ARRAY_COUNT || '50');
 
-          // Allocate ~500MB of memory
-          console.log('Allocating memory...');
-          for (let i = 0; i < 50; i++) {
+          console.log('Allocating memory for', arrayCount, 'arrays...');
+          for (let i = 0; i < arrayCount; i++) {
             arrays.push(new Array(10 * 1024 * 1024).fill(Math.random()));
           }
           console.log('Memory allocated:', arrays.length, 'arrays');
@@ -121,6 +178,7 @@ jobs:
           "
 
       - name: Idle Activity
+        shell: bash
         run: |
           set -euo pipefail
           echo "Starting idle period for 5 seconds..."
