@@ -37,6 +37,7 @@ jobs:
           node scripts/dump-fssize.js
 
       - name: Create 10GB Test File
+        shell: bash
         env:
           RUNNER_OS: ${{ runner.os }}
         run: |
@@ -61,15 +62,20 @@ jobs:
           node scripts/dump-fssize.js
 
       - name: Determine and Log Mount Point
+        shell: bash
         env:
           RUNNER_OS: ${{ runner.os }}
         run: |
           echo "=== Determining Mount Point for Test File ==="
           if [ "$RUNNER_OS" = "Windows" ]; then
-            # Windows: Extract drive letter and show volume info
-            TEST_FILE="$TEST_FILE"
+            # Windows: Extract drive letter from TEMP and show volume info
             echo "Test file location: $TEST_FILE"
-            DRIVE=$(echo "$TEST_FILE" | sed -n 's/^\([A-Za-z]:\).*/\1/p')
+            # Extract drive letter from TEMP path (Git Bash format: /c/... or Windows format: C:\...)
+            if [[ "$TEMP" =~ ^/([a-zA-Z])/ ]]; then
+              DRIVE="${BASH_REMATCH[1]}:"
+            else
+              DRIVE=$(echo "$TEMP" | sed -n 's/^\([A-Za-z]:\).*/\1/p')
+            fi
             echo "Drive: $DRIVE"
             echo "Volume information for $DRIVE:"
             fsutil volume diskfree "$DRIVE"
@@ -85,6 +91,7 @@ jobs:
 
       - name: Cleanup Test File
         if: always()
+        shell: bash
         env:
           RUNNER_OS: ${{ runner.os }}
         run: |
