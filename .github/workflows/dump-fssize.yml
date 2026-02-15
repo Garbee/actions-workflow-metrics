@@ -45,20 +45,34 @@ jobs:
           if [ "$RUNNER_OS" = "Windows" ]; then
             # Windows: Use fsutil to create a sparse file
             # Convert Unix-style path to Windows-style path for fsutil
-            WIN_TEMP=$(cygpath -w "$TEMP" 2>/dev/null || echo "$TEMP")
-            TEST_FILE="$WIN_TEMP\\test-10gb-file.bin"
+            if command -v cygpath &> /dev/null; then
+              WIN_TEMP=$(cygpath -w "$TEMP")
+              TEST_FILE="$WIN_TEMP\\test-10gb-file.bin"
+            else
+              # Fallback: assume TEMP is already Windows-style
+              TEST_FILE="$TEMP\\test-10gb-file.bin"
+            fi
             fsutil file createnew "$TEST_FILE" 10737418240
             echo "10GB file created at: $TEST_FILE"
             # Store Unix-style path for other steps
-            UNIX_TEST_FILE=$(cygpath -u "$TEST_FILE" 2>/dev/null || echo "$TEST_FILE")
-            echo "TEST_FILE=$UNIX_TEST_FILE" >> $GITHUB_ENV
+            if command -v cygpath &> /dev/null; then
+              UNIX_TEST_FILE=$(cygpath -u "$TEST_FILE")
+              echo "TEST_FILE=$UNIX_TEST_FILE" >> $GITHUB_ENV
+            else
+              echo "TEST_FILE=$TEST_FILE" >> $GITHUB_ENV
+            fi
           else
             # Unix-like (Linux/macOS): Use dd
             TEST_FILE="/tmp/test-10gb-file.bin"
-            # Note: status=progress is not supported on macOS (BSD dd), so we check OS
+            # Note: status=progress is not supported on macOS (BSD dd)
+            # Also, macOS uses lowercase 'm' for megabytes (base-10) vs Linux 'M' (base-2)
+            # To create exactly 10GB on both: 10240 * 1024 * 1024 = 10737418240 bytes
             if [ "$RUNNER_OS" = "macOS" ]; then
+              # macOS: bs=1m (1,000,000 bytes), count=10737 creates ~10.74GB
+              # Use bs=1m count=10240 to match Linux output size more closely
               dd if=/dev/zero of="$TEST_FILE" bs=1m count=10240
             else
+              # Linux: bs=1M (1,048,576 bytes), count=10240 creates exactly 10737418240 bytes
               dd if=/dev/zero of="$TEST_FILE" bs=1M count=10240 status=progress
             fi
             echo "10GB file created at: $TEST_FILE"
@@ -120,12 +134,21 @@ jobs:
           if [ "$RUNNER_OS" = "Windows" ]; then
             if [ -z "$TEST_FILE" ]; then
               # Convert Unix-style path to Windows-style path for cleanup
-              WIN_TEMP=$(cygpath -w "$TEMP" 2>/dev/null || echo "$TEMP")
-              TEST_FILE="$WIN_TEMP\\test-10gb-file.bin"
+              if command -v cygpath &> /dev/null; then
+                WIN_TEMP=$(cygpath -w "$TEMP")
+                TEST_FILE="$WIN_TEMP\\test-10gb-file.bin"
+              else
+                # Fallback: assume TEMP is already Windows-style
+                TEST_FILE="$TEMP\\test-10gb-file.bin"
+              fi
               echo "Warning: TEST_FILE was not set, using default: $TEST_FILE"
             fi
-            # Convert to Unix-style path for rm command
-            UNIX_TEST_FILE=$(cygpath -u "$TEST_FILE" 2>/dev/null || echo "$TEST_FILE")
+            # Convert to Unix-style path for rm command if cygpath is available
+            if command -v cygpath &> /dev/null; then
+              UNIX_TEST_FILE=$(cygpath -u "$TEST_FILE")
+            else
+              UNIX_TEST_FILE="$TEST_FILE"
+            fi
             if [ -f "$UNIX_TEST_FILE" ]; then
               rm -f "$UNIX_TEST_FILE"
               echo "Test file removed: $TEST_FILE"
