@@ -64,10 +64,8 @@ beforeEach(() => {
 });
 
 describe("render", () => {
-  const testMetricsID: string = "1234567890";
-
   it("should render charts with valid metrics data", () => {
-    const result: string = render(sampleMetricsData, testMetricsID);
+    const result: string = render(sampleMetricsData);
 
     assert.strictEqual(typeof result, "string");
     assert.ok(result.length > 0);
@@ -89,7 +87,7 @@ describe("render", () => {
       ],
     };
 
-    const result: string = render(metricsData, testMetricsID);
+    const result: string = render(metricsData);
 
     // Empty data results in empty string (no charts to render)
     assert.strictEqual(typeof result, "string");
@@ -115,7 +113,7 @@ describe("render", () => {
       ],
     };
 
-    const result: string = render(metricsData, testMetricsID);
+    const result: string = render(metricsData);
 
     assert.ok(result);
     assert.ok(result.length > 0);
@@ -137,7 +135,7 @@ describe("render", () => {
       ],
     };
 
-    const result: string = render(metricsData, testMetricsID);
+    const result: string = render(metricsData);
 
     assert.ok(result);
     assert.ok(result.length > 0);
