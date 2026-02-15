@@ -26,8 +26,10 @@ async function index(): Promise<void> {
     const fileName: string = `${fileBaseName}.json`;
     await fs.writeFile(fileName, JSON.stringify(metricsData));
 
-    // Build artifact name: workflow_metrics_{jobName}_{runId}_{runAttempt}
-    const baseArtifactName = `workflow_metrics_${context.job}_${context.runId}_${context.runAttempt}`;
+    // Build artifact name: workflow_metrics_{jobName}_{runId}_{runAttempt}_{runnerOS}_{runnerArch}
+    const runnerOS = process.env.RUNNER_OS || "unknown";
+    const runnerArch = process.env.RUNNER_ARCH || "unknown";
+    const baseArtifactName = `workflow_metrics_${context.job}_${context.runId}_${context.runAttempt}_${runnerOS}_${runnerArch}`;
 
     for (let i = 0; i < maxRetryCount; i++) {
       // Add retry suffix if needed (retry1, retry2, etc.)
