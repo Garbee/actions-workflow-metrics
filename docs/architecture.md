@@ -32,7 +32,7 @@ sequenceDiagram
     loop Every 5 seconds
         Collector->>Collector: Collect CPU, Memory, Disk metrics
         Collector->>Collector: Increment collection counter
-        alt Counter reaches batch threshold (every 3 collections)
+        alt Counter reaches batch threshold (every 5 collections)
             Collector->>State: Write metrics to state file
             Collector->>Collector: Reset counter
         end
@@ -66,7 +66,7 @@ For accessibility, here is a text description of the execution flow diagram abov
    - Collects CPU, memory, and disk usage metrics using the `systeminformation` library
    - Stores the metrics in memory
    - Increments a collection counter
-   - Writes the metrics to state file every 3 collections (batched writes to reduce I/O)
+   - Writes the metrics to state file every 5 collections (batched writes to reduce I/O)
 
 3. **Workflow Steps Execution**: While the collector continues running in the background, the workflow executes its regular steps (checkout, build, test, etc.).
 
@@ -110,7 +110,7 @@ The core metrics collection component:
   - Memory usage (active and available in MB)
   - Disk usage (used and available in GB for root filesystem only)
 - **In-Memory Storage**: Stores all metrics in memory during collection
-- **Batched Writes**: Writes to state file every 3 collections to reduce disk I/O (reduces write frequency by 3x)
+- **Batched Writes**: Writes to state file every 5 collections to reduce disk I/O (reduces write frequency by 5x)
 - **Guaranteed Persistence**: Always writes to disk on stop/termination, regardless of batch counter
 - **Drift Compensation**: Uses `Math.max(0, nextUNIXTimeMs - Date.now())` for precise 5-second intervals
 
@@ -162,10 +162,10 @@ GitHub Actions' built-in `saveState()` and `getState()` from `@actions/core` do 
 
 **During Collection**:
 - Metrics stored in memory for fast access
-- Written to state file every 3 collections (batched writes)
-- Reduces disk I/O by 3x compared to writing on every collection
+- Written to state file every 5 collections (batched writes)
+- Reduces disk I/O by 5x compared to writing on every collection
 - Prevents I/O thrashing when collection interval is set to 1 second
-- Still provides reasonably frequent persistence (every 15 seconds with default 5-second interval)
+- Still provides reasonably frequent persistence (every 25 seconds with default 5-second interval)
 
 **On Termination**:
 - Collector handles SIGTERM/SIGINT signals
@@ -285,10 +285,10 @@ The action is designed for Node.js 24+ with:
 ### Disk I/O
 
 **Batched Writes**:
-- State file written every 3 collections (not every collection)
-- With default 5-second interval: writes every 15 seconds
-- With 1-second interval: writes every 3 seconds (vs. every 1 second without batching)
-- Reduces I/O operations by 3x across all interval settings
+- State file written every 5 collections (not every collection)
+- With default 5-second interval: writes every 25 seconds
+- With 1-second interval: writes every 5 seconds (vs. every 1 second without batching)
+- Reduces I/O operations by 5x across all interval settings
 - Small write operations (few KB per write)
 - Minimal impact on workflow performance even with aggressive collection intervals
 

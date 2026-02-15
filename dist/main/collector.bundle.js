@@ -50834,7 +50834,7 @@ var Metrics = class {
         this.intervalMs = intervalSecondsVal * 1e3;
       }
     }
-    this.writeInterval = 3;
+    this.writeInterval = 5;
     this.initialize().catch(setFailed);
   }
   async initialize() {

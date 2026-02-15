@@ -44,9 +44,9 @@ export class Metrics {
       }
     }
 
-    // Write to disk every 3 collections minimum (reduces I/O by 3x)
+    // Write to disk every 5 collections minimum (reduces I/O by 5x)
     // This prevents I/O thrashing when interval is set to 1 second
-    this.writeInterval = 3;
+    this.writeInterval = 5;
 
     // Start async processing
     this.initialize().catch(setFailed);
