@@ -94,7 +94,10 @@ jobs:
             fsutil volume diskfree "$DRIVE"
           else
             # Unix-like: Use df to find mount point
-            TEST_FILE="${TEST_FILE:-/tmp/test-10gb-file.bin}"
+            if [ -z "$TEST_FILE" ]; then
+              echo "Error: TEST_FILE was not set from previous step"
+              exit 1
+            fi
             echo "Test file location: $TEST_FILE"
             echo "Mount point information:"
             df -h "$TEST_FILE"
