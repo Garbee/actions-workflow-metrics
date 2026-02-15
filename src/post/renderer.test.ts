@@ -227,7 +227,7 @@ describe("Renderer", () => {
         threshold: 85,
       },
     ];
-    
+
     const cpuData = [
       { unixTimeMs: new Date("2024-01-01T00:00:00Z").getTime(), user: 10, system: 5 },
       { unixTimeMs: new Date("2024-01-01T00:00:01Z").getTime(), user: 20, system: 10 },
