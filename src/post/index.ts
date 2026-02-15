@@ -27,8 +27,9 @@ async function index(): Promise<void> {
     await fs.writeFile(fileName, JSON.stringify(metricsData));
 
     // Build artifact name: workflow_metrics_{jobName}_{runId}_{runAttempt}_{runnerOS}_{runnerArch}
-    const runnerOS = process.env.RUNNER_OS || "unknown";
-    const runnerArch = process.env.RUNNER_ARCH || "unknown";
+    // Prefer GitHub-provided env vars when present, but fall back to Node's platform/arch for reliability.
+    const runnerOS = process.env.RUNNER_OS ?? process.platform;
+    const runnerArch = process.env.RUNNER_ARCH ?? process.arch;
     const baseArtifactName = `workflow_metrics_${context.job}_${context.runId}_${context.runAttempt}_${runnerOS}_${runnerArch}`;
 
     for (let i = 0; i < maxRetryCount; i++) {
