@@ -110,9 +110,15 @@ jobs:
         run: |
           echo "Cleaning up test file..."
           if [ "$RUNNER_OS" = "Windows" ]; then
-            TEST_FILE="${TEST_FILE:-$TEMP/test-10gb-file.bin}"
+            if [ -z "$TEST_FILE" ]; then
+              TEST_FILE="$TEMP/test-10gb-file.bin"
+              echo "Warning: TEST_FILE was not set, using default: $TEST_FILE"
+            fi
           else
-            TEST_FILE="${TEST_FILE:-/tmp/test-10gb-file.bin}"
+            if [ -z "$TEST_FILE" ]; then
+              TEST_FILE="/tmp/test-10gb-file.bin"
+              echo "Warning: TEST_FILE was not set, using default: $TEST_FILE"
+            fi
           fi
           if [ -f "$TEST_FILE" ]; then
             rm -f "$TEST_FILE"
