@@ -36,12 +36,12 @@ jobs:
           echo "=== Initial Filesystem Size Information ==="
           node scripts/dump-fssize.js
 
-      - name: Create 10GB Test File
+      - name: Create 90GB Test File
         shell: bash
         env:
           RUNNER_OS: ${{ runner.os }}
         run: |
-          echo "Creating 10GB test file..."
+          echo "Creating 90GB test file..."
           if [ "$RUNNER_OS" = "Windows" ]; then
             # Windows: Use fsutil to create a sparse file
             # Note: This creates a sparse file that doesn't consume actual disk space
@@ -49,13 +49,13 @@ jobs:
             # Convert Unix-style path to Windows-style path for fsutil
             if command -v cygpath &> /dev/null; then
               WIN_TEMP=$(cygpath -w "$TEMP")
-              TEST_FILE="$WIN_TEMP\\test-10gb-file.bin"
+              TEST_FILE="$WIN_TEMP\\test-90gb-file.bin"
             else
               # Fallback: assume TEMP is already Windows-style
-              TEST_FILE="$TEMP\\test-10gb-file.bin"
+              TEST_FILE="$TEMP\\test-90gb-file.bin"
             fi
-            fsutil file createnew "$TEST_FILE" 10737418240
-            echo "10GB file created at: $TEST_FILE"
+            fsutil file createnew "$TEST_FILE" 96636764160
+            echo "90GB file created at: $TEST_FILE"
             # Store Unix-style path for other steps
             if command -v cygpath &> /dev/null; then
               UNIX_TEST_FILE=$(cygpath -u "$TEST_FILE")
@@ -65,26 +65,26 @@ jobs:
             fi
           else
             # Unix-like (Linux/macOS): Use dd
-            TEST_FILE="/tmp/test-10gb-file.bin"
+            TEST_FILE="/tmp/test-90gb-file.bin"
             # Note: status=progress is not supported on macOS (BSD dd)
             # Both macOS (BSD dd) and Linux (GNU dd) use similar units for count
             if [ "$RUNNER_OS" = "macOS" ]; then
-              # macOS: bs=1m (lowercase 'm') count=10240
-              # Creates approximately 10GB file
-              dd if=/dev/zero of="$TEST_FILE" bs=1m count=10240
+              # macOS: bs=1m (lowercase 'm') count=92160
+              # Creates approximately 90GB file
+              dd if=/dev/zero of="$TEST_FILE" bs=1m count=92160
             else
-              # Linux: bs=1M (uppercase 'M') count=10240
-              # Creates 10,737,418,240 bytes (exactly 10GiB)
-              dd if=/dev/zero of="$TEST_FILE" bs=1M count=10240 status=progress
+              # Linux: bs=1M (uppercase 'M') count=92160
+              # Creates 96,636,764,160 bytes (exactly 90GiB)
+              dd if=/dev/zero of="$TEST_FILE" bs=1M count=92160 status=progress
             fi
-            echo "10GB file created at: $TEST_FILE"
+            echo "90GB file created at: $TEST_FILE"
             ls -lh "$TEST_FILE"
             echo "TEST_FILE=$TEST_FILE" >> $GITHUB_ENV
           fi
 
       - name: Dump fsSize Information After File Creation
         run: |
-          echo "=== Filesystem Size Information After 10GB File Creation ==="
+          echo "=== Filesystem Size Information After 90GB File Creation ==="
           node scripts/dump-fssize.js
 
       - name: Determine and Log Mount Point
@@ -139,11 +139,11 @@ jobs:
               # TEST_FILE was not set, create fallback Windows-style path
               if command -v cygpath &> /dev/null; then
                 WIN_TEMP=$(cygpath -w "$TEMP")
-                TEST_FILE_WIN="$WIN_TEMP\\test-10gb-file.bin"
+                TEST_FILE_WIN="$WIN_TEMP\\test-90gb-file.bin"
                 TEST_FILE_UNIX=$(cygpath -u "$TEST_FILE_WIN")
               else
                 # Fallback: assume TEMP is already Windows-style
-                TEST_FILE_WIN="$TEMP\\test-10gb-file.bin"
+                TEST_FILE_WIN="$TEMP\\test-90gb-file.bin"
                 TEST_FILE_UNIX="$TEST_FILE_WIN"
               fi
               echo "Warning: TEST_FILE was not set, using default: $TEST_FILE_WIN"
@@ -170,7 +170,7 @@ jobs:
             fi
           else
             if [ -z "$TEST_FILE" ]; then
-              TEST_FILE="/tmp/test-10gb-file.bin"
+              TEST_FILE="/tmp/test-90gb-file.bin"
               echo "Warning: TEST_FILE was not set, using default: $TEST_FILE"
             fi
             if [ -f "$TEST_FILE" ]; then
