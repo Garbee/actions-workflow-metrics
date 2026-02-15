@@ -44,6 +44,8 @@ jobs:
           echo "Creating 10GB test file..."
           if [ "$RUNNER_OS" = "Windows" ]; then
             # Windows: Use fsutil to create a sparse file
+            # Note: This creates a sparse file that doesn't consume actual disk space
+            # until data is written to it. Use for testing filesystem metadata/stats.
             # Convert Unix-style path to Windows-style path for fsutil
             if command -v cygpath &> /dev/null; then
               WIN_TEMP=$(cygpath -w "$TEMP")
@@ -150,7 +152,7 @@ jobs:
               TEST_FILE_WIN="$TEST_FILE"
               if command -v cygpath &> /dev/null; then
                 # If TEST_FILE is Windows-style, convert to Unix; if already Unix-style, use as-is
-                if [[ "$TEST_FILE" =~ ^[A-Za-z]:[/\\\\] ]]; then
+                if [[ "$TEST_FILE" =~ ^[A-Za-z]:[/\\] ]]; then
                   TEST_FILE_UNIX=$(cygpath -u "$TEST_FILE")
                 else
                   TEST_FILE_UNIX="$TEST_FILE"
