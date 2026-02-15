@@ -108,7 +108,7 @@ The core metrics collection component:
 - **Data Collection**: Uses `systeminformation` library to gather:
   - CPU usage (user and system, 0-100%)
   - Memory usage (active and available in MB)
-  - Disk usage (used and available in GB for root filesystem only)
+  - Disk usage (used and available in GB for OS-specific root filesystem: `/` on Linux, `/System/Volumes/Data` on macOS, `C:` on Windows)
 - **In-Memory Storage**: Stores all metrics in memory during collection
 - **Batched Writes**: Writes to state file every 5 collections to reduce disk I/O (reduces write frequency by 5x)
 - **Guaranteed Persistence**: Always writes to disk on stop/termination, regardless of batch counter
@@ -206,6 +206,11 @@ Metrics are stored in a structured format defined in `src/lib.ts`:
 - `size`: Total disk size in GB (root filesystem only)
 - `used`: Used disk space in GB
 - `available`: Available disk space in GB
+
+The action tracks the root filesystem where GitHub Actions workflows execute:
+- **Linux**: `/` (root directory)
+- **macOS**: `/System/Volumes/Data` (primary data volume)
+- **Windows**: `C:` (system drive)
 
 **Step Markers**:
 - `stepName`: Name of the workflow step
