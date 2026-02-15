@@ -10,7 +10,7 @@ describe("Renderer", () => {
       memory: 80,
       disk: 90,
     });
-    assert.ok(result.includes("## Workflow Metrics"));
+    assert.ok(result.includes("## Resource Usage"));
     assert.ok(!result.includes("###")); // No sections
   });
 
@@ -77,7 +77,7 @@ describe("Renderer", () => {
     assert.ok(!result.includes("### Alerts"));
   });
 
-  it("should render alerts section with timespan", () => {
+  it("should render alerts section without timestamps", () => {
     const renderer = new Renderer();
     const alerts = [
       {
@@ -98,10 +98,13 @@ describe("Renderer", () => {
     assert.ok(result.includes("### Alerts"));
     assert.ok(result.includes("⚠️"));
     assert.ok(result.includes("Memory utilization exceeded 80%"));
-    assert.ok(result.includes("1970-01-01T00:00:11.000Z")); // Formatted timespan
+    // Check that alert section doesn't contain "at" or "during" timestamp markers
+    const alertsSection = result.substring(result.indexOf("### Alerts"), result.indexOf("</details>"));
+    assert.ok(!alertsSection.includes(" at "));
+    assert.ok(!alertsSection.includes(" during:"));
   });
 
-  it("should render alerts with multiple timespans", () => {
+  it("should render alerts without timestamp details", () => {
     const renderer = new Renderer();
     const alerts = [
       {
@@ -121,7 +124,7 @@ describe("Renderer", () => {
     );
     assert.ok(result.includes("### Alerts"));
     assert.ok(result.includes("🔥"));
-    assert.ok(result.includes("during:"));
+    assert.ok(!result.includes("during:")); // No timestamp lists
   });
 
   it("should render multiple alerts", () => {

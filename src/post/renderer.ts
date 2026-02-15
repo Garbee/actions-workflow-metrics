@@ -14,7 +14,7 @@ export class Renderer {
     const memoryUsageSection = this.generateMemoryUsageSection(memoryUsageMBs, thresholds.memory);
     const diskUsageSection = this.generateDiskUsageSection(diskUsageGBs, thresholds.disk);
 
-    return `## Workflow Metrics
+    return `## Resource Usage
 
 ${alertsSection}${cpuUsageSection}${memoryUsageSection}${diskUsageSection}`;
   }
@@ -30,16 +30,8 @@ ${alertsSection}${cpuUsageSection}${memoryUsageSection}${diskUsageSection}`;
     }
 
     const alertItems = alerts.map((alert) => {
-      let timeInfo = "";
-      if (alert.timespan) {
-        timeInfo = ` at ${this.formatTimestamp(alert.timespan)}`;
-      } else if (alert.timespans && alert.timespans.length > 0) {
-        const times = alert.timespans.map(t => this.formatTimestamp(t)).join(", ");
-        timeInfo = ` during: ${times}`;
-      }
-
       const icon = alert.type === "memory" ? "⚠️" : alert.type === "cpu" ? "🔥" : "💾";
-      return `> ${icon} ${alert.message}${timeInfo} (${alert.value.toFixed(1)}%)`;
+      return `> ${icon} ${alert.message} (${alert.value.toFixed(1)}%)`;
     });
 
     return `### Alerts
@@ -67,15 +59,14 @@ ${alertItems.join("\n")}
       const used = cpu.user + cpu.system;
       const available = 100 - used;
       const availablePercent = available.toFixed(2);
-      const exceeded = used > threshold ? "Yes" : "";
-      rows.push(`| ${timestamp} | ${total.toFixed(2)}% | ${used.toFixed(2)}% | ${available.toFixed(2)}% | ${availablePercent}% | ${exceeded} |`);
+      rows.push(`| ${timestamp} | ${total.toFixed(2)}% | ${used.toFixed(2)}% | ${available.toFixed(2)}% | ${availablePercent}% |`);
     }
 
     return `<details>
 <summary><h3>CPU Usage</h3></summary>
 
-| Timestamp | Total | Used | Available | Available % | Threshold Exceeded |
-|-----------|-------|------|-----------|-------------|-------------------|
+| Timestamp | Total | Used | Available | Available % |
+|-----------|-------|------|-----------|-------------|
 ${rows.join("\n")}
 
 </details>
@@ -97,17 +88,15 @@ ${rows.join("\n")}
     for (const memory of memoryUsageMBs) {
       const timestamp = this.formatTimestamp(memory.unixTimeMs);
       const total = memory.used + memory.free;
-      const utilization = (memory.used / total * 100);
       const availablePercent = (memory.free / total * 100).toFixed(2);
-      const exceeded = utilization > threshold ? "Yes" : "";
-      rows.push(`| ${timestamp} | ${total.toFixed(2)} MB | ${memory.used.toFixed(2)} MB | ${memory.free.toFixed(2)} MB | ${availablePercent}% | ${exceeded} |`);
+      rows.push(`| ${timestamp} | ${total.toFixed(2)} MB | ${memory.used.toFixed(2)} MB | ${memory.free.toFixed(2)} MB | ${availablePercent}% |`);
     }
 
     return `<details>
 <summary><h3>Memory Usage</h3></summary>
 
-| Timestamp | Total | Used | Available | Available % | Threshold Exceeded |
-|-----------|-------|------|-----------|-------------|-------------------|
+| Timestamp | Total | Used | Available | Available % |
+|-----------|-------|------|-----------|-------------|
 ${rows.join("\n")}
 
 </details>
@@ -128,17 +117,15 @@ ${rows.join("\n")}
     
     for (const disk of diskUsageGBs) {
       const timestamp = this.formatTimestamp(disk.unixTimeMs);
-      const utilization = (disk.used / disk.size * 100);
       const availablePercent = (disk.available / disk.size * 100).toFixed(2);
-      const exceeded = utilization > threshold ? "Yes" : "";
-      rows.push(`| ${timestamp} | ${disk.size.toFixed(2)} GB | ${disk.used.toFixed(2)} GB | ${disk.available.toFixed(2)} GB | ${availablePercent}% | ${exceeded} |`);
+      rows.push(`| ${timestamp} | ${disk.size.toFixed(2)} GB | ${disk.used.toFixed(2)} GB | ${disk.available.toFixed(2)} GB | ${availablePercent}% |`);
     }
 
     return `<details>
 <summary><h3>Disk Usage</h3></summary>
 
-| Timestamp | Total Size | Used | Available | Available % | Threshold Exceeded |
-|-----------|------------|------|-----------|-------------|-------------------|
+| Timestamp | Total Size | Used | Available | Available % |
+|-----------|------------|------|-----------|-------------|
 ${rows.join("\n")}
 
 </details>
