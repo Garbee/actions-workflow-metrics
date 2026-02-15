@@ -122340,6 +122340,7 @@ ${alertItems.join("\n")}
         stepRanges.push({ start: startTime, end: endTime, name: stepName });
       }
     }
+    stepRanges.sort((a, b) => a.start - b.start);
     const cpuAlertSteps = /* @__PURE__ */ new Set();
     for (const alert of alerts) {
       if (alert.type === "cpu") {
@@ -122397,6 +122398,7 @@ ${rows.join("\n")}
         stepRanges.push({ start: startTime, end: endTime, name: stepName });
       }
     }
+    stepRanges.sort((a, b) => a.start - b.start);
     let memoryAlertStep;
     for (const alert of alerts) {
       if (alert.type === "memory" && alert.step) {
@@ -122449,6 +122451,7 @@ ${rows.join("\n")}
         stepRanges.push({ start: startTime, end: endTime, name: stepName });
       }
     }
+    stepRanges.sort((a, b) => a.start - b.start);
     let diskAlertStep;
     for (const alert of alerts) {
       if (alert.type === "disk" && alert.step) {

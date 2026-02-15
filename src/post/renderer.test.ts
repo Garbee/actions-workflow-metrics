@@ -522,5 +522,47 @@ describe("Renderer", () => {
       assert.ok(result.includes("| Test Step |"));
       assert.ok(result.includes("15.00%")); // First metric: 10 + 5 = 15%
     });
+
+    it("should order steps chronologically by start time", () => {
+      const renderer: Renderer = new Renderer();
+      
+      // Steps with non-sequential start times (simulating interleaved jobs)
+      const stepMarkers = [
+        { unixTimeMs: 1000, stepName: "Step A", status: "start" as const },
+        { unixTimeMs: 3000, stepName: "Step A", status: "end" as const },
+        { unixTimeMs: 2000, stepName: "Step C", status: "start" as const },
+        { unixTimeMs: 5000, stepName: "Step C", status: "end" as const },
+        { unixTimeMs: 500, stepName: "Step B", status: "start" as const },
+        { unixTimeMs: 1500, stepName: "Step B", status: "end" as const },
+      ];
+
+      // Metrics for all steps
+      const cpuData = [
+        { unixTimeMs: 600, user: 5, system: 5 },   // For Step B
+        { unixTimeMs: 1100, user: 10, system: 10 }, // For Step A
+        { unixTimeMs: 2100, user: 15, system: 15 }, // For Step C
+      ];
+
+      const result = renderer.render(
+        stepMarkers,
+        [],
+        cpuData,
+        [],
+        [],
+        { cpu: 85, memory: 80, disk: 90 },
+      );
+
+      // Steps should appear in chronological order: B (500), A (1000), C (2000)
+      const cpuSection = result.split("### CPU Usage")[1].split("###")[0];
+      const stepBIndex = cpuSection.indexOf("| Step B |");
+      const stepAIndex = cpuSection.indexOf("| Step A |");
+      const stepCIndex = cpuSection.indexOf("| Step C |");
+
+      assert.ok(stepBIndex > 0, "Step B should appear");
+      assert.ok(stepAIndex > 0, "Step A should appear");
+      assert.ok(stepCIndex > 0, "Step C should appear");
+      assert.ok(stepBIndex < stepAIndex, "Step B should appear before Step A");
+      assert.ok(stepAIndex < stepCIndex, "Step A should appear before Step C");
+    });
   });
 });

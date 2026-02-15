@@ -128,6 +128,9 @@ ${alertItems.join("\n")}
       }
     }
 
+    // Sort step ranges by start time to maintain chronological order
+    stepRanges.sort((a, b) => a.start - b.start);
+
     // Get CPU alert steps
     const cpuAlertSteps = new Set<string>();
     for (const alert of alerts) {
@@ -206,6 +209,9 @@ ${rows.join("\n")}
       }
     }
 
+    // Sort step ranges by start time to maintain chronological order
+    stepRanges.sort((a, b) => a.start - b.start);
+
     // Get memory alert step
     let memoryAlertStep: string | undefined;
     for (const alert of alerts) {
@@ -278,6 +284,9 @@ ${rows.join("\n")}
         stepRanges.push({ start: startTime, end: endTime, name: stepName });
       }
     }
+
+    // Sort step ranges by start time to maintain chronological order
+    stepRanges.sort((a, b) => a.start - b.start);
 
     // Get disk alert step
     let diskAlertStep: string | undefined;
