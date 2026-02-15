@@ -22,6 +22,17 @@ describe("Metrics", () => {
     // Enable timer mocking BEFORE importing the module
     mock.timers.enable({ apis: ['setTimeout', 'Date'] });
 
+    // Determine the mount point based on the current platform
+    const platform = process.platform;
+    let rootMountPoint: string;
+    if (platform === 'win32') {
+      rootMountPoint = 'C:';
+    } else if (platform === 'darwin') {
+      rootMountPoint = '/System/Volumes/Data';
+    } else {
+      rootMountPoint = '/';
+    }
+
     // Mock systeminformation module
     mockModule = mock.module("systeminformation", {
       namedExports: {
@@ -44,7 +55,7 @@ describe("Metrics", () => {
               used: 30 * 1024 * 1024 * 1024, // 30 GB
               available: 70 * 1024 * 1024 * 1024, // 70 GB
               use: 30,
-              mount: "/",
+              mount: rootMountPoint,
               rw: true,
             },
             {
@@ -501,7 +512,7 @@ describe("Metrics", () => {
   });
 
   describe("OS-specific mount point handling", () => {
-    it("should use '/' mount point on Linux", async () => {
+    it("should use correct mount point for the current platform", async () => {
       const metrics = createMetrics();
 
       // Wait for first collection
@@ -512,11 +523,11 @@ describe("Metrics", () => {
 
       const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
       
-      // Should have disk data from "/" mount point
+      // Should have disk data from the root mount point for the current platform
       assert.ok(data.diskUsageGBs.length > 0, "Should have disk data");
-      assert.strictEqual(data.diskUsageGBs[0].used, 30, "Should use disk data from / mount");
-      assert.strictEqual(data.diskUsageGBs[0].available, 70, "Should use disk data from / mount");
-      assert.strictEqual(data.diskUsageGBs[0].size, 100, "Should use disk data from / mount");
+      assert.strictEqual(data.diskUsageGBs[0].used, 30, "Should use disk data from root mount");
+      assert.strictEqual(data.diskUsageGBs[0].available, 70, "Should use disk data from root mount");
+      assert.strictEqual(data.diskUsageGBs[0].size, 100, "Should use disk data from root mount");
     });
   });
 });
