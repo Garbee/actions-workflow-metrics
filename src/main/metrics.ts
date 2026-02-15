@@ -14,6 +14,7 @@ export class Metrics {
   private timeoutId: NodeJS.Timeout | null = null;
   private stopped: boolean = false;
   private collectionsSinceWrite: number = 0;
+  private isFirstCollection: boolean = true;
 
   constructor() {
     this.data = { cpuLoadPercentages: [], memoryUsageMBs: [], diskUsageGBs: [], stepMarkers: [] };
@@ -45,8 +46,8 @@ export class Metrics {
       }
     }
 
-    // Write to disk every 5 collections minimum (reduces I/O by 5x)
-    // This prevents I/O thrashing when interval is set to 1 second
+    // Write on first collection to ensure file exists, then batch every 5 collections
+    // This ensures short workflows have data while preventing I/O thrashing on long workflows
     this.writeInterval = 5;
 
     // Start async processing
@@ -119,8 +120,14 @@ export class Metrics {
       // Increment collections counter
       this.collectionsSinceWrite++;
 
-      // Only write to disk every N collections to reduce I/O
-      if (this.collectionsSinceWrite >= this.writeInterval) {
+      // Write immediately on first collection to ensure file exists for short workflows
+      // Then batch subsequent writes every N collections to reduce I/O
+      if (this.isFirstCollection) {
+        // First collection ever - write immediately and clear flag
+        this.saveState();
+        this.isFirstCollection = false;
+      } else if (this.collectionsSinceWrite >= this.writeInterval) {
+        // Reached batch threshold - write and reset counter
         this.saveState();
         this.collectionsSinceWrite = 0;
       }

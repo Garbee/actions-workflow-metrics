@@ -162,10 +162,10 @@ GitHub Actions' built-in `saveState()` and `getState()` from `@actions/core` do 
 
 **During Collection**:
 - Metrics stored in memory for fast access
-- Written to state file every 5 collections (batched writes)
-- Reduces disk I/O by 5x compared to writing on every collection
+- First collection writes immediately to ensure file exists for short workflows
+- Subsequent collections batch writes every 5 collections to reduce disk I/O
 - Prevents I/O thrashing when collection interval is set to 1 second
-- Still provides reasonably frequent persistence (every 25 seconds with default 5-second interval)
+- Provides frequent enough persistence for reliability (first write immediate, then every 25 seconds with default 5-second interval)
 
 **On Termination**:
 - Collector handles SIGTERM/SIGINT signals
@@ -285,10 +285,11 @@ The action is designed for Node.js 24+ with:
 ### Disk I/O
 
 **Batched Writes**:
-- State file written every 5 collections (not every collection)
-- With default 5-second interval: writes every 25 seconds
-- With 1-second interval: writes every 5 seconds (vs. every 1 second without batching)
-- Reduces I/O operations by 5x across all interval settings
+- First collection writes immediately to ensure state file exists for short workflows
+- Subsequent collections batch writes every 5 collections to reduce I/O
+- With default 5-second interval: first write immediate, then writes every 25 seconds
+- With 1-second interval: first write immediate, then writes every 5 seconds (vs. every 1 second without batching)
+- Reduces I/O operations significantly while ensuring short workflows don't lose data
 - Small write operations (few KB per write)
 - Minimal impact on workflow performance even with aggressive collection intervals
 

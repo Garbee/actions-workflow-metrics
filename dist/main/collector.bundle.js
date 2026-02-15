@@ -50814,6 +50814,7 @@ var Metrics = class {
   timeoutId = null;
   stopped = false;
   collectionsSinceWrite = 0;
+  isFirstCollection = true;
   constructor() {
     this.data = { cpuLoadPercentages: [], memoryUsageMBs: [], diskUsageGBs: [], stepMarkers: [] };
     const githubStateFile = process.env.GITHUB_STATE;
@@ -50888,7 +50889,10 @@ var Metrics = class {
         console.warn("Root filesystem not found in disk list. Disk metrics will be incomplete.");
       }
       this.collectionsSinceWrite++;
-      if (this.collectionsSinceWrite >= this.writeInterval) {
+      if (this.isFirstCollection) {
+        this.saveState();
+        this.isFirstCollection = false;
+      } else if (this.collectionsSinceWrite >= this.writeInterval) {
         this.saveState();
         this.collectionsSinceWrite = 0;
       }
