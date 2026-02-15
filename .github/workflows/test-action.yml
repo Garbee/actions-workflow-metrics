@@ -19,8 +19,16 @@ permissions:
 
 jobs:
   test-basic:
-    name: Test Basic Usage
-    runs-on: ubuntu-24.04
+    name: Test Basic Usage (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
+          - windows-2025
+          - macos-26
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 5
     steps:
       - name: Checkout Repository
@@ -45,8 +53,16 @@ jobs:
         run: npm test
 
   test-resource-load:
-    name: Test with Resources Under Load
-    runs-on: ubuntu-24.04
+    name: Test with Resources Under Load (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
+          - windows-2025
+          - macos-26
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 5
     steps:
       - name: Checkout Repository
@@ -65,6 +81,7 @@ jobs:
           disk_alert_threshold: "10"
 
       - name: CPU and Storage Intensive Activity
+        shell: bash
         run: |
           set -euo pipefail
           echo "Starting CPU-intensive activity for 15 seconds..."
@@ -91,16 +108,28 @@ jobs:
           echo "Test file removed."
 
       - name: Memory Intensive Activity
+        shell: bash
         run: |
           set -euo pipefail
           echo "Starting memory-intensive activity for 15 seconds..."
+          
+          # Determine memory allocation size based on OS
+          # macOS runners have less memory available, so we allocate less
+          if [[ "${{ runner.os }}" == "macOS" ]]; then
+            export ARRAY_COUNT=10
+            echo "Running on macOS - allocating ~150MB of memory"
+          else
+            export ARRAY_COUNT=50
+            echo "Running on ${{ runner.os }} - allocating ~500MB of memory"
+          fi
+          
           node -e "
           const arrays = [];
           const startTime = Date.now();
+          const arrayCount = parseInt(process.env.ARRAY_COUNT || '50');
 
-          // Allocate ~500MB of memory
-          console.log('Allocating memory...');
-          for (let i = 0; i < 50; i++) {
+          console.log('Allocating memory for', arrayCount, 'arrays...');
+          for (let i = 0; i < arrayCount; i++) {
             arrays.push(new Array(10 * 1024 * 1024).fill(Math.random()));
           }
           console.log('Memory allocated:', arrays.length, 'arrays');
@@ -119,8 +148,11 @@ jobs:
           arrays.length = 0;
           console.log('Memory freed. Activity completed.');
           "
+        env:
+          ARRAY_COUNT: ${{ runner.os == 'macOS' && '10' || '50' }}
 
       - name: Idle Activity
+        shell: bash
         run: |
           set -euo pipefail
           echo "Starting idle period for 5 seconds..."
