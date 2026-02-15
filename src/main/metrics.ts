@@ -32,7 +32,8 @@ export class Metrics {
       this.stateFile = join(runnerTemp, `metrics-state-${runId}-${job}.json`);
     }
 
-    this.intervalMs = 5 * 1000;
+    // Fixed 1 second collection interval
+    this.intervalMs = 1 * 1000;
     const intervalSecondsInput: string | undefined =
       process.env.METRICS_INTERVAL_SECONDS;
 

@@ -50833,7 +50833,7 @@ var Metrics = class {
       const runnerTemp = process.env.RUNNER_TEMP || process.env.TMPDIR || "/tmp";
       this.stateFile = join(runnerTemp, `metrics-state-${runId}-${job}.json`);
     }
-    this.intervalMs = 5 * 1e3;
+    this.intervalMs = 1 * 1e3;
     const intervalSecondsInput = process.env.METRICS_INTERVAL_SECONDS;
     if (intervalSecondsInput) {
       const intervalSecondsVal = parseInt(intervalSecondsInput, 10);

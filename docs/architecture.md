@@ -29,13 +29,9 @@ sequenceDiagram
     Main-->>User: Exit immediately
     
     Collector->>Collector: Start collection loop
-    loop Every 5 seconds
+    loop Every 1 second (default)
         Collector->>Collector: Collect CPU, Memory, Disk metrics
-        Collector->>Collector: Increment collection counter
-        alt Counter reaches batch threshold (every 5 collections)
-            Collector->>State: Write metrics to state file
-            Collector->>Collector: Reset counter
-        end
+        Collector->>State: Write metrics to state file
     end
     
     User->>Steps: Execute workflow steps
@@ -62,11 +58,10 @@ For accessibility, here is a text description of the execution flow diagram abov
 
 1. **Main Action Execution**: The workflow executes the main action (`dist/main/index.js`), which immediately spawns a collector process as a detached background process and exits.
 
-2. **Collector Process**: The collector process (`dist/main/collector.js`) creates a Metrics instance and starts a collection loop that runs every 5 seconds. During each cycle, it:
+2. **Collector Process**: The collector process (`dist/main/collector.js`) creates a Metrics instance and starts a collection loop that runs every 1 second (by default). During each cycle, it:
    - Collects CPU, memory, and disk usage metrics using the `systeminformation` library
    - Stores the metrics in memory
-   - Increments a collection counter
-   - Writes the metrics to state file every 5 collections (batched writes to reduce I/O)
+   - Writes the metrics to state file immediately after collection
 
 3. **Workflow Steps Execution**: While the collector continues running in the background, the workflow executes its regular steps (checkout, build, test, etc.).
 
@@ -104,15 +99,15 @@ A simple background process that:
 
 The core metrics collection component:
 - **Initialization**: Starts async collection in the constructor
-- **Periodic Collection**: Collects metrics every 5 seconds using drift-compensated timers
+- **Periodic Collection**: Collects metrics every 1 second (default) using drift-compensated timers
 - **Data Collection**: Uses `systeminformation` library to gather:
   - CPU usage (user and system, 0-100%)
   - Memory usage (active and available in MB)
   - Disk usage (used and available in GB for OS-specific root filesystem: `/` on Linux, `/System/Volumes/Data` on macOS, `C:` on Windows)
 - **In-Memory Storage**: Stores all metrics in memory during collection
-- **Batched Writes**: Writes to state file every 5 collections to reduce disk I/O (reduces write frequency by 5x)
-- **Guaranteed Persistence**: Always writes to disk on stop/termination, regardless of batch counter
-- **Drift Compensation**: Uses `Math.max(0, nextUNIXTimeMs - Date.now())` for precise 5-second intervals
+- **Immediate Writes**: Writes to state file after each collection to ensure data is always current
+- **Guaranteed Persistence**: Always writes to disk on stop/termination
+- **Drift Compensation**: Uses `Math.max(0, nextUNIXTimeMs - Date.now())` for precise intervals
 
 ### Post Action (`src/post/index.ts` and `src/post/lib.ts`)
 
@@ -162,16 +157,13 @@ GitHub Actions' built-in `saveState()` and `getState()` from `@actions/core` do 
 
 **During Collection**:
 - Metrics stored in memory for fast access
-- First collection writes immediately to ensure file exists for short workflows
-- Subsequent collections batch writes every 5 collections to reduce disk I/O
-- Prevents I/O thrashing when collection interval is set to 1 second
-- Provides frequent enough persistence for reliability (first write immediate, then every 25 seconds with default 5-second interval)
+- After each collection, metrics are written to disk immediately
+- Ensures data is always up-to-date and available
 
 **On Termination**:
 - Collector handles SIGTERM/SIGINT signals
 - Calls `stop()` method to ensure final state save
-- Writes to disk immediately, regardless of batch counter
-- Guarantees all collected metrics are persisted, even if batch threshold wasn't reached
+- Writes to disk one final time to guarantee all metrics are persisted
 
 **In Post Action**:
 - Reads complete metrics history from state file
@@ -220,7 +212,7 @@ The action tracks the root filesystem where GitHub Actions workflows execute:
 
 ### Drift Compensation
 
-To ensure accurate 5-second intervals, the collector uses drift-compensated timers:
+To ensure accurate collection intervals, the collector uses drift-compensated timers:
 
 ```typescript
 const nextUNIXTimeMs = Date.now() + intervalMs;
@@ -285,18 +277,15 @@ The action is designed for Node.js 24+ with:
 ### CPU Impact
 - Collection process uses minimal CPU (< 1% typical)
 - `systeminformation` library is efficient
-- 5-second interval balances accuracy vs. overhead
+- 1-second interval provides high-resolution data with minimal overhead
 
 ### Disk I/O
 
-**Batched Writes**:
-- First collection writes immediately to ensure state file exists for short workflows
-- Subsequent collections batch writes every 5 collections to reduce I/O
-- With default 5-second interval: first write immediate, then writes every 25 seconds
-- With 1-second interval: first write immediate, then writes every 5 seconds (vs. every 1 second without batching)
-- Reduces I/O operations significantly while ensuring short workflows don't lose data
+**Immediate Writes**:
+- Each collection writes metrics to disk immediately after gathering them
+- Ensures metrics are always current and available for recovery
 - Small write operations (few KB per write)
-- Minimal impact on workflow performance even with aggressive collection intervals
+- Minimal impact on workflow performance
 
 ## Security Considerations
 

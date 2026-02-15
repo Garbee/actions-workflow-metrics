@@ -285,7 +285,7 @@ describe("Metrics", () => {
     assert.ok(initialDiskCount > 0);
 
     // Advance time by 5 seconds to trigger next append
-    await mock.timers.tick(5000);
+    await mock.timers.tick(1000);
     // Wait for promises to resolve
     for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
@@ -315,8 +315,8 @@ describe("Metrics", () => {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
-    // Advance time by 5 seconds to trigger second data point
-    await mock.timers.tick(5000);
+    // Advance time by 1 second to trigger second data point
+    await mock.timers.tick(1000);
     for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
     }
@@ -328,7 +328,7 @@ describe("Metrics", () => {
     assert.ok(data.memoryUsageMBs.length >= 2);
     assert.ok(data.diskUsageGBs.length >= 2);
 
-    // Verify timestamp interval is exactly 5 seconds (5000ms) with mocked timers
+    // Verify timestamp interval is exactly 1 second (1000ms) with mocked timers
     const cpuTimeDiff: number =
       data.cpuLoadPercentages[1].unixTimeMs -
       data.cpuLoadPercentages[0].unixTimeMs;
@@ -337,10 +337,10 @@ describe("Metrics", () => {
     const diskTimeDiff: number =
       data.diskUsageGBs[1].unixTimeMs - data.diskUsageGBs[0].unixTimeMs;
 
-    // With mocked timers and Date, we get exactly 5000ms
-    assert.strictEqual(cpuTimeDiff, 5000);
-    assert.strictEqual(memTimeDiff, 5000);
-    assert.strictEqual(diskTimeDiff, 5000);
+    // With mocked timers and Date, we get exactly 1000ms
+    assert.strictEqual(cpuTimeDiff, 1000);
+    assert.strictEqual(memTimeDiff, 1000);
+    assert.strictEqual(diskTimeDiff, 1000);
   });
 
   it("should continue accumulating data for multiple intervals", async () => {
@@ -355,11 +355,11 @@ describe("Metrics", () => {
       .length;
 
     // Advance time by 10 seconds (2 intervals)
-    await mock.timers.tick(5000);
+    await mock.timers.tick(1000);
     for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
     }
-    await mock.timers.tick(5000);
+    await mock.timers.tick(1000);
     for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
     }
@@ -406,7 +406,7 @@ describe("Metrics", () => {
     assert.strictEqual(writeCount, 1, "First collection should write");
 
     // Advance time by 5 seconds (2nd collection)
-    await mock.timers.tick(5000);
+    await mock.timers.tick(1000);
     for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
     }
@@ -414,7 +414,7 @@ describe("Metrics", () => {
     assert.strictEqual(writeCount, 2, "Second collection should write");
 
     // Advance time by 5 seconds (3rd collection)
-    await mock.timers.tick(5000);
+    await mock.timers.tick(1000);
     for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
     }
@@ -422,7 +422,7 @@ describe("Metrics", () => {
     assert.strictEqual(writeCount, 3, "Third collection should write");
 
     // Advance time by 5 seconds (4th collection)
-    await mock.timers.tick(5000);
+    await mock.timers.tick(1000);
     for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
     }
@@ -430,7 +430,7 @@ describe("Metrics", () => {
     assert.strictEqual(writeCount, 4, "Fourth collection should write");
 
     // Advance time by 5 seconds (5th collection)
-    await mock.timers.tick(5000);
+    await mock.timers.tick(1000);
     for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
     }
@@ -488,7 +488,7 @@ describe("Metrics", () => {
 
     // Collect 4 more times (each should write)
     for (let j = 0; j < 4; j++) {
-      await mock.timers.tick(5000);
+      await mock.timers.tick(1000);
       for (let i = 0; i < 10; i++) {
         await new Promise(resolve => queueMicrotask(resolve));
       }
@@ -498,7 +498,7 @@ describe("Metrics", () => {
 
     // Collect 5 more times (each should write)
     for (let j = 0; j < 5; j++) {
-      await mock.timers.tick(5000);
+      await mock.timers.tick(1000);
       for (let i = 0; i < 10; i++) {
         await new Promise(resolve => queueMicrotask(resolve));
       }
@@ -516,7 +516,7 @@ describe("Metrics", () => {
       const metrics = createMetrics();
 
       // Wait for first collection
-      await mock.timers.tick(5000);
+      await mock.timers.tick(1000);
       for (let i = 0; i < 10; i++) {
         await new Promise(resolve => queueMicrotask(resolve));
       }
