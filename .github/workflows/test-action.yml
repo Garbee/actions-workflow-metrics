@@ -67,8 +67,8 @@ jobs:
           sleep 10
           echo "Workload simulation complete"
 
-  test-resource-visualization:
-    name: Test Resource Visualization
+  test-resource-load:
+    name: Test with Resources Under Load
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
