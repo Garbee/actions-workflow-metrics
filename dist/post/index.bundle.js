@@ -122611,21 +122611,12 @@ async function fetchWorkflowSteps() {
       run_id: runId
     });
     const stepMarkers = [];
-    const currentJobId = process.env.GITHUB_JOB || context4.job;
-    const metricsData = await getMetricsData();
-    const firstMetricTime = metricsData.cpuLoadPercentages[0]?.unixTimeMs;
-    const lastMetricTime = metricsData.cpuLoadPercentages[metricsData.cpuLoadPercentages.length - 1]?.unixTimeMs;
-    if (!firstMetricTime || !lastMetricTime) {
-      return [];
+    const currentRunnerName = process.env.RUNNER_NAME;
+    if (!currentRunnerName) {
+      throw new Error("RUNNER_NAME environment variable not set");
     }
     for (const job of jobs.jobs) {
-      const jobStartTime = job.started_at ? new Date(job.started_at).getTime() : null;
-      const jobEndTime = job.completed_at ? new Date(job.completed_at).getTime() : Date.now();
-      if (!jobStartTime) {
-        continue;
-      }
-      const overlaps = jobStartTime <= lastMetricTime && jobEndTime >= firstMetricTime;
-      if (!overlaps) {
+      if (job.runner_name !== currentRunnerName) {
         continue;
       }
       for (const step of job.steps || []) {

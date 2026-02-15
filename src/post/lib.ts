@@ -110,57 +110,23 @@ export async function fetchWorkflowSteps(): Promise<
     const stepMarkers: z.TypeOf<typeof stepMarkerSchema>[] = [];
 
     // Filter to only the current job's steps
-    // GitHub Actions sets GITHUB_JOB to the job ID from the workflow YAML (e.g., "test-basic")
-    // Unfortunately, the GitHub API doesn't expose this ID directly in the job object
-    //
-    // However, we can use an alternative approach: since we're in the post action,
-    // we know our metrics were collected during THIS job's execution.
-    // We can match by checking which job has the correct run attempt and is our job.
-    //
-    // The most reliable way: GitHub provides GITHUB_JOB env var with the job ID
-    // We need to find which API job corresponds to this ID.
-    // The job.name in the API is the display name which may include matrix values
-    // But the job itself should have the run_id that matches, and we can check the runner_name
-    //
-    // Simpler approach: Use the fact that context.job provides the job ID,
-    // and we need to match it somehow. Let's check environment variables set by GitHub.
-    const currentJobId = process.env.GITHUB_JOB || context.job;
+    // The most reliable way to match: use the runner name
+    // GitHub Actions sets RUNNER_NAME environment variable which is unique per job execution
+    // The API response includes runner_name field which should match
+    const currentRunnerName = process.env.RUNNER_NAME;
     
-    // GitHub doesn't expose the job YAML ID in the API response directly
-    // But we can use the run URL which is: https://github.com/{owner}/{repo}/actions/runs/{runId}/attempts/{attempt}
-    // And each job URL is: https://github.com/{owner}/{repo}/actions/runs/{runId}/job/{jobId}
-    //
-    // Since we can't reliably match, let's use the execution timeframe approach:
-    // Only include steps from jobs whose execution timeframe overlaps with our metrics collection
-    // This means checking when metrics started being collected
-    const metricsData = await getMetricsData();
-    const firstMetricTime = metricsData.cpuLoadPercentages[0]?.unixTimeMs;
-    const lastMetricTime = metricsData.cpuLoadPercentages[metricsData.cpuLoadPercentages.length - 1]?.unixTimeMs;
-    
-    if (!firstMetricTime || !lastMetricTime) {
-      // No metrics collected, return empty
-      return [];
+    if (!currentRunnerName) {
+      throw new Error("RUNNER_NAME environment variable not set");
     }
     
     for (const job of jobs.jobs) {
-      // Check if this job's execution overlaps with our metrics collection period
-      const jobStartTime = job.started_at ? new Date(job.started_at).getTime() : null;
-      const jobEndTime = job.completed_at ? new Date(job.completed_at).getTime() : Date.now();
-      
-      if (!jobStartTime) {
-        continue; // Skip jobs that haven't started
+      // Match by runner name - each job runs on a specific runner
+      // For matrix jobs, each matrix instance runs on its own runner
+      if (job.runner_name !== currentRunnerName) {
+        continue; // Skip jobs that ran on different runners
       }
       
-      // Check if job execution overlaps with metrics collection
-      // Job overlaps if: job starts before metrics end AND job ends after metrics start
-      const overlaps = jobStartTime <= lastMetricTime && jobEndTime >= firstMetricTime;
-      
-      if (!overlaps) {
-        continue; // Skip jobs that don't overlap with our metrics
-      }
-      
-      // This job overlaps with our metrics collection period
-      // Include its steps
+      // This is our job - include its steps
       for (const step of job.steps || []) {
         if (step.started_at) {
           stepMarkers.push({
