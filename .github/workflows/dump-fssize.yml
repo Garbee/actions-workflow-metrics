@@ -65,14 +65,13 @@ jobs:
             # Unix-like (Linux/macOS): Use dd
             TEST_FILE="/tmp/test-10gb-file.bin"
             # Note: status=progress is not supported on macOS (BSD dd)
-            # Also, macOS uses lowercase 'm' for megabytes (base-10) vs Linux 'M' (base-2)
-            # To create exactly 10GB on both: 10240 * 1024 * 1024 = 10737418240 bytes
+            # Also, macOS uses lowercase 'm' for megabytes (base-10, 1,000,000 bytes)
+            # vs Linux 'M' (base-2, 1,048,576 bytes)
             if [ "$RUNNER_OS" = "macOS" ]; then
-              # macOS: bs=1m (1,000,000 bytes), count=10737 creates ~10.74GB
-              # Use bs=1m count=10240 to match Linux output size more closely
+              # macOS: bs=1m count=10240 creates 10,240,000,000 bytes (~10.24GB)
               dd if=/dev/zero of="$TEST_FILE" bs=1m count=10240
             else
-              # Linux: bs=1M (1,048,576 bytes), count=10240 creates exactly 10737418240 bytes
+              # Linux: bs=1M count=10240 creates 10,737,418,240 bytes (exactly 10GB in base-2)
               dd if=/dev/zero of="$TEST_FILE" bs=1M count=10240 status=progress
             fi
             echo "10GB file created at: $TEST_FILE"
@@ -132,28 +131,39 @@ jobs:
         run: |
           echo "Cleaning up test file..."
           if [ "$RUNNER_OS" = "Windows" ]; then
+            # Handle TEST_FILE for Windows
             if [ -z "$TEST_FILE" ]; then
-              # Convert Unix-style path to Windows-style path for cleanup
+              # TEST_FILE was not set, create fallback Windows-style path
               if command -v cygpath &> /dev/null; then
                 WIN_TEMP=$(cygpath -w "$TEMP")
-                TEST_FILE="$WIN_TEMP\\test-10gb-file.bin"
+                TEST_FILE_WIN="$WIN_TEMP\\test-10gb-file.bin"
+                TEST_FILE_UNIX=$(cygpath -u "$TEST_FILE_WIN")
               else
                 # Fallback: assume TEMP is already Windows-style
-                TEST_FILE="$TEMP\\test-10gb-file.bin"
+                TEST_FILE_WIN="$TEMP\\test-10gb-file.bin"
+                TEST_FILE_UNIX="$TEST_FILE_WIN"
               fi
-              echo "Warning: TEST_FILE was not set, using default: $TEST_FILE"
-            fi
-            # Convert to Unix-style path for rm command if cygpath is available
-            if command -v cygpath &> /dev/null; then
-              UNIX_TEST_FILE=$(cygpath -u "$TEST_FILE")
+              echo "Warning: TEST_FILE was not set, using default: $TEST_FILE_WIN"
             else
-              UNIX_TEST_FILE="$TEST_FILE"
+              # TEST_FILE is set, convert to Unix-style path for rm command
+              TEST_FILE_WIN="$TEST_FILE"
+              if command -v cygpath &> /dev/null; then
+                # If TEST_FILE is Windows-style, convert to Unix; if already Unix-style, use as-is
+                if [[ "$TEST_FILE" =~ ^[A-Za-z]:[/\\] ]]; then
+                  TEST_FILE_UNIX=$(cygpath -u "$TEST_FILE")
+                else
+                  TEST_FILE_UNIX="$TEST_FILE"
+                fi
+              else
+                TEST_FILE_UNIX="$TEST_FILE"
+              fi
             fi
-            if [ -f "$UNIX_TEST_FILE" ]; then
-              rm -f "$UNIX_TEST_FILE"
-              echo "Test file removed: $TEST_FILE"
+            
+            if [ -f "$TEST_FILE_UNIX" ]; then
+              rm -f "$TEST_FILE_UNIX"
+              echo "Test file removed: $TEST_FILE_WIN"
             else
-              echo "Test file not found: $TEST_FILE"
+              echo "Test file not found: $TEST_FILE_WIN"
             fi
           else
             if [ -z "$TEST_FILE" ]; then
