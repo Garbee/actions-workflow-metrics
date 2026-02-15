@@ -394,7 +394,7 @@ describe("Metrics", () => {
     }
   });
 
-  it("should batch disk writes to reduce I/O", async () => {
+  it("should write to disk after every collection", async () => {
     const metrics = createMetrics();
 
     // Wait for initial data collection
@@ -402,8 +402,8 @@ describe("Metrics", () => {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
-    // Initial collection should write immediately to ensure file exists for short workflows
-    assert.strictEqual(writeCount, 1, "First collection should write immediately");
+    // First collection should write
+    assert.strictEqual(writeCount, 1, "First collection should write");
 
     // Advance time by 5 seconds (2nd collection)
     await mock.timers.tick(5000);
@@ -411,7 +411,7 @@ describe("Metrics", () => {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
-    assert.strictEqual(writeCount, 1, "Second collection should not write yet");
+    assert.strictEqual(writeCount, 2, "Second collection should write");
 
     // Advance time by 5 seconds (3rd collection)
     await mock.timers.tick(5000);
@@ -419,7 +419,7 @@ describe("Metrics", () => {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
-    assert.strictEqual(writeCount, 1, "Third collection should not write yet");
+    assert.strictEqual(writeCount, 3, "Third collection should write");
 
     // Advance time by 5 seconds (4th collection)
     await mock.timers.tick(5000);
@@ -427,24 +427,24 @@ describe("Metrics", () => {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
-    assert.strictEqual(writeCount, 1, "Fourth collection should not write yet");
+    assert.strictEqual(writeCount, 4, "Fourth collection should write");
 
-    // Advance time by 5 seconds (5th collection - should trigger write)
+    // Advance time by 5 seconds (5th collection)
     await mock.timers.tick(5000);
     for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
-    assert.strictEqual(writeCount, 2, "Fifth collection should trigger second write");
+    assert.strictEqual(writeCount, 5, "Fifth collection should write");
 
-    // Verify data is collected correctly despite batched writes
+    // Verify data is collected correctly with immediate writes
     const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
     assert.strictEqual(data.cpuLoadPercentages.length, 5, "Should have 5 CPU data points");
     assert.strictEqual(data.memoryUsageMBs.length, 5, "Should have 5 memory data points");
     assert.strictEqual(data.diskUsageGBs.length, 5, "Should have 5 disk data points");
   });
 
-  it("should write to disk on stop even if batch threshold not reached", async () => {
+  it("should write to disk on stop", async () => {
     const metrics = createMetrics();
 
     // Wait for initial data collection
@@ -453,7 +453,7 @@ describe("Metrics", () => {
     }
 
     // First collection should have written
-    assert.strictEqual(writeCount, 1, "First collection should write immediately");
+    assert.strictEqual(writeCount, 1, "First collection should write");
 
     // Stop the metrics - should force another write
     metrics.stop();
@@ -475,7 +475,7 @@ describe("Metrics", () => {
     assert.strictEqual(writtenData.cpuLoadPercentages.length, 1, "Written data should have 1 CPU data point");
   });
 
-  it("should continue batching writes after first batch", async () => {
+  it("should write after multiple collections", async () => {
     const metrics = createMetrics();
 
     // Wait for initial data collection
@@ -483,10 +483,10 @@ describe("Metrics", () => {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
-    // First collection writes immediately
+    // First collection writes
     assert.strictEqual(writeCount, 1, "Should have 1 write after first collection");
 
-    // Collect 4 more times to trigger second write (total 5 collections)
+    // Collect 4 more times (each should write)
     for (let j = 0; j < 4; j++) {
       await mock.timers.tick(5000);
       for (let i = 0; i < 10; i++) {
@@ -494,9 +494,9 @@ describe("Metrics", () => {
       }
     }
 
-    assert.strictEqual(writeCount, 2, "Should have 2 writes after 5 collections");
+    assert.strictEqual(writeCount, 5, "Should have 5 writes after 5 collections");
 
-    // Collect 5 more times to trigger third write (total 10 collections)
+    // Collect 5 more times (each should write)
     for (let j = 0; j < 5; j++) {
       await mock.timers.tick(5000);
       for (let i = 0; i < 10; i++) {
@@ -504,7 +504,7 @@ describe("Metrics", () => {
       }
     }
 
-    assert.strictEqual(writeCount, 3, "Should have 3 writes after 10 collections");
+    assert.strictEqual(writeCount, 10, "Should have 10 writes after 10 collections");
 
     // Verify all 10 data points are in memory
     const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());

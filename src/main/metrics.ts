@@ -10,11 +10,8 @@ export class Metrics {
   private readonly data: z.TypeOf<typeof metricsDataSchema>;
   private readonly intervalMs: number;
   private readonly stateFile: string;
-  private readonly writeInterval: number; // How many collections before writing to disk
   private timeoutId: NodeJS.Timeout | null = null;
   private stopped: boolean = false;
-  private collectionsSinceWrite: number = 0;
-  private isFirstCollection: boolean = true;
 
   constructor() {
     this.data = { cpuLoadPercentages: [], memoryUsageMBs: [], diskUsageGBs: [], stepMarkers: [] };
@@ -45,10 +42,6 @@ export class Metrics {
         this.intervalMs = intervalSecondsVal * 1000;
       }
     }
-
-    // Write on first collection to ensure file exists, then batch every 5 collections
-    // This ensures short workflows have data while preventing I/O thrashing on long workflows
-    this.writeInterval = 5;
 
     // Start async processing
     this.initialize().catch(setFailed);
@@ -118,20 +111,8 @@ export class Metrics {
         console.warn(`Root filesystem (${rootMountPoint}) not found in disk list. Disk metrics will be incomplete.`);
       }
 
-      // Increment collections counter
-      this.collectionsSinceWrite++;
-
-      // Write immediately on first collection to ensure file exists for short workflows
-      // Then batch subsequent writes every N collections to reduce I/O
-      if (this.isFirstCollection) {
-        // First collection ever - write immediately and clear flag
-        this.saveState();
-        this.isFirstCollection = false;
-      } else if (this.collectionsSinceWrite >= this.writeInterval) {
-        // Reached batch threshold - write and reset counter
-        this.saveState();
-        this.collectionsSinceWrite = 0;
-      }
+      // Write to disk after every collection
+      this.saveState();
     } catch (error) {
       setFailed(error);
     } finally {
