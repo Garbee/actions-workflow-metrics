@@ -122286,10 +122286,10 @@ ${alertsSection}${cpuUsageSection}${memoryUsageSection}${diskUsageSection}`;
     if (metricsInRange.length > 0) {
       return strategy === "last" ? metricsInRange[metricsInRange.length - 1] : metricsInRange[0];
     }
+    const stepMidpoint = (stepStart + stepEnd) / 2;
     let closest = metrics[0];
-    let minDistance = Math.abs(metrics[0].unixTimeMs - stepStart);
+    let minDistance = Math.abs(metrics[0].unixTimeMs - stepMidpoint);
     for (const metric of metrics) {
-      const stepMidpoint = (stepStart + stepEnd) / 2;
       const distance = Math.abs(metric.unixTimeMs - stepMidpoint);
       if (distance < minDistance) {
         minDistance = distance;
