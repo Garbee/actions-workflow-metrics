@@ -20,6 +20,9 @@ permissions:
 jobs:
   test-basic:
     name: Test Basic Usage (${{ matrix.os }})
+    permissions:
+      contents: read # To clone the repository
+      actions: read # To retrieve information about the workflow run and jobs
     strategy:
       fail-fast: false
       matrix:
@@ -54,6 +57,9 @@ jobs:
 
   test-resource-load:
     name: Test with Resources Under Load (${{ matrix.os }})
+    permissions:
+      contents: read # To clone the repository
+      actions: read # To retrieve information about the workflow run and jobs
     strategy:
       fail-fast: false
       matrix:
@@ -85,10 +91,21 @@ jobs:
         run: |
           set -euo pipefail
           echo "Starting CPU-intensive activity for 15 seconds..."
-          echo "Creating 5GB test file to demonstrate disk usage..."
-          dd if=/dev/zero of=/tmp/test-5gb-file.bin bs=1M count=5120 status=progress
-          echo "5GB file created at /tmp/test-5gb-file.bin"
-          ls -lh /tmp/test-5gb-file.bin
+          
+          # Create test file based on OS
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            echo "Creating 5GB test file on Windows..."
+            # Use fsutil on Windows (requires absolute path)
+            TEST_FILE="$TEMP/test-5gb-file.bin"
+            fsutil file createnew "$TEST_FILE" 5368709120
+            echo "5GB file created at $TEST_FILE"
+            ls -lh "$TEST_FILE"
+          else
+            echo "Creating 5GB test file to demonstrate disk usage..."
+            dd if=/dev/zero of=/tmp/test-5gb-file.bin bs=1M count=5120 status=progress
+            echo "5GB file created at /tmp/test-5gb-file.bin"
+            ls -lh /tmp/test-5gb-file.bin
+          fi
 
           node -e "
           const startTime = Date.now();
@@ -103,9 +120,18 @@ jobs:
           console.log('CPU-intensive activity completed. Count:', count);
           "
 
-          echo "Removing 5GB test file..."
-          rm -f /tmp/test-5gb-file.bin
-          echo "Test file removed."
+          # Remove test file based on OS
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            echo "Removing 5GB test file..."
+            rm -f "$TEMP/test-5gb-file.bin"
+            echo "Test file removed."
+          else
+            echo "Removing 5GB test file..."
+            rm -f /tmp/test-5gb-file.bin
+            echo "Test file removed."
+          fi
+        env:
+          RUNNER_OS: ${{ runner.os }}
 
       - name: Memory Intensive Activity
         shell: bash
@@ -150,7 +176,6 @@ jobs:
           "
         env:
           RUNNER_OS: ${{ runner.os }}
-          ARRAY_COUNT: ${{ runner.os == 'macOS' && '10' || '50' }}
 
       - name: Idle Activity
         shell: bash
