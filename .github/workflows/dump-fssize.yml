@@ -44,9 +44,14 @@ jobs:
           echo "Creating 10GB test file..."
           if [ "$RUNNER_OS" = "Windows" ]; then
             # Windows: Use fsutil to create a sparse file
-            TEST_FILE="$TEMP/test-10gb-file.bin"
+            # Convert Unix-style path to Windows-style path for fsutil
+            WIN_TEMP=$(cygpath -w "$TEMP" 2>/dev/null || echo "$TEMP")
+            TEST_FILE="$WIN_TEMP\\test-10gb-file.bin"
             fsutil file createnew "$TEST_FILE" 10737418240
             echo "10GB file created at: $TEST_FILE"
+            # Store Unix-style path for other steps
+            UNIX_TEST_FILE=$(cygpath -u "$TEST_FILE" 2>/dev/null || echo "$TEST_FILE")
+            echo "TEST_FILE=$UNIX_TEST_FILE" >> $GITHUB_ENV
           else
             # Unix-like (Linux/macOS): Use dd
             TEST_FILE="/tmp/test-10gb-file.bin"
@@ -58,8 +63,8 @@ jobs:
             fi
             echo "10GB file created at: $TEST_FILE"
             ls -lh "$TEST_FILE"
+            echo "TEST_FILE=$TEST_FILE" >> $GITHUB_ENV
           fi
-          echo "TEST_FILE=$TEST_FILE" >> $GITHUB_ENV
 
       - name: Dump fsSize Information After File Creation
         run: |
@@ -73,18 +78,18 @@ jobs:
         run: |
           echo "=== Determining Mount Point for Test File ==="
           if [ "$RUNNER_OS" = "Windows" ]; then
-            # Windows: Extract drive letter from TEMP and show volume info
+            # Windows: Extract drive letter from TEST_FILE and show volume info
             echo "Test file location: $TEST_FILE"
-            # Extract drive letter from TEMP path (Git Bash format: /c/... or Windows format: C:\...)
+            # Extract drive letter from TEST_FILE path (Git Bash format: /c/... or Windows format: C:\...)
             DRIVE=""
-            if [[ "$TEMP" =~ ^/([a-zA-Z])/ ]]; then
+            if [[ "$TEST_FILE" =~ ^/([a-zA-Z])/ ]]; then
               DRIVE="${BASH_REMATCH[1]}:"
-            elif [[ "$TEMP" =~ ^([a-zA-Z]):[\\/] ]]; then
+            elif [[ "$TEST_FILE" =~ ^([a-zA-Z]):[\\/] ]]; then
               DRIVE="${BASH_REMATCH[1]}:"
             fi
             
             if [ -z "$DRIVE" ]; then
-              echo "Error: Could not determine drive letter from TEMP=$TEMP"
+              echo "Error: Could not determine drive letter from TEST_FILE=$TEST_FILE"
               echo "Expected format: /c/... (Git Bash) or C:\... (Windows)"
               exit 1
             fi
@@ -114,18 +119,28 @@ jobs:
           echo "Cleaning up test file..."
           if [ "$RUNNER_OS" = "Windows" ]; then
             if [ -z "$TEST_FILE" ]; then
-              TEST_FILE="$TEMP/test-10gb-file.bin"
+              # Convert Unix-style path to Windows-style path for cleanup
+              WIN_TEMP=$(cygpath -w "$TEMP" 2>/dev/null || echo "$TEMP")
+              TEST_FILE="$WIN_TEMP\\test-10gb-file.bin"
               echo "Warning: TEST_FILE was not set, using default: $TEST_FILE"
+            fi
+            # Convert to Unix-style path for rm command
+            UNIX_TEST_FILE=$(cygpath -u "$TEST_FILE" 2>/dev/null || echo "$TEST_FILE")
+            if [ -f "$UNIX_TEST_FILE" ]; then
+              rm -f "$UNIX_TEST_FILE"
+              echo "Test file removed: $TEST_FILE"
+            else
+              echo "Test file not found: $TEST_FILE"
             fi
           else
             if [ -z "$TEST_FILE" ]; then
               TEST_FILE="/tmp/test-10gb-file.bin"
               echo "Warning: TEST_FILE was not set, using default: $TEST_FILE"
             fi
-          fi
-          if [ -f "$TEST_FILE" ]; then
-            rm -f "$TEST_FILE"
-            echo "Test file removed: $TEST_FILE"
-          else
-            echo "Test file not found: $TEST_FILE"
+            if [ -f "$TEST_FILE" ]; then
+              rm -f "$TEST_FILE"
+              echo "Test file removed: $TEST_FILE"
+            else
+              echo "Test file not found: $TEST_FILE"
+            fi
           fi
