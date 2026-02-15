@@ -55,8 +55,8 @@ export const metricsDataSchema = z.object({
 export const alertSchema = z.object({
   type: z.enum(["memory", "cpu", "disk"]),
   message: z.string(),
-  step: z.string().optional(),
-  steps: z.array(z.string()).optional(),
+  timespan: z.number().optional(), // Single timestamp when alert occurred
+  timespans: z.array(z.number()).optional(), // Multiple timestamps for sustained alerts
   value: z.number(),
   threshold: z.number(),
 });

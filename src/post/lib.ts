@@ -88,71 +88,6 @@ export async function collectFinalMetrics(): Promise<z.TypeOf<typeof metricsData
   }
 }
 
-export async function fetchWorkflowSteps(): Promise<
-  z.TypeOf<typeof stepMarkerSchema>[]
-> {
-  const token = getInput("github-token");
-  if (!token) {
-    throw new Error("GitHub token is required for workflow step tracking");
-  }
-
-  try {
-    const octokit = getOctokit(token);
-    const { owner, repo } = context.repo;
-    const runId = context.runId;
-
-    const { data: jobs } = await octokit.rest.actions.listJobsForWorkflowRun({
-      owner,
-      repo,
-      run_id: runId,
-    });
-
-    const stepMarkers: z.TypeOf<typeof stepMarkerSchema>[] = [];
-
-    // Filter to only the current job's steps
-    // The most reliable way to match: use the runner name
-    // GitHub Actions sets RUNNER_NAME environment variable which is unique per job execution
-    // The API response includes runner_name field which should match
-    const currentRunnerName = process.env.RUNNER_NAME;
-    
-    if (!currentRunnerName) {
-      throw new Error("RUNNER_NAME environment variable not set");
-    }
-    
-    for (const job of jobs.jobs) {
-      // Match by runner name - each job runs on a specific runner
-      // For matrix jobs, each matrix instance runs on its own runner
-      if (job.runner_name !== currentRunnerName) {
-        continue; // Skip jobs that ran on different runners
-      }
-      
-      // This is our job - include its steps
-      for (const step of job.steps || []) {
-        if (step.started_at) {
-          stepMarkers.push({
-            unixTimeMs: new Date(step.started_at).getTime(),
-            stepName: step.name,
-            status: "start" as const,
-          });
-        }
-        if (step.completed_at) {
-          stepMarkers.push({
-            unixTimeMs: new Date(step.completed_at).getTime(),
-            stepName: step.name,
-            status: "end" as const,
-          });
-        }
-      }
-    }
-
-    return stepMarkers.sort((a, b) => a.unixTimeMs - b.unixTimeMs);
-  } catch (error) {
-    throw new Error(
-      `Failed to fetch workflow steps: ${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
-}
-
 /**
  * Detects threshold violations in metrics data and generates alerts.
  */
@@ -167,47 +102,16 @@ export function detectAlerts(
   const cpuDuration = parseFloat(getInput("cpu_alert_duration") || "60") * 1000; // Convert to ms
   const diskThreshold = parseFloat(getInput("disk_alert_threshold") || "90");
 
-  // Helper to find step name for a given timestamp
-  const getStepForTime = (timeMs: number): string | undefined => {
-    const stepRanges: { start: number; end: number; name: string }[] = [];
-    const stepStarts = new Map<string, number>();
-    const stepEnds = new Map<string, number>();
-
-    for (const marker of metricsData.stepMarkers) {
-      if (marker.status === "start") {
-        stepStarts.set(marker.stepName, marker.unixTimeMs);
-      } else if (marker.status === "end") {
-        stepEnds.set(marker.stepName, marker.unixTimeMs);
-      }
-    }
-
-    for (const [stepName, startTime] of stepStarts.entries()) {
-      const endTime = stepEnds.get(stepName);
-      if (endTime) {
-        stepRanges.push({ start: startTime, end: endTime, name: stepName });
-      }
-    }
-
-    for (const range of stepRanges) {
-      if (timeMs >= range.start && timeMs < range.end) {
-        return range.name;
-      }
-    }
-
-    return undefined;
-  };
-
   // Check memory utilization (used / (used + free) * 100)
   for (const memory of metricsData.memoryUsageMBs) {
     const total = memory.used + memory.free;
     const utilizationPercent = (memory.used / total) * 100;
 
     if (utilizationPercent > memoryThreshold) {
-      const step = getStepForTime(memory.unixTimeMs);
       alerts.push({
         type: "memory",
         message: `Memory utilization exceeded ${memoryThreshold.toFixed(0)}%`,
-        step,
+        timespan: memory.unixTimeMs,
         value: utilizationPercent,
         threshold: memoryThreshold,
       });
@@ -218,51 +122,42 @@ export function detectAlerts(
 
   // Check sustained CPU usage (user + system combined)
   // Find periods where CPU is sustained above threshold for the specified duration
-  const sustainedCpuSteps = new Set<string>();
   let sustainedStartTime: number | null = null;
-  const stepsInSustainedPeriod = new Set<string>();
+  const timespansInSustainedPeriod: number[] = [];
 
   for (let i = 0; i < metricsData.cpuLoadPercentages.length; i++) {
     const cpu = metricsData.cpuLoadPercentages[i];
     const totalCpu = cpu.user + cpu.system;
-    const currentStep = getStepForTime(cpu.unixTimeMs);
 
     if (totalCpu > cpuThreshold) {
       if (sustainedStartTime === null) {
         sustainedStartTime = cpu.unixTimeMs;
-        stepsInSustainedPeriod.clear();
+        timespansInSustainedPeriod.length = 0; // Clear array
       }
 
-      // Track all steps during sustained period
-      if (currentStep) {
-        stepsInSustainedPeriod.add(currentStep);
-      }
+      // Track all timespans during sustained period
+      timespansInSustainedPeriod.push(cpu.unixTimeMs);
 
       const duration = cpu.unixTimeMs - sustainedStartTime;
-      if (duration >= cpuDuration) {
-        // Sustained threshold met - add all steps seen during this period
-        for (const step of stepsInSustainedPeriod) {
-          sustainedCpuSteps.add(step);
-        }
+      if (duration >= cpuDuration && timespansInSustainedPeriod.length > 0) {
+        // Sustained threshold met
+        const maxCpu = Math.max(
+          ...metricsData.cpuLoadPercentages.map(cpu => cpu.user + cpu.system)
+        );
+        alerts.push({
+          type: "cpu",
+          message: `Sustained CPU usage above ${cpuThreshold.toFixed(0)}% for more than ${(cpuDuration / 1000).toFixed(0)} seconds`,
+          timespans: [...timespansInSustainedPeriod],
+          value: maxCpu,
+          threshold: cpuThreshold,
+        });
+        break; // Only report the first sustained period
       }
     } else {
       // Reset if CPU drops below threshold
       sustainedStartTime = null;
-      stepsInSustainedPeriod.clear();
+      timespansInSustainedPeriod.length = 0;
     }
-  }
-
-  if (sustainedCpuSteps.size > 0) {
-    const maxCpu = Math.max(
-      ...metricsData.cpuLoadPercentages.map(cpu => cpu.user + cpu.system)
-    );
-    alerts.push({
-      type: "cpu",
-      message: `Sustained CPU usage above ${cpuThreshold.toFixed(0)}% for more than ${(cpuDuration / 1000).toFixed(0)} seconds`,
-      steps: Array.from(sustainedCpuSteps),
-      value: maxCpu,
-      threshold: cpuThreshold,
-    });
   }
 
   // Check disk usage (used / (used + available) * 100)
@@ -271,11 +166,10 @@ export function detectAlerts(
     const utilizationPercent = (disk.used / total) * 100;
 
     if (utilizationPercent > diskThreshold) {
-      const step = getStepForTime(disk.unixTimeMs);
       alerts.push({
         type: "disk",
         message: `Disk usage exceeded ${diskThreshold.toFixed(0)}%`,
-        step,
+        timespan: disk.unixTimeMs,
         value: utilizationPercent,
         threshold: diskThreshold,
       });
@@ -298,7 +192,6 @@ export function render(
 
   const renderer: Renderer = new Renderer();
   return renderer.render(
-    metricsData.stepMarkers,
     alerts,
     metricsData.cpuLoadPercentages,
     metricsData.memoryUsageMBs,

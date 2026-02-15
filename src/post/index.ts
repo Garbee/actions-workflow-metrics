@@ -3,7 +3,7 @@ import { setTimeout } from "node:timers/promises";
 import { DefaultArtifactClient } from "@actions/artifact";
 import { info, setFailed, summary } from "@actions/core";
 import { context } from "@actions/github";
-import { getMetricsData, render, fetchWorkflowSteps, collectFinalMetrics, detectAlerts } from "./lib.ts";
+import { getMetricsData, render, collectFinalMetrics, detectAlerts } from "./lib.ts";
 import type { z } from "zod";
 import type { metricsDataSchema } from "../lib.ts";
 
@@ -15,10 +15,6 @@ async function index(): Promise<void> {
   metricsData = await collectFinalMetrics();
 
   try {
-    // Fetch workflow steps from GitHub API (required)
-    const apiSteps = await fetchWorkflowSteps();
-    metricsData.stepMarkers = apiSteps;
-
     // Detect alerts based on threshold violations
     const alerts = detectAlerts(metricsData);
 

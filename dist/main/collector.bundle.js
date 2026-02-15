@@ -50808,8 +50808,10 @@ var metricsDataSchema = external_exports.object({
 var alertSchema = external_exports.object({
   type: external_exports.enum(["memory", "cpu", "disk"]),
   message: external_exports.string(),
-  step: external_exports.string().optional(),
-  steps: external_exports.array(external_exports.string()).optional(),
+  timespan: external_exports.number().optional(),
+  // Single timestamp when alert occurred
+  timespans: external_exports.array(external_exports.number()).optional(),
+  // Multiple timestamps for sustained alerts
   value: external_exports.number(),
   threshold: external_exports.number()
 });

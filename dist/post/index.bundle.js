@@ -3563,18 +3563,18 @@ var require_webidl = __commonJS({
     webidl.errors.exception = function(message) {
       return new TypeError(`${message.header}: ${message.message}`);
     };
-    webidl.errors.conversionFailed = function(context5) {
-      const plural = context5.types.length === 1 ? "" : " one of";
-      const message = `${context5.argument} could not be converted to${plural}: ${context5.types.join(", ")}.`;
+    webidl.errors.conversionFailed = function(context6) {
+      const plural = context6.types.length === 1 ? "" : " one of";
+      const message = `${context6.argument} could not be converted to${plural}: ${context6.types.join(", ")}.`;
       return webidl.errors.exception({
-        header: context5.prefix,
+        header: context6.prefix,
         message
       });
     };
-    webidl.errors.invalidArgument = function(context5) {
+    webidl.errors.invalidArgument = function(context6) {
       return webidl.errors.exception({
-        header: context5.prefix,
-        message: `"${context5.value}" is an invalid ${context5.type}.`
+        header: context6.prefix,
+        message: `"${context6.value}" is an invalid ${context6.type}.`
       });
     };
     webidl.brandCheck = function(V, I, opts) {
@@ -9570,17 +9570,17 @@ var require_api_request = __commonJS({
           }
         }
       }
-      onConnect(abort, context5) {
+      onConnect(abort, context6) {
         if (this.reason) {
           abort(this.reason);
           return;
         }
         assert2(this.callback);
         this.abort = abort;
-        this.context = context5;
+        this.context = context6;
       }
       onHeaders(statusCode, rawHeaders, resume, statusMessage) {
-        const { callback, opaque, abort, context: context5, responseHeaders, highWaterMark } = this;
+        const { callback, opaque, abort, context: context6, responseHeaders, highWaterMark } = this;
         const headers = responseHeaders === "raw" ? util3.parseRawHeaders(rawHeaders) : util3.parseHeaders(rawHeaders);
         if (statusCode < 200) {
           if (this.onInfo) {
@@ -9617,7 +9617,7 @@ var require_api_request = __commonJS({
               trailers: this.trailers,
               opaque,
               body: res,
-              context: context5
+              context: context6
             });
           }
         }
@@ -9786,17 +9786,17 @@ var require_api_stream = __commonJS({
         }
         addSignal(this, signal);
       }
-      onConnect(abort, context5) {
+      onConnect(abort, context6) {
         if (this.reason) {
           abort(this.reason);
           return;
         }
         assert2(this.callback);
         this.abort = abort;
-        this.context = context5;
+        this.context = context6;
       }
       onHeaders(statusCode, rawHeaders, resume, statusMessage) {
-        const { factory, opaque, context: context5, callback, responseHeaders } = this;
+        const { factory, opaque, context: context6, callback, responseHeaders } = this;
         const headers = responseHeaders === "raw" ? util3.parseRawHeaders(rawHeaders) : util3.parseHeaders(rawHeaders);
         if (statusCode < 200) {
           if (this.onInfo) {
@@ -9824,7 +9824,7 @@ var require_api_stream = __commonJS({
             statusCode,
             headers,
             opaque,
-            context: context5
+            context: context6
           });
           if (!res || typeof res.write !== "function" || typeof res.end !== "function" || typeof res.on !== "function") {
             throw new InvalidReturnValueError("expected Writable");
@@ -10016,7 +10016,7 @@ var require_api_pipeline = __commonJS({
         this.res = null;
         addSignal(this, signal);
       }
-      onConnect(abort, context5) {
+      onConnect(abort, context6) {
         const { ret, res } = this;
         if (this.reason) {
           abort(this.reason);
@@ -10025,10 +10025,10 @@ var require_api_pipeline = __commonJS({
         assert2(!res, "pipeline cannot be retried");
         assert2(!ret.destroyed);
         this.abort = abort;
-        this.context = context5;
+        this.context = context6;
       }
       onHeaders(statusCode, rawHeaders, resume) {
-        const { opaque, handler: handler2, context: context5 } = this;
+        const { opaque, handler: handler2, context: context6 } = this;
         if (statusCode < 200) {
           if (this.onInfo) {
             const headers = this.responseHeaders === "raw" ? util3.parseRawHeaders(rawHeaders) : util3.parseHeaders(rawHeaders);
@@ -10046,7 +10046,7 @@ var require_api_pipeline = __commonJS({
             headers,
             opaque,
             body: this.res,
-            context: context5
+            context: context6
           });
         } catch (err) {
           this.res.on("error", util3.nop);
@@ -10130,7 +10130,7 @@ var require_api_upgrade = __commonJS({
         this.context = null;
         addSignal(this, signal);
       }
-      onConnect(abort, context5) {
+      onConnect(abort, context6) {
         if (this.reason) {
           abort(this.reason);
           return;
@@ -10144,7 +10144,7 @@ var require_api_upgrade = __commonJS({
       }
       onUpgrade(statusCode, rawHeaders, socket) {
         assert2(statusCode === 101);
-        const { callback, opaque, context: context5 } = this;
+        const { callback, opaque, context: context6 } = this;
         removeSignal(this);
         this.callback = null;
         const headers = this.responseHeaders === "raw" ? util3.parseRawHeaders(rawHeaders) : util3.parseHeaders(rawHeaders);
@@ -10152,7 +10152,7 @@ var require_api_upgrade = __commonJS({
           headers,
           socket,
           opaque,
-          context: context5
+          context: context6
         });
       }
       onError(err) {
@@ -10221,20 +10221,20 @@ var require_api_connect = __commonJS({
         this.abort = null;
         addSignal(this, signal);
       }
-      onConnect(abort, context5) {
+      onConnect(abort, context6) {
         if (this.reason) {
           abort(this.reason);
           return;
         }
         assert2(this.callback);
         this.abort = abort;
-        this.context = context5;
+        this.context = context6;
       }
       onHeaders() {
         throw new SocketError("bad connect", null);
       }
       onUpgrade(statusCode, rawHeaders, socket) {
-        const { callback, opaque, context: context5 } = this;
+        const { callback, opaque, context: context6 } = this;
         removeSignal(this);
         this.callback = null;
         let headers = rawHeaders;
@@ -10246,7 +10246,7 @@ var require_api_connect = __commonJS({
           headers,
           socket,
           opaque,
-          context: context5
+          context: context6
         });
       }
       onError(err) {
@@ -27392,8 +27392,8 @@ var require_graceful_fs = __commonJS({
     }
     function noop3() {
     }
-    function publishQueue(context5, queue2) {
-      Object.defineProperty(context5, gracefulQueue, {
+    function publishQueue(context6, queue2) {
+      Object.defineProperty(context6, gracefulQueue, {
         get: function() {
           return queue2;
         }
@@ -39380,7 +39380,7 @@ var require_commonjs4 = __commonJS({
           free: c.#free,
           // methods
           isBackgroundFetch: (p) => c.#isBackgroundFetch(p),
-          backgroundFetch: (k, index2, options, context5) => c.#backgroundFetch(k, index2, options, context5),
+          backgroundFetch: (k, index2, options, context6) => c.#backgroundFetch(k, index2, options, context6),
           moveToTail: (index2) => c.#moveToTail(index2),
           indexes: (options) => c.#indexes(options),
           rindexes: (options) => c.#rindexes(options),
@@ -40167,7 +40167,7 @@ var require_commonjs4 = __commonJS({
         const v = this.#valList[index2];
         return this.#isBackgroundFetch(v) ? v.__staleWhileFetching : v;
       }
-      #backgroundFetch(k, index2, options, context5) {
+      #backgroundFetch(k, index2, options, context6) {
         const v = index2 === void 0 ? void 0 : this.#valList[index2];
         if (this.#isBackgroundFetch(v)) {
           return v;
@@ -40180,7 +40180,7 @@ var require_commonjs4 = __commonJS({
         const fetchOpts = {
           signal: ac.signal,
           options,
-          context: context5
+          context: context6
         };
         const cb = (v2, updateCache = false) => {
           const { aborted: aborted2 } = ac.signal;
@@ -40297,7 +40297,7 @@ var require_commonjs4 = __commonJS({
           allowStaleOnFetchRejection = this.allowStaleOnFetchRejection,
           ignoreFetchAbort = this.ignoreFetchAbort,
           allowStaleOnFetchAbort = this.allowStaleOnFetchAbort,
-          context: context5,
+          context: context6,
           forceRefresh = false,
           status,
           signal
@@ -40332,7 +40332,7 @@ var require_commonjs4 = __commonJS({
         if (index2 === void 0) {
           if (status)
             status.fetch = "miss";
-          const p = this.#backgroundFetch(k, index2, options, context5);
+          const p = this.#backgroundFetch(k, index2, options, context6);
           return p.__returned = p;
         } else {
           const v = this.#valList[index2];
@@ -40357,7 +40357,7 @@ var require_commonjs4 = __commonJS({
               this.#statusTTL(status, index2);
             return v;
           }
-          const p = this.#backgroundFetch(k, index2, options, context5);
+          const p = this.#backgroundFetch(k, index2, options, context6);
           const hasStale = p.__staleWhileFetching !== void 0;
           const staleVal = hasStale && allowStale;
           if (status) {
@@ -40379,13 +40379,13 @@ var require_commonjs4 = __commonJS({
         if (!memoMethod) {
           throw new Error("no memoMethod provided to constructor");
         }
-        const { context: context5, forceRefresh, ...options } = memoOptions;
+        const { context: context6, forceRefresh, ...options } = memoOptions;
         const v = this.get(k, options);
         if (!forceRefresh && v !== void 0)
           return v;
         const vv = memoMethod(k, v, {
           options,
-          context: context5
+          context: context6
         });
         this.set(k, vv, options);
         return vv;
@@ -76919,14 +76919,14 @@ var knownContextKeys = {
   namespace: /* @__PURE__ */ Symbol.for("@azure/core-tracing namespace")
 };
 function createTracingContext(options = {}) {
-  let context5 = new TracingContextImpl(options.parentContext);
+  let context6 = new TracingContextImpl(options.parentContext);
   if (options.span) {
-    context5 = context5.setValue(knownContextKeys.span, options.span);
+    context6 = context6.setValue(knownContextKeys.span, options.span);
   }
   if (options.namespace) {
-    context5 = context5.setValue(knownContextKeys.namespace, options.namespace);
+    context6 = context6.setValue(knownContextKeys.namespace, options.namespace);
   }
-  return context5;
+  return context6;
 }
 var TracingContextImpl = class _TracingContextImpl {
   _contextMap;
@@ -77031,8 +77031,8 @@ function createTracingClient(options) {
       span.end();
     }
   }
-  function withContext(context5, callback, ...callbackArgs) {
-    return getInstrumenter().withContext(context5, callback, ...callbackArgs);
+  function withContext(context6, callback, ...callbackArgs) {
+    return getInstrumenter().withContext(context6, callback, ...callbackArgs);
   }
   function parseTraceparentHeader(traceparentHeader) {
     return getInstrumenter().parseTraceparentHeader(traceparentHeader);
@@ -104409,8 +104409,8 @@ function isDefined2(value) {
 function isKeyOperator(operator) {
   return operator === ";" || operator === "&" || operator === "?";
 }
-function getValues(context5, operator, key, modifier) {
-  var value = context5[key], result2 = [];
+function getValues(context6, operator, key, modifier) {
+  var value = context6[key], result2 = [];
   if (isDefined2(value) && value !== "") {
     if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
       value = value.toString();
@@ -104474,7 +104474,7 @@ function parseUrl(template) {
     expand: expand.bind(null, template)
   };
 }
-function expand(template, context5) {
+function expand(template, context6) {
   var operators = ["+", "#", ".", "/", ";", "?", "&"];
   template = template.replace(
     /\{([^\{\}]+)\}|([^\{\}]+)/g,
@@ -104488,7 +104488,7 @@ function expand(template, context5) {
         }
         expression.split(/,/g).forEach(function(variable) {
           var tmp = /([^:\*]*)(?::(\d+)|(\*))?/.exec(variable);
-          values.push(getValues(context5, operator, tmp[1], tmp[2] || tmp[3]));
+          values.push(getValues(context6, operator, tmp[1], tmp[2] || tmp[3]));
         });
         if (operator && operator !== "+") {
           var separator = ",";
@@ -122257,60 +122257,33 @@ import { join as join2 } from "node:path";
 
 // src/post/renderer.ts
 var Renderer = class {
-  render(stepMarkers = [], alerts = [], cpuLoadPercentages = [], memoryUsageMBs = [], diskUsageGBs = [], thresholds = { cpu: 85, memory: 80, disk: 90 }) {
+  render(alerts = [], cpuLoadPercentages = [], memoryUsageMBs = [], diskUsageGBs = [], thresholds = { cpu: 85, memory: 80, disk: 90 }) {
     const alertsSection = this.generateAlertsSection(alerts);
-    const cpuUsageSection = this.generateCPUUsageSection(cpuLoadPercentages, stepMarkers, alerts, thresholds.cpu);
-    const memoryUsageSection = this.generateMemoryUsageSection(memoryUsageMBs, stepMarkers, alerts, thresholds.memory);
-    const diskUsageSection = this.generateDiskUsageSection(diskUsageGBs, stepMarkers, alerts, thresholds.disk);
+    const cpuUsageSection = this.generateCPUUsageSection(cpuLoadPercentages, thresholds.cpu);
+    const memoryUsageSection = this.generateMemoryUsageSection(memoryUsageMBs, thresholds.memory);
+    const diskUsageSection = this.generateDiskUsageSection(diskUsageGBs, thresholds.disk);
     return `## Workflow Metrics
 
 ${alertsSection}${cpuUsageSection}${memoryUsageSection}${diskUsageSection}`;
   }
-  /**
-   * Find the metric that best represents a step's execution.
-   * Prefers metrics collected during the step, falls back to closest available.
-   * 
-   * @param strategy - 'first': earliest metric in range (default for CPU/memory)
-   *                   'last': latest metric in range (better for disk, captures end state)
-   */
-  findMetricForStep(metrics, stepStart, stepEnd, strategy = "first") {
-    if (metrics.length === 0) {
-      return void 0;
-    }
-    const metricsInRange = [];
-    for (const metric of metrics) {
-      if (metric.unixTimeMs >= stepStart && metric.unixTimeMs <= stepEnd) {
-        metricsInRange.push(metric);
-      }
-    }
-    if (metricsInRange.length > 0) {
-      return strategy === "last" ? metricsInRange[metricsInRange.length - 1] : metricsInRange[0];
-    }
-    const stepMidpoint = (stepStart + stepEnd) / 2;
-    let closest = metrics[0];
-    let minDistance = Math.abs(metrics[0].unixTimeMs - stepMidpoint);
-    for (const metric of metrics) {
-      const distance = Math.abs(metric.unixTimeMs - stepMidpoint);
-      if (distance < minDistance) {
-        minDistance = distance;
-        closest = metric;
-      }
-    }
-    return closest;
+  formatTimestamp(unixTimeMs) {
+    const date5 = new Date(unixTimeMs);
+    return date5.toISOString();
   }
   generateAlertsSection(alerts) {
     if (alerts.length === 0) {
       return "";
     }
     const alertItems = alerts.map((alert) => {
-      let stepInfo = "";
-      if (alert.step) {
-        stepInfo = ` in step **${alert.step}**`;
-      } else if (alert.steps && alert.steps.length > 0) {
-        stepInfo = ` in steps: ${alert.steps.map((s) => `**${s}**`).join(", ")}`;
+      let timeInfo = "";
+      if (alert.timespan) {
+        timeInfo = ` at ${this.formatTimestamp(alert.timespan)}`;
+      } else if (alert.timespans && alert.timespans.length > 0) {
+        const times = alert.timespans.map((t) => this.formatTimestamp(t)).join(", ");
+        timeInfo = ` during: ${times}`;
       }
       const icon = alert.type === "memory" ? "\u26A0\uFE0F" : alert.type === "cpu" ? "\u{1F525}" : "\u{1F4BE}";
-      return `> ${icon} ${alert.message}${stepInfo} (${alert.value.toFixed(1)}%)`;
+      return `> ${icon} ${alert.message}${timeInfo} (${alert.value.toFixed(1)}%)`;
     });
     return `### Alerts
 
@@ -122319,165 +122292,75 @@ ${alertItems.join("\n")}
 
 `;
   }
-  generateCPUUsageSection(cpuLoadPercentages, stepMarkers, alerts, threshold) {
+  generateCPUUsageSection(cpuLoadPercentages, threshold) {
     if (cpuLoadPercentages.length === 0) {
       return "";
     }
-    const initialCPU = cpuLoadPercentages[0];
-    const stepRanges = [];
-    const stepStarts = /* @__PURE__ */ new Map();
-    const stepEnds = /* @__PURE__ */ new Map();
-    for (const marker2 of stepMarkers) {
-      if (marker2.status === "start") {
-        stepStarts.set(marker2.stepName, marker2.unixTimeMs);
-      } else if (marker2.status === "end") {
-        stepEnds.set(marker2.stepName, marker2.unixTimeMs);
-      }
-    }
-    for (const [stepName, startTime] of stepStarts.entries()) {
-      const endTime = stepEnds.get(stepName);
-      if (endTime) {
-        stepRanges.push({ start: startTime, end: endTime, name: stepName });
-      }
-    }
-    stepRanges.sort((a, b) => a.start - b.start);
-    const cpuAlertSteps = /* @__PURE__ */ new Set();
-    for (const alert of alerts) {
-      if (alert.type === "cpu") {
-        if (alert.steps && alert.steps.length > 0) {
-          alert.steps.forEach((step) => cpuAlertSteps.add(step));
-        } else if (alert.step) {
-          cpuAlertSteps.add(alert.step);
-        }
-      }
-    }
     const rows = [];
-    const initTotal = 100;
-    const initUsed = initialCPU.user + initialCPU.system;
-    const initAvailable = 100 - initUsed;
-    const initAvailablePercent = initAvailable.toFixed(2);
-    const initExceeded = initUsed > threshold ? "Yes" : "";
-    rows.push(`| Initialization | ${initTotal.toFixed(2)}% | ${initUsed.toFixed(2)}% | ${initAvailable.toFixed(2)}% | ${initAvailablePercent}% | ${initExceeded} |`);
-    for (const range2 of stepRanges) {
-      const cpu = this.findMetricForStep(cpuLoadPercentages, range2.start, range2.end);
-      if (cpu) {
-        const total = 100;
-        const used = cpu.user + cpu.system;
-        const available = 100 - used;
-        const availablePercent = available.toFixed(2);
-        const exceeded = cpuAlertSteps.has(range2.name) ? "Yes" : "";
-        rows.push(`| ${range2.name} | ${total.toFixed(2)}% | ${used.toFixed(2)}% | ${available.toFixed(2)}% | ${availablePercent}% | ${exceeded} |`);
-      }
+    for (const cpu of cpuLoadPercentages) {
+      const timestamp = this.formatTimestamp(cpu.unixTimeMs);
+      const total = 100;
+      const used = cpu.user + cpu.system;
+      const available = 100 - used;
+      const availablePercent = available.toFixed(2);
+      const exceeded = used > threshold ? "Yes" : "";
+      rows.push(`| ${timestamp} | ${total.toFixed(2)}% | ${used.toFixed(2)}% | ${available.toFixed(2)}% | ${availablePercent}% | ${exceeded} |`);
     }
-    return `### CPU Usage
+    return `<details>
+<summary><h3>CPU Usage</h3></summary>
 
-| Step | Total | Used | Available | Available % | Threshold Exceeded |
-|------|-------|------|-----------|-------------|-------------------|
+| Timestamp | Total | Used | Available | Available % | Threshold Exceeded |
+|-----------|-------|------|-----------|-------------|-------------------|
 ${rows.join("\n")}
+
+</details>
 
 `;
   }
-  generateMemoryUsageSection(memoryUsageMBs, stepMarkers, alerts, threshold) {
+  generateMemoryUsageSection(memoryUsageMBs, threshold) {
     if (memoryUsageMBs.length === 0) {
       return "";
     }
-    const initialMemory = memoryUsageMBs[0];
-    const stepRanges = [];
-    const stepStarts = /* @__PURE__ */ new Map();
-    const stepEnds = /* @__PURE__ */ new Map();
-    for (const marker2 of stepMarkers) {
-      if (marker2.status === "start") {
-        stepStarts.set(marker2.stepName, marker2.unixTimeMs);
-      } else if (marker2.status === "end") {
-        stepEnds.set(marker2.stepName, marker2.unixTimeMs);
-      }
-    }
-    for (const [stepName, startTime] of stepStarts.entries()) {
-      const endTime = stepEnds.get(stepName);
-      if (endTime) {
-        stepRanges.push({ start: startTime, end: endTime, name: stepName });
-      }
-    }
-    stepRanges.sort((a, b) => a.start - b.start);
-    let memoryAlertStep;
-    for (const alert of alerts) {
-      if (alert.type === "memory" && alert.step) {
-        memoryAlertStep = alert.step;
-        break;
-      }
-    }
     const rows = [];
-    const initTotal = initialMemory.used + initialMemory.free;
-    const initUtilization = initialMemory.used / initTotal * 100;
-    const initAvailablePercent = (initialMemory.free / initTotal * 100).toFixed(2);
-    const initExceeded = initUtilization > threshold ? "Yes" : "";
-    rows.push(`| Initialization | ${initTotal.toFixed(2)} MB | ${initialMemory.used.toFixed(2)} MB | ${initialMemory.free.toFixed(2)} MB | ${initAvailablePercent}% | ${initExceeded} |`);
-    for (const range2 of stepRanges) {
-      const memory = this.findMetricForStep(memoryUsageMBs, range2.start, range2.end);
-      if (memory) {
-        const total = memory.used + memory.free;
-        const utilization = memory.used / total * 100;
-        const availablePercent = (memory.free / total * 100).toFixed(2);
-        const exceeded = memoryAlertStep === range2.name ? "Yes" : "";
-        rows.push(`| ${range2.name} | ${total.toFixed(2)} MB | ${memory.used.toFixed(2)} MB | ${memory.free.toFixed(2)} MB | ${availablePercent}% | ${exceeded} |`);
-      }
+    for (const memory of memoryUsageMBs) {
+      const timestamp = this.formatTimestamp(memory.unixTimeMs);
+      const total = memory.used + memory.free;
+      const utilization = memory.used / total * 100;
+      const availablePercent = (memory.free / total * 100).toFixed(2);
+      const exceeded = utilization > threshold ? "Yes" : "";
+      rows.push(`| ${timestamp} | ${total.toFixed(2)} MB | ${memory.used.toFixed(2)} MB | ${memory.free.toFixed(2)} MB | ${availablePercent}% | ${exceeded} |`);
     }
-    return `### Memory Usage
+    return `<details>
+<summary><h3>Memory Usage</h3></summary>
 
-| Step | Total | Used | Available | Available % | Threshold Exceeded |
-|------|-------|------|-----------|-------------|-------------------|
+| Timestamp | Total | Used | Available | Available % | Threshold Exceeded |
+|-----------|-------|------|-----------|-------------|-------------------|
 ${rows.join("\n")}
+
+</details>
 
 `;
   }
-  generateDiskUsageSection(diskUsageGBs, stepMarkers, alerts, threshold) {
+  generateDiskUsageSection(diskUsageGBs, threshold) {
     if (diskUsageGBs.length === 0) {
       return "";
     }
-    const initialDisk = diskUsageGBs[0];
-    const stepRanges = [];
-    const stepStarts = /* @__PURE__ */ new Map();
-    const stepEnds = /* @__PURE__ */ new Map();
-    for (const marker2 of stepMarkers) {
-      if (marker2.status === "start") {
-        stepStarts.set(marker2.stepName, marker2.unixTimeMs);
-      } else if (marker2.status === "end") {
-        stepEnds.set(marker2.stepName, marker2.unixTimeMs);
-      }
-    }
-    for (const [stepName, startTime] of stepStarts.entries()) {
-      const endTime = stepEnds.get(stepName);
-      if (endTime) {
-        stepRanges.push({ start: startTime, end: endTime, name: stepName });
-      }
-    }
-    stepRanges.sort((a, b) => a.start - b.start);
-    let diskAlertStep;
-    for (const alert of alerts) {
-      if (alert.type === "disk" && alert.step) {
-        diskAlertStep = alert.step;
-        break;
-      }
-    }
     const rows = [];
-    const initUtilization = initialDisk.used / initialDisk.size * 100;
-    const initAvailablePercent = (initialDisk.available / initialDisk.size * 100).toFixed(2);
-    const initExceeded = initUtilization > threshold ? "Yes" : "";
-    rows.push(`| Initialization | ${initialDisk.size.toFixed(2)} GB | ${initialDisk.used.toFixed(2)} GB | ${initialDisk.available.toFixed(2)} GB | ${initAvailablePercent}% | ${initExceeded} |`);
-    for (const range2 of stepRanges) {
-      const disk = this.findMetricForStep(diskUsageGBs, range2.start, range2.end, "last");
-      if (disk) {
-        const utilization = disk.used / disk.size * 100;
-        const availablePercent = (disk.available / disk.size * 100).toFixed(2);
-        const exceeded = diskAlertStep === range2.name ? "Yes" : "";
-        rows.push(`| ${range2.name} | ${disk.size.toFixed(2)} GB | ${disk.used.toFixed(2)} GB | ${disk.available.toFixed(2)} GB | ${availablePercent}% | ${exceeded} |`);
-      }
+    for (const disk of diskUsageGBs) {
+      const timestamp = this.formatTimestamp(disk.unixTimeMs);
+      const utilization = disk.used / disk.size * 100;
+      const availablePercent = (disk.available / disk.size * 100).toFixed(2);
+      const exceeded = utilization > threshold ? "Yes" : "";
+      rows.push(`| ${timestamp} | ${disk.size.toFixed(2)} GB | ${disk.used.toFixed(2)} GB | ${disk.available.toFixed(2)} GB | ${availablePercent}% | ${exceeded} |`);
     }
-    return `### Disk Usage
+    return `<details>
+<summary><h3>Disk Usage</h3></summary>
 
-| Step | Total Size | Used | Available | Available % | Threshold Exceeded |
-|------|------------|------|-----------|-------------|-------------------|
+| Timestamp | Total Size | Used | Available | Available % | Threshold Exceeded |
+|-----------|------------|------|-----------|-------------|-------------------|
 ${rows.join("\n")}
+
+</details>
 
 `;
   }
@@ -122530,8 +122413,10 @@ var metricsDataSchema = external_exports.object({
 var alertSchema = external_exports.object({
   type: external_exports.enum(["memory", "cpu", "disk"]),
   message: external_exports.string(),
-  step: external_exports.string().optional(),
-  steps: external_exports.array(external_exports.string()).optional(),
+  timespan: external_exports.number().optional(),
+  // Single timestamp when alert occurred
+  timespans: external_exports.array(external_exports.number()).optional(),
+  // Multiple timestamps for sustained alerts
   value: external_exports.number(),
   threshold: external_exports.number()
 });
@@ -122596,145 +122481,64 @@ async function collectFinalMetrics() {
     return getMetricsData();
   }
 }
-async function fetchWorkflowSteps() {
-  const token = getInput("github-token");
-  if (!token) {
-    throw new Error("GitHub token is required for workflow step tracking");
-  }
-  try {
-    const octokit = getOctokit(token);
-    const { owner, repo } = context4.repo;
-    const runId = context4.runId;
-    const { data: jobs } = await octokit.rest.actions.listJobsForWorkflowRun({
-      owner,
-      repo,
-      run_id: runId
-    });
-    const stepMarkers = [];
-    const currentRunnerName = process.env.RUNNER_NAME;
-    if (!currentRunnerName) {
-      throw new Error("RUNNER_NAME environment variable not set");
-    }
-    for (const job of jobs.jobs) {
-      if (job.runner_name !== currentRunnerName) {
-        continue;
-      }
-      for (const step of job.steps || []) {
-        if (step.started_at) {
-          stepMarkers.push({
-            unixTimeMs: new Date(step.started_at).getTime(),
-            stepName: step.name,
-            status: "start"
-          });
-        }
-        if (step.completed_at) {
-          stepMarkers.push({
-            unixTimeMs: new Date(step.completed_at).getTime(),
-            stepName: step.name,
-            status: "end"
-          });
-        }
-      }
-    }
-    return stepMarkers.sort((a, b) => a.unixTimeMs - b.unixTimeMs);
-  } catch (error49) {
-    throw new Error(
-      `Failed to fetch workflow steps: ${error49 instanceof Error ? error49.message : String(error49)}`
-    );
-  }
-}
 function detectAlerts(metricsData) {
   const alerts = [];
   const memoryThreshold = parseFloat(getInput("memory_alert_threshold") || "80");
   const cpuThreshold = parseFloat(getInput("cpu_alert_threshold") || "85");
   const cpuDuration = parseFloat(getInput("cpu_alert_duration") || "60") * 1e3;
   const diskThreshold = parseFloat(getInput("disk_alert_threshold") || "90");
-  const getStepForTime = (timeMs) => {
-    const stepRanges = [];
-    const stepStarts = /* @__PURE__ */ new Map();
-    const stepEnds = /* @__PURE__ */ new Map();
-    for (const marker2 of metricsData.stepMarkers) {
-      if (marker2.status === "start") {
-        stepStarts.set(marker2.stepName, marker2.unixTimeMs);
-      } else if (marker2.status === "end") {
-        stepEnds.set(marker2.stepName, marker2.unixTimeMs);
-      }
-    }
-    for (const [stepName, startTime] of stepStarts.entries()) {
-      const endTime = stepEnds.get(stepName);
-      if (endTime) {
-        stepRanges.push({ start: startTime, end: endTime, name: stepName });
-      }
-    }
-    for (const range2 of stepRanges) {
-      if (timeMs >= range2.start && timeMs < range2.end) {
-        return range2.name;
-      }
-    }
-    return void 0;
-  };
   for (const memory of metricsData.memoryUsageMBs) {
     const total = memory.used + memory.free;
     const utilizationPercent = memory.used / total * 100;
     if (utilizationPercent > memoryThreshold) {
-      const step = getStepForTime(memory.unixTimeMs);
       alerts.push({
         type: "memory",
         message: `Memory utilization exceeded ${memoryThreshold.toFixed(0)}%`,
-        step,
+        timespan: memory.unixTimeMs,
         value: utilizationPercent,
         threshold: memoryThreshold
       });
       break;
     }
   }
-  const sustainedCpuSteps = /* @__PURE__ */ new Set();
   let sustainedStartTime = null;
-  const stepsInSustainedPeriod = /* @__PURE__ */ new Set();
+  const timespansInSustainedPeriod = [];
   for (let i = 0; i < metricsData.cpuLoadPercentages.length; i++) {
     const cpu = metricsData.cpuLoadPercentages[i];
     const totalCpu = cpu.user + cpu.system;
-    const currentStep = getStepForTime(cpu.unixTimeMs);
     if (totalCpu > cpuThreshold) {
       if (sustainedStartTime === null) {
         sustainedStartTime = cpu.unixTimeMs;
-        stepsInSustainedPeriod.clear();
+        timespansInSustainedPeriod.length = 0;
       }
-      if (currentStep) {
-        stepsInSustainedPeriod.add(currentStep);
-      }
+      timespansInSustainedPeriod.push(cpu.unixTimeMs);
       const duration4 = cpu.unixTimeMs - sustainedStartTime;
-      if (duration4 >= cpuDuration) {
-        for (const step of stepsInSustainedPeriod) {
-          sustainedCpuSteps.add(step);
-        }
+      if (duration4 >= cpuDuration && timespansInSustainedPeriod.length > 0) {
+        const maxCpu = Math.max(
+          ...metricsData.cpuLoadPercentages.map((cpu2) => cpu2.user + cpu2.system)
+        );
+        alerts.push({
+          type: "cpu",
+          message: `Sustained CPU usage above ${cpuThreshold.toFixed(0)}% for more than ${(cpuDuration / 1e3).toFixed(0)} seconds`,
+          timespans: [...timespansInSustainedPeriod],
+          value: maxCpu,
+          threshold: cpuThreshold
+        });
+        break;
       }
     } else {
       sustainedStartTime = null;
-      stepsInSustainedPeriod.clear();
+      timespansInSustainedPeriod.length = 0;
     }
-  }
-  if (sustainedCpuSteps.size > 0) {
-    const maxCpu = Math.max(
-      ...metricsData.cpuLoadPercentages.map((cpu) => cpu.user + cpu.system)
-    );
-    alerts.push({
-      type: "cpu",
-      message: `Sustained CPU usage above ${cpuThreshold.toFixed(0)}% for more than ${(cpuDuration / 1e3).toFixed(0)} seconds`,
-      steps: Array.from(sustainedCpuSteps),
-      value: maxCpu,
-      threshold: cpuThreshold
-    });
   }
   for (const disk of metricsData.diskUsageGBs) {
     const total = disk.used + disk.available;
     const utilizationPercent = disk.used / total * 100;
     if (utilizationPercent > diskThreshold) {
-      const step = getStepForTime(disk.unixTimeMs);
       alerts.push({
         type: "disk",
         message: `Disk usage exceeded ${diskThreshold.toFixed(0)}%`,
-        step,
+        timespan: disk.unixTimeMs,
         value: utilizationPercent,
         threshold: diskThreshold
       });
@@ -122749,7 +122553,6 @@ function render(metricsData, alerts = []) {
   const diskThreshold = parseFloat(getInput("disk_alert_threshold") || "90");
   const renderer = new Renderer();
   return renderer.render(
-    metricsData.stepMarkers,
     alerts,
     metricsData.cpuLoadPercentages,
     metricsData.memoryUsageMBs,
@@ -122764,8 +122567,6 @@ async function index() {
   let metricsData;
   metricsData = await collectFinalMetrics();
   try {
-    const apiSteps = await fetchWorkflowSteps();
-    metricsData.stepMarkers = apiSteps;
     const alerts = detectAlerts(metricsData);
     const fileBaseName = "workflow_metrics";
     const fileName = `${fileBaseName}.json`;
