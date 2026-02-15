@@ -71,9 +71,10 @@ jobs:
             # Windows: Extract drive letter from TEMP and show volume info
             echo "Test file location: $TEST_FILE"
             # Extract drive letter from TEMP path (Git Bash format: /c/... or Windows format: C:\...)
+            DRIVE=""
             if [[ "$TEMP" =~ ^/([a-zA-Z])/ ]]; then
               DRIVE="${BASH_REMATCH[1]}:"
-            elif [[ "$TEMP" =~ ^([A-Za-z]):[\\/] ]]; then
+            elif [[ "$TEMP" =~ ^([a-zA-Z]):[\\/] ]]; then
               DRIVE="${BASH_REMATCH[1]}:"
             fi
             
