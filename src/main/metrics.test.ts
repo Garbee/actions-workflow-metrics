@@ -499,4 +499,24 @@ describe("Metrics", () => {
     const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
     assert.strictEqual(data.cpuLoadPercentages.length, 10, "Should have 10 CPU data points");
   });
+
+  describe("OS-specific mount point handling", () => {
+    it("should use '/' mount point on Linux", async () => {
+      const metrics = createMetrics();
+
+      // Wait for first collection
+      await mock.timers.tick(5000);
+      for (let i = 0; i < 10; i++) {
+        await new Promise(resolve => queueMicrotask(resolve));
+      }
+
+      const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
+      
+      // Should have disk data from "/" mount point
+      assert.ok(data.diskUsageGBs.length > 0, "Should have disk data");
+      assert.strictEqual(data.diskUsageGBs[0].used, 30, "Should use disk data from / mount");
+      assert.strictEqual(data.diskUsageGBs[0].available, 70, "Should use disk data from / mount");
+      assert.strictEqual(data.diskUsageGBs[0].size, 100, "Should use disk data from / mount");
+    });
+  });
 });

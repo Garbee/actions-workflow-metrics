@@ -50764,6 +50764,16 @@ config(en_default());
 // src/lib.ts
 var bytesPerMB = 1024 * 1024;
 var bytesPerGB = 1024 * 1024 * 1024;
+function getRootMountPoint() {
+  const platform2 = process.platform;
+  if (platform2 === "win32") {
+    return "C:";
+  } else if (platform2 === "darwin") {
+    return "/System/Volumes/Data";
+  } else {
+    return "/";
+  }
+}
 var cpuLoadPercentageSchema = external_exports.object({
   unixTimeMs: external_exports.number(),
   user: external_exports.number().nonnegative().max(100),
@@ -50877,7 +50887,8 @@ var Metrics = class {
         free: available / bytesPerMB
       });
       const disks = await (0, import_systeminformation.fsSize)();
-      const rootDisk = disks.find((disk) => disk.mount === "/");
+      const rootMountPoint = getRootMountPoint();
+      const rootDisk = disks.find((disk) => disk.mount === rootMountPoint);
       if (rootDisk) {
         this.data.diskUsageGBs.push({
           unixTimeMs,
@@ -50886,7 +50897,7 @@ var Metrics = class {
           size: rootDisk.size / bytesPerGB
         });
       } else {
-        console.warn("Root filesystem not found in disk list. Disk metrics will be incomplete.");
+        console.warn(`Root filesystem (${rootMountPoint}) not found in disk list. Disk metrics will be incomplete.`);
       }
       this.collectionsSinceWrite++;
       if (this.isFirstCollection) {

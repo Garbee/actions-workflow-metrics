@@ -4,7 +4,7 @@ import { writeFile } from "node:fs/promises";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { z } from "zod";
-import { metricsDataSchema, bytesPerMB, bytesPerGB } from "../lib.ts";
+import { metricsDataSchema, bytesPerMB, bytesPerGB, getRootMountPoint } from "../lib.ts";
 
 export class Metrics {
   private readonly data: z.TypeOf<typeof metricsDataSchema>;
@@ -105,7 +105,8 @@ export class Metrics {
 
       const disks = await fsSize();
       // Track only the root filesystem where workflows run
-      const rootDisk = disks.find(disk => disk.mount === '/');
+      const rootMountPoint = getRootMountPoint();
+      const rootDisk = disks.find(disk => disk.mount === rootMountPoint);
       if (rootDisk) {
         this.data.diskUsageGBs.push({
           unixTimeMs,
@@ -114,7 +115,7 @@ export class Metrics {
           size: rootDisk.size / bytesPerGB,
         });
       } else {
-        console.warn('Root filesystem not found in disk list. Disk metrics will be incomplete.');
+        console.warn(`Root filesystem (${rootMountPoint}) not found in disk list. Disk metrics will be incomplete.`);
       }
 
       // Increment collections counter

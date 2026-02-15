@@ -5,7 +5,7 @@ import { currentLoad, mem, fsSize } from "systeminformation";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Renderer } from "./renderer.ts";
-import { metricsDataSchema, stepMarkerSchema, bytesPerMB, bytesPerGB, type Alert } from "../lib.ts";
+import { metricsDataSchema, stepMarkerSchema, bytesPerMB, bytesPerGB, getRootMountPoint, type Alert } from "../lib.ts";
 
 export async function getMetricsData(): Promise<
   z.TypeOf<typeof metricsDataSchema>
@@ -65,7 +65,8 @@ export async function collectFinalMetrics(): Promise<z.TypeOf<typeof metricsData
     
     const disks = await fsSize();
     // Track only the root filesystem where workflows run
-    const rootDisk = disks.find(disk => disk.mount === '/');
+    const rootMountPoint = getRootMountPoint();
+    const rootDisk = disks.find(disk => disk.mount === rootMountPoint);
     if (rootDisk) {
       metricsData.diskUsageGBs.push({
         unixTimeMs,
@@ -74,7 +75,7 @@ export async function collectFinalMetrics(): Promise<z.TypeOf<typeof metricsData
         size: rootDisk.size / bytesPerGB,
       });
     } else {
-      console.warn('Root filesystem not found in final metrics collection. Disk metrics will be incomplete.');
+      console.warn(`Root filesystem (${rootMountPoint}) not found in final metrics collection. Disk metrics will be incomplete.`);
     }
     
     return metricsData;

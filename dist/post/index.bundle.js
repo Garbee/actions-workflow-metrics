@@ -122484,6 +122484,16 @@ ${rows.join("\n")}
 // src/lib.ts
 var bytesPerMB = 1024 * 1024;
 var bytesPerGB = 1024 * 1024 * 1024;
+function getRootMountPoint() {
+  const platform2 = process.platform;
+  if (platform2 === "win32") {
+    return "C:";
+  } else if (platform2 === "darwin") {
+    return "/System/Volumes/Data";
+  } else {
+    return "/";
+  }
+}
 var cpuLoadPercentageSchema = external_exports.object({
   unixTimeMs: external_exports.number(),
   user: external_exports.number().nonnegative().max(100),
@@ -122566,7 +122576,8 @@ async function collectFinalMetrics() {
       free: available / bytesPerMB
     });
     const disks = await (0, import_systeminformation.fsSize)();
-    const rootDisk = disks.find((disk) => disk.mount === "/");
+    const rootMountPoint = getRootMountPoint();
+    const rootDisk = disks.find((disk) => disk.mount === rootMountPoint);
     if (rootDisk) {
       metricsData.diskUsageGBs.push({
         unixTimeMs,
@@ -122575,7 +122586,7 @@ async function collectFinalMetrics() {
         size: rootDisk.size / bytesPerGB
       });
     } else {
-      console.warn("Root filesystem not found in final metrics collection. Disk metrics will be incomplete.");
+      console.warn(`Root filesystem (${rootMountPoint}) not found in final metrics collection. Disk metrics will be incomplete.`);
     }
     return metricsData;
   } catch (error49) {
@@ -122750,8 +122761,8 @@ async function index() {
     const fileBaseName = "workflow_metrics";
     const fileName = `${fileBaseName}.json`;
     await fs5.writeFile(fileName, JSON.stringify(metricsData));
-    const runnerOS = process.env.RUNNER_OS || "unknown";
-    const runnerArch = process.env.RUNNER_ARCH || "unknown";
+    const runnerOS = process.env.RUNNER_OS ?? process.platform;
+    const runnerArch = process.env.RUNNER_ARCH ?? process.arch;
     const baseArtifactName = `workflow_metrics_${context4.job}_${context4.runId}_${context4.runAttempt}_${runnerOS}_${runnerArch}`;
     for (let i = 0; i < maxRetryCount; i++) {
       const artifactName = i === 0 ? baseArtifactName : `${baseArtifactName}_retry${i}`;
