@@ -122595,7 +122595,6 @@ async function fetchWorkflowSteps() {
     const octokit = getOctokit(token);
     const { owner, repo } = context4.repo;
     const runId = context4.runId;
-    const currentJobName = context4.job;
     const { data: jobs } = await octokit.rest.actions.listJobsForWorkflowRun({
       owner,
       repo,
@@ -122603,24 +122602,21 @@ async function fetchWorkflowSteps() {
     });
     const stepMarkers = [];
     for (const job of jobs.jobs) {
-      if (job.name === currentJobName) {
-        for (const step of job.steps || []) {
-          if (step.started_at) {
-            stepMarkers.push({
-              unixTimeMs: new Date(step.started_at).getTime(),
-              stepName: step.name,
-              status: "start"
-            });
-          }
-          if (step.completed_at) {
-            stepMarkers.push({
-              unixTimeMs: new Date(step.completed_at).getTime(),
-              stepName: step.name,
-              status: "end"
-            });
-          }
+      for (const step of job.steps || []) {
+        if (step.started_at) {
+          stepMarkers.push({
+            unixTimeMs: new Date(step.started_at).getTime(),
+            stepName: step.name,
+            status: "start"
+          });
         }
-        break;
+        if (step.completed_at) {
+          stepMarkers.push({
+            unixTimeMs: new Date(step.completed_at).getTime(),
+            stepName: step.name,
+            status: "end"
+          });
+        }
       }
     }
     return stepMarkers.sort((a, b) => a.unixTimeMs - b.unixTimeMs);

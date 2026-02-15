@@ -100,7 +100,6 @@ export async function fetchWorkflowSteps(): Promise<
     const octokit = getOctokit(token);
     const { owner, repo } = context.repo;
     const runId = context.runId;
-    const currentJobName = context.job;
 
     const { data: jobs } = await octokit.rest.actions.listJobsForWorkflowRun({
       owner,
@@ -110,27 +109,25 @@ export async function fetchWorkflowSteps(): Promise<
 
     const stepMarkers: z.TypeOf<typeof stepMarkerSchema>[] = [];
 
-    // Only collect step markers from the current job to ensure accurate metric mapping
+    // Collect step markers from all jobs. The renderer will match metrics to steps
+    // based on timestamps, which naturally filters to the current job's steps since
+    // metrics are only collected during this job's execution timeframe.
     for (const job of jobs.jobs) {
-      // Match by job name to get only the current job's steps
-      if (job.name === currentJobName) {
-        for (const step of job.steps || []) {
-          if (step.started_at) {
-            stepMarkers.push({
-              unixTimeMs: new Date(step.started_at).getTime(),
-              stepName: step.name,
-              status: "start" as const,
-            });
-          }
-          if (step.completed_at) {
-            stepMarkers.push({
-              unixTimeMs: new Date(step.completed_at).getTime(),
-              stepName: step.name,
-              status: "end" as const,
-            });
-          }
+      for (const step of job.steps || []) {
+        if (step.started_at) {
+          stepMarkers.push({
+            unixTimeMs: new Date(step.started_at).getTime(),
+            stepName: step.name,
+            status: "start" as const,
+          });
         }
-        break; // Found the current job, no need to continue
+        if (step.completed_at) {
+          stepMarkers.push({
+            unixTimeMs: new Date(step.completed_at).getTime(),
+            stepName: step.name,
+            status: "end" as const,
+          });
+        }
       }
     }
 
