@@ -13,6 +13,7 @@ describe("Metrics", () => {
   let Metrics;
   let mockModule;
   let mockFsModule;
+  let mockFsSyncModule;
   const metricsInstances: any[] = [];
   const fileWrites: Map<string, string> = new Map();
   let writeCount = 0; // Track total number of writes
@@ -78,6 +79,29 @@ describe("Metrics", () => {
       },
     });
 
+    // Mock node:fs module for synchronous operations
+    mockFsSyncModule = mock.module("node:fs", {
+      namedExports: {
+        writeFileSync: (path: string, content: string): void => {
+          fileWrites.set(path, content);
+          writeCount++; // Increment write counter
+        },
+        constants: {
+          F_OK: 0,
+          R_OK: 4,
+          W_OK: 2,
+          X_OK: 1,
+        },
+        promises: {
+          writeFile: async (path: string, content: string): Promise<void> => {
+            fileWrites.set(path, content);
+            writeCount++;
+            return Promise.resolve();
+          },
+        },
+      },
+    });
+
     ({ Metrics } = await import("./metrics.ts"));
   })
 
@@ -98,6 +122,7 @@ describe("Metrics", () => {
   after(() => {
     mockModule.restore();
     mockFsModule.restore();
+    mockFsSyncModule.restore();
     mock.timers.reset();
   })
 

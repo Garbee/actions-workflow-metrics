@@ -1,6 +1,7 @@
 import { setFailed } from "@actions/core";
 import { currentLoad, mem, fsSize } from "systeminformation";
 import { writeFile } from "node:fs/promises";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { z } from "zod";
 import { metricsDataSchema, bytesPerMB, bytesPerGB } from "../lib.ts";
@@ -73,9 +74,8 @@ export class Metrics {
 
   private saveState(): void {
     try {
-      writeFile(this.stateFile, JSON.stringify(this.data), "utf-8").catch((error) => {
-        console.warn("Failed to save metrics state:", error);
-      });
+      // Use synchronous write to ensure data is flushed before process exits
+      writeFileSync(this.stateFile, JSON.stringify(this.data), "utf-8");
     } catch (error) {
       console.warn("Failed to save metrics state:", error);
     }

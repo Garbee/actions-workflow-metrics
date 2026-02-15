@@ -36990,7 +36990,7 @@ function error(message, properties = {}) {
 
 // src/main/metrics.ts
 var import_systeminformation = __toESM(require_lib(), 1);
-import { writeFile as writeFile2 } from "node:fs/promises";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 // node_modules/zod/v4/classic/external.js
@@ -50853,9 +50853,7 @@ var Metrics = class {
   }
   saveState() {
     try {
-      writeFile2(this.stateFile, JSON.stringify(this.data), "utf-8").catch((error49) => {
-        console.warn("Failed to save metrics state:", error49);
-      });
+      writeFileSync(this.stateFile, JSON.stringify(this.data), "utf-8");
     } catch (error49) {
       console.warn("Failed to save metrics state:", error49);
     }
