@@ -122750,7 +122750,9 @@ async function index() {
     const fileBaseName = "workflow_metrics";
     const fileName = `${fileBaseName}.json`;
     await fs5.writeFile(fileName, JSON.stringify(metricsData));
-    const baseArtifactName = `workflow_metrics_${context4.job}_${context4.runId}_${context4.runAttempt}`;
+    const runnerOS = process.env.RUNNER_OS || "unknown";
+    const runnerArch = process.env.RUNNER_ARCH || "unknown";
+    const baseArtifactName = `workflow_metrics_${context4.job}_${context4.runId}_${context4.runAttempt}_${runnerOS}_${runnerArch}`;
     for (let i = 0; i < maxRetryCount; i++) {
       const artifactName = i === 0 ? baseArtifactName : `${baseArtifactName}_retry${i}`;
       try {
