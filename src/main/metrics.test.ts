@@ -22,6 +22,17 @@ describe("Metrics", () => {
     // Enable timer mocking BEFORE importing the module
     mock.timers.enable({ apis: ['setTimeout', 'Date'] });
 
+    // Determine the mount point based on the current platform
+    const platform = process.platform;
+    let rootMountPoint: string;
+    if (platform === 'win32') {
+      rootMountPoint = 'C:';
+    } else if (platform === 'darwin') {
+      rootMountPoint = '/System/Volumes/Data';
+    } else {
+      rootMountPoint = '/';
+    }
+
     // Mock systeminformation module
     mockModule = mock.module("systeminformation", {
       namedExports: {
@@ -44,7 +55,7 @@ describe("Metrics", () => {
               used: 30 * 1024 * 1024 * 1024, // 30 GB
               available: 70 * 1024 * 1024 * 1024, // 70 GB
               use: 30,
-              mount: "/",
+              mount: rootMountPoint,
               rw: true,
             },
             {
@@ -273,8 +284,8 @@ describe("Metrics", () => {
     assert.ok(initialMemCount > 0);
     assert.ok(initialDiskCount > 0);
 
-    // Advance time by 5 seconds to trigger next append
-    await mock.timers.tick(5000);
+    // Advance time by 1 second to trigger next append
+    await mock.timers.tick(1000);
     // Wait for promises to resolve
     for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
@@ -304,8 +315,8 @@ describe("Metrics", () => {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
-    // Advance time by 5 seconds to trigger second data point
-    await mock.timers.tick(5000);
+    // Advance time by 1 second to trigger second data point
+    await mock.timers.tick(1000);
     for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
     }
@@ -317,7 +328,7 @@ describe("Metrics", () => {
     assert.ok(data.memoryUsageMBs.length >= 2);
     assert.ok(data.diskUsageGBs.length >= 2);
 
-    // Verify timestamp interval is exactly 5 seconds (5000ms) with mocked timers
+    // Verify timestamp interval is exactly 1 second (1000ms) with mocked timers
     const cpuTimeDiff: number =
       data.cpuLoadPercentages[1].unixTimeMs -
       data.cpuLoadPercentages[0].unixTimeMs;
@@ -326,10 +337,10 @@ describe("Metrics", () => {
     const diskTimeDiff: number =
       data.diskUsageGBs[1].unixTimeMs - data.diskUsageGBs[0].unixTimeMs;
 
-    // With mocked timers and Date, we get exactly 5000ms
-    assert.strictEqual(cpuTimeDiff, 5000);
-    assert.strictEqual(memTimeDiff, 5000);
-    assert.strictEqual(diskTimeDiff, 5000);
+    // With mocked timers and Date, we get exactly 1000ms
+    assert.strictEqual(cpuTimeDiff, 1000);
+    assert.strictEqual(memTimeDiff, 1000);
+    assert.strictEqual(diskTimeDiff, 1000);
   });
 
   it("should continue accumulating data for multiple intervals", async () => {
@@ -344,11 +355,11 @@ describe("Metrics", () => {
       .length;
 
     // Advance time by 10 seconds (2 intervals)
-    await mock.timers.tick(5000);
+    await mock.timers.tick(1000);
     for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
     }
-    await mock.timers.tick(5000);
+    await mock.timers.tick(1000);
     for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
     }
@@ -383,7 +394,7 @@ describe("Metrics", () => {
     }
   });
 
-  it("should batch disk writes to reduce I/O", async () => {
+  it("should write to disk after every collection", async () => {
     const metrics = createMetrics();
 
     // Wait for initial data collection
@@ -391,49 +402,49 @@ describe("Metrics", () => {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
-    // Initial collection should write immediately to ensure file exists for short workflows
-    assert.strictEqual(writeCount, 1, "First collection should write immediately");
+    // First collection should write
+    assert.strictEqual(writeCount, 1, "First collection should write");
 
-    // Advance time by 5 seconds (2nd collection)
-    await mock.timers.tick(5000);
+    // Advance time by 1 second (2nd collection)
+    await mock.timers.tick(1000);
     for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
-    assert.strictEqual(writeCount, 1, "Second collection should not write yet");
+    assert.strictEqual(writeCount, 2, "Second collection should write");
 
-    // Advance time by 5 seconds (3rd collection)
-    await mock.timers.tick(5000);
+    // Advance time by 1 second (3rd collection)
+    await mock.timers.tick(1000);
     for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
-    assert.strictEqual(writeCount, 1, "Third collection should not write yet");
+    assert.strictEqual(writeCount, 3, "Third collection should write");
 
-    // Advance time by 5 seconds (4th collection)
-    await mock.timers.tick(5000);
+    // Advance time by 1 second (4th collection)
+    await mock.timers.tick(1000);
     for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
-    assert.strictEqual(writeCount, 1, "Fourth collection should not write yet");
+    assert.strictEqual(writeCount, 4, "Fourth collection should write");
 
-    // Advance time by 5 seconds (5th collection - should trigger write)
-    await mock.timers.tick(5000);
+    // Advance time by 1 second (5th collection)
+    await mock.timers.tick(1000);
     for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
-    assert.strictEqual(writeCount, 2, "Fifth collection should trigger second write");
+    assert.strictEqual(writeCount, 5, "Fifth collection should write");
 
-    // Verify data is collected correctly despite batched writes
+    // Verify data is collected correctly with immediate writes
     const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
     assert.strictEqual(data.cpuLoadPercentages.length, 5, "Should have 5 CPU data points");
     assert.strictEqual(data.memoryUsageMBs.length, 5, "Should have 5 memory data points");
     assert.strictEqual(data.diskUsageGBs.length, 5, "Should have 5 disk data points");
   });
 
-  it("should write to disk on stop even if batch threshold not reached", async () => {
+  it("should write to disk on stop", async () => {
     const metrics = createMetrics();
 
     // Wait for initial data collection
@@ -442,7 +453,7 @@ describe("Metrics", () => {
     }
 
     // First collection should have written
-    assert.strictEqual(writeCount, 1, "First collection should write immediately");
+    assert.strictEqual(writeCount, 1, "First collection should write");
 
     // Stop the metrics - should force another write
     metrics.stop();
@@ -464,7 +475,7 @@ describe("Metrics", () => {
     assert.strictEqual(writtenData.cpuLoadPercentages.length, 1, "Written data should have 1 CPU data point");
   });
 
-  it("should continue batching writes after first batch", async () => {
+  it("should write after multiple collections", async () => {
     const metrics = createMetrics();
 
     // Wait for initial data collection
@@ -472,31 +483,51 @@ describe("Metrics", () => {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
-    // First collection writes immediately
+    // First collection writes
     assert.strictEqual(writeCount, 1, "Should have 1 write after first collection");
 
-    // Collect 4 more times to trigger second write (total 5 collections)
+    // Collect 4 more times (each should write)
     for (let j = 0; j < 4; j++) {
-      await mock.timers.tick(5000);
+      await mock.timers.tick(1000);
       for (let i = 0; i < 10; i++) {
         await new Promise(resolve => queueMicrotask(resolve));
       }
     }
 
-    assert.strictEqual(writeCount, 2, "Should have 2 writes after 5 collections");
+    assert.strictEqual(writeCount, 5, "Should have 5 writes after 5 collections");
 
-    // Collect 5 more times to trigger third write (total 10 collections)
+    // Collect 5 more times (each should write)
     for (let j = 0; j < 5; j++) {
-      await mock.timers.tick(5000);
+      await mock.timers.tick(1000);
       for (let i = 0; i < 10; i++) {
         await new Promise(resolve => queueMicrotask(resolve));
       }
     }
 
-    assert.strictEqual(writeCount, 3, "Should have 3 writes after 10 collections");
+    assert.strictEqual(writeCount, 10, "Should have 10 writes after 10 collections");
 
     // Verify all 10 data points are in memory
     const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
     assert.strictEqual(data.cpuLoadPercentages.length, 10, "Should have 10 CPU data points");
+  });
+
+  describe("OS-specific mount point handling", () => {
+    it("should use correct mount point for the current platform", async () => {
+      const metrics = createMetrics();
+
+      // Wait for first collection
+      await mock.timers.tick(1000);
+      for (let i = 0; i < 10; i++) {
+        await new Promise(resolve => queueMicrotask(resolve));
+      }
+
+      const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
+      
+      // Should have disk data from the root mount point for the current platform
+      assert.ok(data.diskUsageGBs.length > 0, "Should have disk data");
+      assert.strictEqual(data.diskUsageGBs[0].used, 30, "Should use disk data from root mount");
+      assert.strictEqual(data.diskUsageGBs[0].available, 70, "Should use disk data from root mount");
+      assert.strictEqual(data.diskUsageGBs[0].size, 100, "Should use disk data from root mount");
+    });
   });
 });

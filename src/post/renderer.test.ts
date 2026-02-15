@@ -1,265 +1,183 @@
 import { describe, it } from "node:test";
 import * as assert from "node:assert/strict";
 import { Renderer } from "./renderer.ts";
-import type { Alert } from "../lib.ts";
 
 describe("Renderer", () => {
-  // Common step markers for tests
-  const defaultStepMarkers = [
-    {
-      unixTimeMs: new Date("2024-01-01T00:00:00Z").getTime() - 1000,
-      stepName: "Test Step",
-      status: "start" as const,
-    },
-    {
-      unixTimeMs: new Date("2024-01-01T00:00:30Z").getTime(),
-      stepName: "Test Step",
-      status: "end" as const,
-    },
-  ];
-
   it("should return only header for empty metrics", () => {
-    const renderer: Renderer = new Renderer();
-
-    const result = renderer.render(
-      [],
-      [],
-      [],
-      [],
-      [],
-    );
-    
-    assert.ok(result.includes("## Workflow Metrics"));
-    assert.ok(!result.includes("### Metrics ID"));
+    const renderer = new Renderer();
+    const result = renderer.render([], [], [], [], {
+      cpu: 85,
+      memory: 80,
+      disk: 90,
+    });
+    assert.ok(result.includes("## Resource Usage"));
+    assert.ok(!result.includes("###")); // No sections
   });
 
-  it("should render CPU usage table", () => {
-    const renderer: Renderer = new Renderer();
+  it("should render CPU usage with collapsible details", () => {
+    const renderer = new Renderer();
     const cpuData = [
-      { unixTimeMs: new Date("2024-01-01T00:00:00Z").getTime(), user: 10, system: 5 },
-      { unixTimeMs: new Date("2024-01-01T00:00:01Z").getTime(), user: 20, system: 10 },
+      { unixTimeMs: 1000, user: 30, system: 20 },
+      { unixTimeMs: 2000, user: 40, system: 25 },
     ];
-    
-    const result = renderer.render(
-      defaultStepMarkers,
-      [],
-      cpuData,
-      [],
-      [],
-      { cpu: 85, memory: 80, disk: 90 },
-    );
-
-    // Verify CPU Usage section is included
-    assert.ok(result.includes("### CPU Usage"));
-    assert.ok(result.includes("| Step | Total | Used | Available | Available % | Threshold Exceeded |"));
-    assert.ok(result.includes("| Initialization |"));
+    const result = renderer.render([], cpuData, [], [], {
+      cpu: 85,
+      memory: 80,
+      disk: 90,
+    });
+    assert.ok(result.includes("<details>"));
+    assert.ok(result.includes("<summary><h3>CPU Usage</h3></summary>"));
+    assert.ok(result.includes("</details>"));
+    assert.ok(result.includes("| Timestamp |"));
   });
 
-  it("should render Memory usage table", () => {
-    const renderer: Renderer = new Renderer();
+  it("should render Memory usage with collapsible details", () => {
+    const renderer = new Renderer();
     const memoryData = [
-      { unixTimeMs: new Date("2024-01-01T00:00:00Z").getTime(), used: 1000, free: 3000 },
-      { unixTimeMs: new Date("2024-01-01T00:00:01Z").getTime(), used: 1500, free: 2500 },
+      { unixTimeMs: 1000, used: 1000, free: 3000 },
+      { unixTimeMs: 2000, used: 1500, free: 2500 },
     ];
-    
-    const result = renderer.render(
-      defaultStepMarkers,
-      [],
-      [],
-      memoryData,
-      [],
-      { cpu: 85, memory: 80, disk: 90 },
-    );
-
-    // Verify Memory Usage section is included
-    assert.ok(result.includes("### Memory Usage"));
-    assert.ok(result.includes("| Step | Total | Used | Available | Available % | Threshold Exceeded |"));
-    assert.ok(result.includes("| Initialization |"));
+    const result = renderer.render([], [], memoryData, [], {
+      cpu: 85,
+      memory: 80,
+      disk: 90,
+    });
+    assert.ok(result.includes("<details>"));
+    assert.ok(result.includes("<summary><h3>Memory Usage</h3></summary>"));
+    assert.ok(result.includes("</details>"));
+    assert.ok(result.includes("| Timestamp |"));
   });
 
-  it("should render Disk usage table with available percentage", () => {
-    const renderer: Renderer = new Renderer();
+  it("should render Disk usage with collapsible details", () => {
+    const renderer = new Renderer();
     const diskData = [
-      { unixTimeMs: new Date("2024-01-01T00:00:00Z").getTime(), used: 50, available: 100, size: 150 },
-      { unixTimeMs: new Date("2024-01-01T00:00:01Z").getTime(), used: 55, available: 95, size: 150 },
+      { unixTimeMs: 1000, used: 20, available: 80, size: 100 },
+      { unixTimeMs: 2000, used: 25, available: 75, size: 100 },
     ];
-    
-    const result = renderer.render(
-      defaultStepMarkers,
-      [],
-      [],
-      [],
-      diskData,
-      { cpu: 85, memory: 80, disk: 90 },
-    );
-
-    // Verify Disk Usage section is included
-    assert.ok(result.includes("### Disk Usage"));
-    assert.ok(result.includes("| Step | Total Size | Used | Available | Available % | Threshold Exceeded |"));
-    assert.ok(result.includes("| Initialization |"));
-    // Check that percentage is calculated and included
-    assert.ok(result.includes("%"));
-  });
-
-  it("should not render step summary section", () => {
-    const renderer: Renderer = new Renderer();
-    const result = renderer.render(
-      defaultStepMarkers,
-      [],
-      [],
-      [],
-      [],
-      { cpu: 85, memory: 80, disk: 90 },
-    );
-
-    assert.ok(!result.includes("### Workflow Steps"));
-  });
-
-  it("should not render step sections when no markers provided", () => {
-    const renderer: Renderer = new Renderer();
-    const result = renderer.render(
-      [],
-      [],
-      [],
-      [],
-      [],
-      { cpu: 85, memory: 80, disk: 90 },
-    );
-
-    assert.ok(!result.includes("### Workflow Steps"));
+    const result = renderer.render([], [], [], diskData, {
+      cpu: 85,
+      memory: 80,
+      disk: 90,
+    });
+    assert.ok(result.includes("<details>"));
+    assert.ok(result.includes("<summary><h3>Disk Usage</h3></summary>"));
+    assert.ok(result.includes("</details>"));
+    assert.ok(result.includes("| Timestamp |"));
   });
 
   it("should not render alerts section when no alerts provided", () => {
-    const renderer: Renderer = new Renderer();
+    const renderer = new Renderer();
     const result = renderer.render(
-      defaultStepMarkers,
       [],
-      [],
+      [{ unixTimeMs: 1000, user: 30, system: 20 }],
       [],
       [],
       { cpu: 85, memory: 80, disk: 90 },
     );
-
     assert.ok(!result.includes("### Alerts"));
   });
 
-  it("should render alerts section when alerts provided", () => {
-    const renderer: Renderer = new Renderer();
-    const alerts: Alert[] = [
+  it("should render alerts section without timestamps", () => {
+    const renderer = new Renderer();
+    const alerts = [
       {
-        type: "cpu",
-        message: "CPU usage exceeded 85%",
-        step: "Test Step",
-        value: 90.5,
-        threshold: 85,
-      },
-    ];
-
-    const result = renderer.render(
-      defaultStepMarkers,
-      alerts,
-      [],
-      [],
-      [],
-      { cpu: 85, memory: 80, disk: 90 },
-    );
-
-    assert.ok(result.includes("### Alerts"));
-    assert.ok(result.includes("CPU usage exceeded 85%"));
-    assert.ok(result.includes("Test Step"));
-    assert.ok(result.includes("90.5%"));
-  });
-
-  it("should render multiple alerts", () => {
-    const renderer: Renderer = new Renderer();
-    const alerts: Alert[] = [
-      {
-        type: "cpu",
-        message: "CPU usage exceeded 85%",
-        step: "CPU Heavy Step",
-        value: 90.5,
-        threshold: 85,
-      },
-      {
-        type: "memory",
+        type: "memory" as const,
         message: "Memory utilization exceeded 80%",
-        step: "Memory Heavy Step",
-        value: 85.2,
+        timespan: 11000,
+        value: 82,
         threshold: 80,
       },
     ];
-
     const result = renderer.render(
-      defaultStepMarkers,
       alerts,
-      [],
+      [{ unixTimeMs: 1000, user: 30, system: 20 }],
       [],
       [],
       { cpu: 85, memory: 80, disk: 90 },
     );
-
-    assert.ok(result.includes("CPU usage exceeded 85%"));
+    assert.ok(result.includes("### Alerts"));
+    assert.ok(result.includes("⚠️"));
     assert.ok(result.includes("Memory utilization exceeded 80%"));
-    assert.ok(result.includes("CPU Heavy Step"));
-    assert.ok(result.includes("Memory Heavy Step"));
+    // Check that alert section doesn't contain "at" or "during" timestamp markers
+    const alertsSection = result.substring(result.indexOf("### Alerts"), result.indexOf("</details>"));
+    assert.ok(!alertsSection.includes(" at "));
+    assert.ok(!alertsSection.includes(" during:"));
   });
 
-  it("should render alerts before CPU section", () => {
-    const renderer: Renderer = new Renderer();
-    const alerts: Alert[] = [
+  it("should render alerts without timestamp details", () => {
+    const renderer = new Renderer();
+    const alerts = [
       {
-        type: "cpu",
-        message: "CPU usage exceeded 85%",
-        step: "Test Step",
-        value: 90.5,
+        type: "cpu" as const,
+        message: "Sustained CPU usage above 85%",
+        timespans: [1000, 6000, 11000],
+        value: 90,
         threshold: 85,
       },
     ];
-
-    const cpuData = [
-      { unixTimeMs: new Date("2024-01-01T00:00:00Z").getTime(), user: 10, system: 5 },
-      { unixTimeMs: new Date("2024-01-01T00:00:01Z").getTime(), user: 20, system: 10 },
-    ];
-
     const result = renderer.render(
-      defaultStepMarkers,
       alerts,
-      cpuData,
+      [{ unixTimeMs: 1000, user: 50, system: 40 }],
       [],
       [],
       { cpu: 85, memory: 80, disk: 90 },
     );
+    assert.ok(result.includes("### Alerts"));
+    assert.ok(result.includes("🔥"));
+    assert.ok(!result.includes("during:")); // No timestamp lists
+  });
 
+  it("should render multiple alerts", () => {
+    const renderer = new Renderer();
+    const alerts = [
+      {
+        type: "memory" as const,
+        message: "Memory utilization exceeded 80%",
+        timespan: 11000,
+        value: 82,
+        threshold: 80,
+      },
+      {
+        type: "disk" as const,
+        message: "Disk usage exceeded 90%",
+        timespan: 6000,
+        value: 92,
+        threshold: 90,
+      },
+    ];
+    const result = renderer.render(
+      alerts,
+      [{ unixTimeMs: 1000, user: 30, system: 20 }],
+      [],
+      [],
+      { cpu: 85, memory: 80, disk: 90 },
+    );
+    assert.ok(result.includes("⚠️"));
+    assert.ok(result.includes("💾"));
+    assert.ok(result.includes("Memory utilization exceeded 80%"));
+    assert.ok(result.includes("Disk usage exceeded 90%"));
+  });
+
+  it("should render alerts before metric sections", () => {
+    const renderer = new Renderer();
+    const alerts = [
+      {
+        type: "memory" as const,
+        message: "Memory utilization exceeded 80%",
+        timespan: 11000,
+        value: 82,
+        threshold: 80,
+      },
+    ];
+    const result = renderer.render(
+      alerts,
+      [{ unixTimeMs: 1000, user: 30, system: 20 }],
+      [],
+      [],
+      { cpu: 85, memory: 80, disk: 90 },
+    );
     const alertsIndex = result.indexOf("### Alerts");
-    const cpuIndex = result.indexOf("### CPU Usage");
-    
-    // Alerts should appear before CPU section
-    if (cpuIndex !== -1) {
-      assert.ok(alertsIndex < cpuIndex);
-    }
-  });
-
-  it("should handle alert without step information", () => {
-    const renderer: Renderer = new Renderer();
-    const alerts: Alert[] = [
-      {
-        type: "cpu",
-        message: "CPU usage exceeded 85%",
-        value: 90.5,
-        threshold: 85,
-      },
-    ];
-
-    const result = renderer.render(
-      [],
-      alerts,
-      [],
-      [],
-      [],
-      { cpu: 85, memory: 80, disk: 90 },
-    );
-
-    assert.ok(result.includes("CPU usage exceeded 85%"));
-    assert.ok(result.includes("90.5%"));
+    const cpuIndex = result.indexOf("<summary><h3>CPU Usage</h3></summary>");
+    assert.ok(alertsIndex < cpuIndex);
   });
 });

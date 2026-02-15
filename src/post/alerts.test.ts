@@ -62,16 +62,13 @@ describe("detectAlerts", () => {
         { unixTimeMs: 11000, used: 4100, free: 900 }, // 82% usage - Alert!
       ],
       diskUsageGBs: [{ unixTimeMs: 1000, used: 20, available: 80, size: 100 }],
-      stepMarkers: [
-        { unixTimeMs: 10000, stepName: "Memory Intensive", status: "start" },
-        { unixTimeMs: 15000, stepName: "Memory Intensive", status: "end" },
-      ],
+      stepMarkers: [],
     };
 
     const alerts = detectAlerts(metricsData);
     assert.strictEqual(alerts.length, 1);
     assert.strictEqual(alerts[0].type, "memory");
-    assert.strictEqual(alerts[0].step, "Memory Intensive");
+    assert.strictEqual(alerts[0].timespan, 11000);
     assert.strictEqual(alerts[0].threshold, 80);
     assert.ok(alerts[0].value > 80);
   });
@@ -84,16 +81,13 @@ describe("detectAlerts", () => {
         { unixTimeMs: 1000, used: 20, available: 80, size: 100 }, // 20% usage - OK
         { unixTimeMs: 6000, used: 92, available: 8, size: 100 }, // 92% usage - Alert!
       ],
-      stepMarkers: [
-        { unixTimeMs: 5000, stepName: "Disk Heavy", status: "start" },
-        { unixTimeMs: 10000, stepName: "Disk Heavy", status: "end" },
-      ],
+      stepMarkers: [],
     };
 
     const alerts = detectAlerts(metricsData);
     assert.strictEqual(alerts.length, 1);
     assert.strictEqual(alerts[0].type, "disk");
-    assert.strictEqual(alerts[0].step, "Disk Heavy");
+    assert.strictEqual(alerts[0].timespan, 6000);
     assert.strictEqual(alerts[0].threshold, 90);
     assert.ok(alerts[0].value > 90);
   });
@@ -118,17 +112,14 @@ describe("detectAlerts", () => {
       ],
       memoryUsageMBs: [{ unixTimeMs: 1000, used: 1000, free: 3000 }],
       diskUsageGBs: [{ unixTimeMs: 1000, used: 20, available: 80, size: 100 }],
-      stepMarkers: [
-        { unixTimeMs: 0, stepName: "CPU Intensive", status: "start" },
-        { unixTimeMs: 70000, stepName: "CPU Intensive", status: "end" },
-      ],
+      stepMarkers: [],
     };
 
     const alerts = detectAlerts(metricsData);
     assert.strictEqual(alerts.length, 1);
     assert.strictEqual(alerts[0].type, "cpu");
-    assert.ok(alerts[0].steps);
-    assert.ok(alerts[0].steps!.includes("CPU Intensive"));
+    assert.ok(alerts[0].timespans);
+    assert.ok(alerts[0].timespans!.length >= 12); // Should have captured all sustained period
     assert.strictEqual(alerts[0].threshold, 85);
     assert.ok(alerts[0].value >= 85);
   });
@@ -153,20 +144,14 @@ describe("detectAlerts", () => {
       ],
       memoryUsageMBs: [{ unixTimeMs: 1000, used: 1000, free: 3000 }],
       diskUsageGBs: [{ unixTimeMs: 1000, used: 20, available: 80, size: 100 }],
-      stepMarkers: [
-        { unixTimeMs: 0, stepName: "Step 1", status: "start" },
-        { unixTimeMs: 30000, stepName: "Step 1", status: "end" },
-        { unixTimeMs: 30001, stepName: "Step 2", status: "start" },
-        { unixTimeMs: 70000, stepName: "Step 2", status: "end" },
-      ],
+      stepMarkers: [],
     };
 
     const alerts = detectAlerts(metricsData);
     assert.strictEqual(alerts.length, 1);
     assert.strictEqual(alerts[0].type, "cpu");
-    assert.ok(alerts[0].steps);
-    assert.ok(alerts[0].steps!.includes("Step 1"));
-    assert.ok(alerts[0].steps!.includes("Step 2"));
+    assert.ok(alerts[0].timespans);
+    assert.ok(alerts[0].timespans!.length >= 12); // Should have captured all sustained period
   });
 
   it("should not trigger CPU alert if sustained duration is not met", () => {
@@ -180,10 +165,7 @@ describe("detectAlerts", () => {
       ],
       memoryUsageMBs: [{ unixTimeMs: 1000, used: 1000, free: 3000 }],
       diskUsageGBs: [{ unixTimeMs: 1000, used: 20, available: 80, size: 100 }],
-      stepMarkers: [
-        { unixTimeMs: 0, stepName: "Short CPU Burst", status: "start" },
-        { unixTimeMs: 25000, stepName: "Short CPU Burst", status: "end" },
-      ],
+      stepMarkers: [],
     };
 
     const alerts = detectAlerts(metricsData);
@@ -215,10 +197,7 @@ describe("detectAlerts", () => {
         { unixTimeMs: 1000, used: 20, available: 80, size: 100 }, // 20% - OK
         { unixTimeMs: 6000, used: 92, available: 8, size: 100 }, // 92% - Alert!
       ],
-      stepMarkers: [
-        { unixTimeMs: 0, stepName: "Heavy Load", status: "start" },
-        { unixTimeMs: 70000, stepName: "Heavy Load", status: "end" },
-      ],
+      stepMarkers: [],
     };
 
     const alerts = detectAlerts(metricsData);
@@ -226,15 +205,15 @@ describe("detectAlerts", () => {
 
     const memoryAlert = alerts.find((a) => a.type === "memory");
     assert.ok(memoryAlert);
-    assert.strictEqual(memoryAlert.step, "Heavy Load");
+    assert.strictEqual(memoryAlert.timespan, 6000);
 
     const cpuAlert = alerts.find((a) => a.type === "cpu");
     assert.ok(cpuAlert);
-    assert.ok(cpuAlert.steps!.includes("Heavy Load"));
+    assert.ok(cpuAlert.timespans!.length >= 12);
 
     const diskAlert = alerts.find((a) => a.type === "disk");
     assert.ok(diskAlert);
-    assert.strictEqual(diskAlert.step, "Heavy Load");
+    assert.strictEqual(diskAlert.timespan, 6000);
   });
 
   it("should handle metrics without step markers", () => {

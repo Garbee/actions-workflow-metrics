@@ -50764,6 +50764,16 @@ config(en_default());
 // src/lib.ts
 var bytesPerMB = 1024 * 1024;
 var bytesPerGB = 1024 * 1024 * 1024;
+function getRootMountPoint() {
+  const platform2 = process.platform;
+  if (platform2 === "win32") {
+    return "C:";
+  } else if (platform2 === "darwin") {
+    return "/System/Volumes/Data";
+  } else {
+    return "/";
+  }
+}
 var cpuLoadPercentageSchema = external_exports.object({
   unixTimeMs: external_exports.number(),
   user: external_exports.number().nonnegative().max(100),
@@ -50798,8 +50808,10 @@ var metricsDataSchema = external_exports.object({
 var alertSchema = external_exports.object({
   type: external_exports.enum(["memory", "cpu", "disk"]),
   message: external_exports.string(),
-  step: external_exports.string().optional(),
-  steps: external_exports.array(external_exports.string()).optional(),
+  timespan: external_exports.number().optional(),
+  // Single timestamp when alert occurred
+  timespans: external_exports.array(external_exports.number()).optional(),
+  // Multiple timestamps for sustained alerts
   value: external_exports.number(),
   threshold: external_exports.number()
 });
@@ -50809,12 +50821,8 @@ var Metrics = class {
   data;
   intervalMs;
   stateFile;
-  writeInterval;
-  // How many collections before writing to disk
   timeoutId = null;
   stopped = false;
-  collectionsSinceWrite = 0;
-  isFirstCollection = true;
   constructor() {
     this.data = { cpuLoadPercentages: [], memoryUsageMBs: [], diskUsageGBs: [], stepMarkers: [] };
     const githubStateFile = process.env.GITHUB_STATE;
@@ -50827,7 +50835,7 @@ var Metrics = class {
       const runnerTemp = process.env.RUNNER_TEMP || process.env.TMPDIR || "/tmp";
       this.stateFile = join(runnerTemp, `metrics-state-${runId}-${job}.json`);
     }
-    this.intervalMs = 5 * 1e3;
+    this.intervalMs = 1 * 1e3;
     const intervalSecondsInput = process.env.METRICS_INTERVAL_SECONDS;
     if (intervalSecondsInput) {
       const intervalSecondsVal = parseInt(intervalSecondsInput, 10);
@@ -50835,7 +50843,6 @@ var Metrics = class {
         this.intervalMs = intervalSecondsVal * 1e3;
       }
     }
-    this.writeInterval = 5;
     this.initialize().catch(setFailed);
   }
   async initialize() {
@@ -50877,7 +50884,8 @@ var Metrics = class {
         free: available / bytesPerMB
       });
       const disks = await (0, import_systeminformation.fsSize)();
-      const rootDisk = disks.find((disk) => disk.mount === "/");
+      const rootMountPoint = getRootMountPoint();
+      const rootDisk = disks.find((disk) => disk.mount === rootMountPoint);
       if (rootDisk) {
         this.data.diskUsageGBs.push({
           unixTimeMs,
@@ -50886,16 +50894,9 @@ var Metrics = class {
           size: rootDisk.size / bytesPerGB
         });
       } else {
-        console.warn("Root filesystem not found in disk list. Disk metrics will be incomplete.");
+        console.warn(`Root filesystem (${rootMountPoint}) not found in disk list. Disk metrics will be incomplete.`);
       }
-      this.collectionsSinceWrite++;
-      if (this.isFirstCollection) {
-        this.saveState();
-        this.isFirstCollection = false;
-      } else if (this.collectionsSinceWrite >= this.writeInterval) {
-        this.saveState();
-        this.collectionsSinceWrite = 0;
-      }
+      this.saveState();
     } catch (error49) {
       setFailed(error49);
     } finally {

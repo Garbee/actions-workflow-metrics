@@ -3,6 +3,23 @@ import { z } from "zod";
 export const bytesPerMB: number = 1024 * 1024;
 export const bytesPerGB: number = 1024 * 1024 * 1024;
 
+/**
+ * Get the root mount point for the current OS.
+ * @returns The mount point to track for disk metrics
+ */
+export function getRootMountPoint(): string {
+  const platform = process.platform;
+  
+  if (platform === 'win32') {
+    return 'C:';
+  } else if (platform === 'darwin') {
+    return '/System/Volumes/Data';
+  } else {
+    // Linux and other Unix-like systems
+    return '/';
+  }
+}
+
 export const cpuLoadPercentageSchema = z.object({
   unixTimeMs: z.number(),
   user: z.number().nonnegative().max(100),
@@ -38,8 +55,8 @@ export const metricsDataSchema = z.object({
 export const alertSchema = z.object({
   type: z.enum(["memory", "cpu", "disk"]),
   message: z.string(),
-  step: z.string().optional(),
-  steps: z.array(z.string()).optional(),
+  timespan: z.number().optional(), // Single timestamp when alert occurred
+  timespans: z.array(z.number()).optional(), // Multiple timestamps for sustained alerts
   value: z.number(),
   threshold: z.number(),
 });
