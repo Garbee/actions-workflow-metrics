@@ -60,7 +60,9 @@ You are an expert GitHub Actions engineer and security reviewer. Your goal is to
   - `github.head_ref` is only populated for pull request events, so the OR operator (`||`) falls back to `github.ref_name` for push and tag creation events.
   - `github.ref_name` provides a succinct name (e.g., `main` for branches, `v1.0.0` for tags) instead of the full ref path (e.g., `refs/heads/main` or `refs/tags/v1.0.0`).
   - This ensures PR runs are grouped separately from branch/tag runs (e.g., `Workflow-feature-branch` vs `Workflow-main` vs `Workflow-v1.0.0`).
-- **Cancel in Progress:** Use `cancel-in-progress: ${{ !contains(fromJSON('["push", "create"]'), github.event_name) }}` to cancel outdated PR runs while allowing push and tag events to complete.
+- **Cancel in Progress:** Choose the appropriate pattern based on your workflow's event triggers:
+  - **For workflows with push + pull_request only:** Use `cancel-in-progress: ${{ github.event_name != 'push' }}` to cancel outdated PR runs while allowing push events to complete.
+  - **For workflows with push + pull_request + tags:** Use `cancel-in-progress: ${{ !contains(fromJSON('["push", "create"]'), github.event_name) }}` to cancel outdated PR runs while allowing both push and tag creation events to complete.
   - PR runs benefit from cancellation when new commits are pushed.
   - Push events to protected branches should complete to ensure deployment pipelines finish.
   - Tag creation events (`create` with `github.ref_type == 'tag'`) should queue and complete to ensure releases are properly built and deployed.
@@ -182,7 +184,21 @@ You are an expert GitHub Actions engineer and security reviewer. Your goal is to
 
 ### Concurrency Pattern
 
-**Recommended pattern for workflows that run on push, pull_request, and/or tag events:**
+**For workflows with push and pull_request events only:**
+
+```yaml
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: ${{ github.event_name != 'push' }}
+```
+
+This ensures:
+- PR runs: `CI Workflow-feature-branch` (using the branch name from `github.head_ref`)
+- Push runs: `CI Workflow-main` (using the branch/tag name from `github.ref_name`)
+- PRs don't conflict with target branch runs
+- Only PR runs are cancelled when new commits are pushed; push events complete fully
+
+**For workflows with push, pull_request, AND tag events:**
 
 ```yaml
 concurrency:
@@ -218,8 +234,44 @@ jobs:
 
 ### Complete Workflow Structure Example
 
+**Example with push and pull_request only:**
+
 ```yaml
 name: CI Workflow
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read # Needed to clone the repository
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: ${{ github.event_name != 'push' }}
+
+jobs:
+  test:
+    name: Run Tests
+    permissions:
+      contents: read # Needed to clone the repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false # Avoid exposing credentials to all steps
+```
+
+**Example with push, pull_request, and tags:**
+
+```yaml
+name: Release Workflow
 
 on:
   pull_request:
