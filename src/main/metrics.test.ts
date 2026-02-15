@@ -284,7 +284,7 @@ describe("Metrics", () => {
     assert.ok(initialMemCount > 0);
     assert.ok(initialDiskCount > 0);
 
-    // Advance time by 5 seconds to trigger next append
+    // Advance time by 1 second to trigger next append
     await mock.timers.tick(1000);
     // Wait for promises to resolve
     for (let i = 0; i < 10; i++) {
@@ -405,7 +405,7 @@ describe("Metrics", () => {
     // First collection should write
     assert.strictEqual(writeCount, 1, "First collection should write");
 
-    // Advance time by 5 seconds (2nd collection)
+    // Advance time by 1 second (2nd collection)
     await mock.timers.tick(1000);
     for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
@@ -413,7 +413,7 @@ describe("Metrics", () => {
 
     assert.strictEqual(writeCount, 2, "Second collection should write");
 
-    // Advance time by 5 seconds (3rd collection)
+    // Advance time by 1 second (3rd collection)
     await mock.timers.tick(1000);
     for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
@@ -421,7 +421,7 @@ describe("Metrics", () => {
 
     assert.strictEqual(writeCount, 3, "Third collection should write");
 
-    // Advance time by 5 seconds (4th collection)
+    // Advance time by 1 second (4th collection)
     await mock.timers.tick(1000);
     for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
@@ -429,7 +429,7 @@ describe("Metrics", () => {
 
     assert.strictEqual(writeCount, 4, "Fourth collection should write");
 
-    // Advance time by 5 seconds (5th collection)
+    // Advance time by 1 second (5th collection)
     await mock.timers.tick(1000);
     for (let i = 0; i < 10; i++) {
       await new Promise(resolve => queueMicrotask(resolve));
