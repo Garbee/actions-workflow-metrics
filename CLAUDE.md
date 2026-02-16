@@ -64,7 +64,7 @@ npm test                       # Run all tests
 ### Key Components
 
 - **src/lib.ts**: Shared utilities and data schemas for metrics collection.
-- **src/system-info.ts**: Native system information collector for CPU, memory, and disk metrics. All metrics use platform-specific commands for accuracy. CPU: Linux `/proc/stat`, macOS `top`, Windows PowerShell. Memory: Linux `/proc/meminfo`, macOS `vm_stat`, Windows Node.js `os` module. Disk: Linux/macOS `df`, Windows PowerShell.
+- **src/system-info.ts**: Native system information collector for CPU, memory, and disk metrics. All metrics use platform-specific commands for accuracy. CPU: Linux `/proc/stat`, macOS `top`, Windows PowerShell. Memory: Linux `/proc/meminfo`, macOS/Windows Node.js `os` module. Disk: Linux/macOS `df`, Windows PowerShell.
 - **src/main/metrics.ts**: Collects CPU (user/system 0-100%) and memory (active/available in MB).
   Uses native OS commands via `system-info.ts`. Starts collection in constructor with drift-compensated `setTimeout`.
   Stores data in memory only; calls `saveState()` on stop.

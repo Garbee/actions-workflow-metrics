@@ -47,7 +47,7 @@ export async function currentLoad(): Promise<CpuLoad> {
  * Returns active (used) and available memory in bytes.
  * Uses platform-specific commands for accurate memory reporting.
  * - Linux: Uses /proc/meminfo for MemAvailable and Active memory
- * - macOS: Uses vm_stat for accurate memory statistics
+ * - macOS: Uses Node.js os module (freemem/totalmem for simplicity and reliability)
  * - Windows: Uses Node.js os module (no WMI call needed for better performance)
  */
 export async function mem(): Promise<MemoryInfo> {
@@ -106,47 +106,10 @@ function getLinuxMemory(): MemoryInfo {
 }
 
 function getMacOsMemory(): MemoryInfo {
-  // Use vm_stat to get memory statistics on macOS
-  const output = execSync("vm_stat", { encoding: "utf-8" });
-  const lines = output.split("\n");
-
-  // First line contains page size: "Mach Virtual Memory Statistics: (page size of 16384 bytes)"
-  const pageSizeMatch = lines[0].match(/page size of (\d+) bytes/);
-  if (!pageSizeMatch) {
-    throw new Error("Could not parse page size from vm_stat");
-  }
-  const pageSize = parseInt(pageSizeMatch[1], 10);
-
-  let pagesActive = 0;
-  let pagesFree = 0;
-  let pagesInactive = 0;
-  let pagesSpeculative = 0;
-  let pagesWiredDown = 0;
-  let pagesPurgeable = 0;
-
-  for (const line of lines.slice(1)) {
-    if (!line.trim()) continue;
-
-    const match = line.match(/^(.+?):\s+(\d+)\./);
-    if (!match) continue;
-
-    const key = match[1].trim();
-    const value = parseInt(match[2], 10);
-
-    if (key === "Pages active") pagesActive = value;
-    else if (key === "Pages free") pagesFree = value;
-    else if (key === "Pages inactive") pagesInactive = value;
-    else if (key === "Pages speculative") pagesSpeculative = value;
-    else if (key === "Pages wired down") pagesWiredDown = value;
-    else if (key === "Pages purgeable") pagesPurgeable = value;
-  }
-
-  // Active memory: active pages + wired pages
-  const active = (pagesActive + pagesWiredDown) * pageSize;
-
-  // Available memory: free + inactive + speculative + purgeable
-  // This represents memory that can be made available to applications
-  const available = (pagesFree + pagesInactive + pagesSpeculative + pagesPurgeable) * pageSize;
+  // Use Node.js os module for macOS (fast and reliable)
+  const available = freemem();
+  const total = totalmem();
+  const active = total - available;
 
   return { active, available };
 }

@@ -104277,34 +104277,9 @@ function getLinuxMemory() {
   return { active: memActive, available: memAvailable };
 }
 function getMacOsMemory() {
-  const output = execSync("vm_stat", { encoding: "utf-8" });
-  const lines = output.split("\n");
-  const pageSizeMatch = lines[0].match(/page size of (\d+) bytes/);
-  if (!pageSizeMatch) {
-    throw new Error("Could not parse page size from vm_stat");
-  }
-  const pageSize = parseInt(pageSizeMatch[1], 10);
-  let pagesActive = 0;
-  let pagesFree = 0;
-  let pagesInactive = 0;
-  let pagesSpeculative = 0;
-  let pagesWiredDown = 0;
-  let pagesPurgeable = 0;
-  for (const line of lines.slice(1)) {
-    if (!line.trim()) continue;
-    const match = line.match(/^(.+?):\s+(\d+)\./);
-    if (!match) continue;
-    const key = match[1].trim();
-    const value = parseInt(match[2], 10);
-    if (key === "Pages active") pagesActive = value;
-    else if (key === "Pages free") pagesFree = value;
-    else if (key === "Pages inactive") pagesInactive = value;
-    else if (key === "Pages speculative") pagesSpeculative = value;
-    else if (key === "Pages wired down") pagesWiredDown = value;
-    else if (key === "Pages purgeable") pagesPurgeable = value;
-  }
-  const active = (pagesActive + pagesWiredDown) * pageSize;
-  const available = (pagesFree + pagesInactive + pagesSpeculative + pagesPurgeable) * pageSize;
+  const available = freemem();
+  const total = totalmem();
+  const active = total - available;
   return { active, available };
 }
 function getWindowsMemory() {
