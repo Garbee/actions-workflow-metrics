@@ -7,8 +7,7 @@ A GitHub Action for collecting system metrics during workflows.
 ## Features
 
 - **System Metrics Collection**: Collects CPU load, memory usage, and disk usage in real-time during workflow execution
-- **Step-Level Visualization**: Track and visualize metrics for individual workflow steps
-- **Table Display**: Displays collected metrics as clear, easy-to-read tables with step-by-step breakdown
+- **Timestamp-Based Tables**: Displays all collected metrics with timestamps in clear, easy-to-read tables
 - **Threshold Alerts**: Automatically detects and highlights when resource usage exceeds configurable thresholds
 - **Job Summary Output**: Automatically displays tables and alerts in GitHub Actions job summary
 
@@ -18,7 +17,7 @@ GitHub Actions runners have fixed resource limits. When workflows run slow or fa
 
 **What you'll learn:**
 
-- **Identify bottlenecks**: See which steps consume the most CPU, memory, or disk space
+- **Identify bottlenecks**: See resource consumption patterns over time during your workflow
 - **Optimize efficiency**: Spot opportunities to reduce resource usage in your builds or tests
 - **Make informed decisions**: Determine whether to optimize your workflow or upgrade to larger runners
 - **Prevent failures**: Catch resource exhaustion before it causes workflow failures
@@ -49,41 +48,39 @@ The action outputs the following tables:
 
 ### CPU Usage
 
-Shows CPU utilization for each workflow step with threshold exceeded indicators.
+Shows CPU utilization over time with timestamps. Metrics are displayed in collapsible sections.
 
-| Step | Total | Used | Available | Available % | Threshold Exceeded |
-|------|-------|------|-----------|-------------|-------------------|
-| Initialization | 100.00% | 3.22% | 96.78% | 96.78% |  |
-| CPU and Storage Intensive Activity | 100.00% | 3.22% | 96.78% | 96.78% | Yes |
-| Memory Intensive Activity | 100.00% | 27.00% | 73.00% | 73.00% | Yes |
+| Timestamp | Used | Available |
+|-----------|------|-----------|
+| 2026-02-16T11:25:30.123Z | 15.45% | 84.55% |
+| 2026-02-16T11:25:35.456Z | 23.78% | 76.22% |
+| 2026-02-16T11:25:40.789Z | 8.12% | 91.88% |
 
 ### Memory Usage
 
-Shows memory utilization for each workflow step with threshold exceeded indicators.
+Shows memory utilization over time with timestamps.
 
-| Step | Total | Used | Available | Available % | Threshold Exceeded |
-|------|-------|------|-----------|-------------|-------------------|
-| Initialization | 15990.48 MB | 917.74 MB | 15072.74 MB | 94.26% | Yes |
-| CPU and Storage Intensive Activity | 15990.48 MB | 917.74 MB | 15072.74 MB | 94.26% | Yes |
-| Memory Intensive Activity | 15990.48 MB | 5064.51 MB | 10925.97 MB | 68.33% |  |
+| Timestamp | Used | Available |
+|-----------|------|-----------|
+| 2026-02-16T11:25:30.123Z | 1024.50 MB | 14965.98 MB |
+| 2026-02-16T11:25:35.456Z | 2048.75 MB | 13941.73 MB |
+| 2026-02-16T11:25:40.789Z | 1536.25 MB | 14454.23 MB |
 
 ### Disk Usage
 
-Shows disk usage for each workflow step with threshold exceeded indicators.
+Shows disk usage over time with timestamps.
 
-| Step | Total Size | Used | Available | Available % | Threshold Exceeded |
-|------|------------|------|-----------|-------------|-------------------|
-| Initialization | 144.26 GB | 57.73 GB | 86.51 GB | 59.97% | Yes |
-| CPU and Storage Intensive Activity | 144.26 GB | 57.73 GB | 86.51 GB | 59.97% | Yes |
-| Memory Intensive Activity | 144.26 GB | 52.81 GB | 91.43 GB | 63.38% |  |
+| Timestamp | Used | Available |
+|-----------|------|-----------|
+| 2026-02-16T11:25:30.123Z | 57.73 GB | 86.51 GB |
+| 2026-02-16T11:25:35.456Z | 62.85 GB | 81.39 GB |
+| 2026-02-16T11:25:40.789Z | 58.12 GB | 86.12 GB |
 
 ## Usage
 
 This action is designed to be executed at the **beginning** of a workflow.
 
 ### Basic Usage
-
-A GitHub token is required to automatically track workflow steps and correlate metrics with each step.
 
 ```yaml
 name: Example Workflow
@@ -97,8 +94,6 @@ jobs:
       # Run runner-resource-usage at the beginning of the workflow
       - name: Start Workflow Telemetry
         uses: garbee/runner-resource-usage@v1
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # Subsequent regular steps
       - name: Checkout
@@ -112,11 +107,8 @@ jobs:
 
 The action will automatically:
 
-- Collect CPU load, memory usage, and disk usage metrics
-- Fetch workflow step information from the GitHub API
-- Correlate metrics with workflow steps
-- Generate step summary table with start/end times and durations
-- Display metrics in clear tables with threshold exceeded indicators
+- Collect CPU load, memory usage, and disk usage metrics at regular intervals
+- Display metrics with timestamps in clear tables
 - Generate alerts for threshold violations
 
 ### Configuration Options
@@ -124,7 +116,6 @@ The action will automatically:
 | Input              | Description                                         | Required | Default |
 | ------------------ | --------------------------------------------------- | -------- | ------- |
 | `interval_seconds` | Interval between metrics collection in seconds      | No       | `5`     |
-| `github-token`     | GitHub token for fetching workflow step information | Yes      | -       |
 | `memory_alert_threshold` | Memory utilization threshold percentage (0-100) | No | `80` |
 | `cpu_alert_threshold` | Sustained CPU usage threshold percentage (0-100) | No | `85` |
 | `cpu_alert_duration` | Duration in seconds CPU must be sustained above threshold | No | `60` |
@@ -134,7 +125,10 @@ The action will automatically:
 
 1. **main** (workflow start): Starts metrics collection as a background process that stores metrics in memory
 2. **Workflow steps**: Execute normally while metrics are collected in the background
-3. **post** (workflow end): Collector saves state to GitHub Actions, post action reads metrics from state, fetches step information (if token provided), renders metrics as tables with threshold indicators, and outputs to job summary
+3. **post** (workflow end): Collector saves state to GitHub Actions, post action reads metrics from state, renders metrics as tables with timestamps and threshold indicators, and outputs to job summary
+
+> [!NOTE]
+> Metrics are displayed with timestamps rather than correlated with specific workflow steps. You can manually correlate metrics with your workflow steps by matching timestamps with the execution times shown in your workflow run logs.
 
 ## Development Setup
 

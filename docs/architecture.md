@@ -20,7 +20,6 @@ sequenceDiagram
     participant State as State File<br/>(metrics-state-{runId}-{job}.json)
     participant Steps as Workflow Steps
     participant Post as Post Action<br/>(dist/post/index.js)
-    participant API as GitHub API
     participant Summary as Job Summary
 
     User->>Main: 1. Execute action
@@ -44,9 +43,6 @@ sequenceDiagram
     Collector-->>Post: Process exits
     
     Post->>State: Read metrics data
-    Post->>API: Fetch workflow steps
-    API-->>Post: Return step information
-    Post->>Post: Correlate metrics with steps
     Post->>Post: Generate tables and alerts
     Post->>Summary: Write to job summary
     Summary-->>User: Display metrics
@@ -69,13 +65,11 @@ For accessibility, here is a text description of the execution flow diagram abov
    - Sends a SIGTERM or SIGINT signal to the collector process
    - Waits for the collector to save its final state and exit
    - Reads the complete metrics data from the state file
-   - Fetches workflow step information from the GitHub API
-   - Correlates the collected metrics with workflow steps by timestamp
-   - Generates formatted tables showing metrics for each step
+   - Generates formatted tables showing all collected metrics with timestamps
    - Detects threshold violations and generates alerts
    - Writes the tables and alerts to the GitHub Actions job summary
 
-5. **Display**: The metrics tables and any alerts are displayed in the GitHub Actions job summary for review.
+5. **Display**: The metrics tables and any alerts are displayed in the GitHub Actions job summary for review. Metrics include timestamps that can be manually correlated with workflow step execution times from the workflow run logs.
 
 ## Key Components
 
@@ -113,9 +107,8 @@ The core metrics collection component:
 
 The post action phase:
 - **State Retrieval**: Reads metrics from the state file in GitHub state directory
-- **API Integration**: Fetches workflow steps from GitHub API to correlate metrics with steps
-- **Metric Aggregation**: Maps collected metrics to workflow steps by timestamp
-- **Table Generation**: Creates formatted tables showing metrics for each step
+- **Metric Display**: Displays all collected metrics with timestamps
+- **Table Generation**: Creates formatted tables showing all metrics with timestamps
 - **Alert Detection**: Identifies threshold violations for CPU, memory, and disk
 - **Summary Output**: Writes tables and alerts to GitHub Actions summary
 
@@ -123,11 +116,10 @@ The post action phase:
 
 Generates formatted output:
 - **Alert Section**: Displays threshold violations with emoji icons (⚠️ memory, 🔥 CPU, 💾 disk)
-- **Step Summary**: Shows which steps were tracked
-- **Metric Tables**: Generates separate tables for:
-  - CPU Usage (Total, Used, Available, Available %, Threshold Exceeded)
-  - Memory Usage (Total, Used, Available, Available %, Threshold Exceeded)
-  - Disk Usage (Total, Used, Available, Available %, Threshold Exceeded)
+- **Metric Tables**: Generates collapsible tables for:
+  - CPU Usage (Timestamp, Used, Available)
+  - Memory Usage (Timestamp, Used, Available)
+  - Disk Usage (Timestamp, Used, Available)
 
 ## Data Storage
 
@@ -168,7 +160,7 @@ GitHub Actions' built-in `saveState()` and `getState()` from `@actions/core` do 
 **In Post Action**:
 - Reads complete metrics history from state file
 - Parses JSON data containing all collected samples
-- Correlates timestamps with workflow steps
+- Displays metrics with timestamps for manual correlation with workflow steps
 - Generates final summary tables
 
 ### Data Schema
@@ -240,8 +232,7 @@ This approach:
 **Post Action**:
 1. Waits for collector to complete
 2. Reads persisted state
-3. Fetches workflow context from GitHub API
-4. Generates and outputs summary
+3. Generates and outputs summary
 
 ### Node.js Compatibility
 
@@ -261,11 +252,6 @@ The action is designed for Node.js 24+ with:
 - File writes are atomic operations
 - Previous state preserved if write fails
 - Post action handles missing or corrupted state gracefully
-
-### API Failures
-- GitHub API errors reported in summary
-- Fallback to available data if step information unavailable
-- Action continues even with partial data
 
 ## Performance Considerations
 
@@ -291,7 +277,6 @@ The action is designed for Node.js 24+ with:
 
 ### Permissions
 - Requires `contents: read` to clone repository
-- Requires `actions: read` to fetch workflow steps
 - Minimal permission scope following least-privilege principle
 
 ### Data Privacy
