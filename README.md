@@ -127,7 +127,8 @@ The action will automatically:
 2. **Workflow steps**: Execute normally while metrics are collected in the background
 3. **post** (workflow end): Collector saves state to GitHub Actions, post action reads metrics from state, renders metrics as tables with timestamps and threshold indicators, and outputs to job summary
 
-> **Note**: Metrics are displayed with timestamps rather than correlated with specific workflow steps. You can manually correlate metrics with your workflow steps by matching timestamps with the execution times shown in your workflow run logs.
+> [!NOTE]
+> Metrics are displayed with timestamps rather than correlated with specific workflow steps. You can manually correlate metrics with your workflow steps by matching timestamps with the execution times shown in your workflow run logs.
 
 ## Development Setup
 
