@@ -8,9 +8,7 @@ This directory contains real-world examples of using the runner-resource-usage a
 
 - [**Basic Monitoring**](./basic-monitoring.md) - Simple setup for general workflow monitoring
 - [**Build Optimization**](./build-optimization.md) - Identifying bottlenecks in build processes
-- [**Test Suite Performance**](./test-performance.md) - Monitoring test execution resource usage
 - [**Debug Mode Only**](./debug-mode.md) - Conditional metrics collection on demand
-- [**CI/CD Pipeline**](./cicd-pipeline.md) - Comprehensive pipeline with deployment stages
 - [**Memory-Intensive Workflows**](./memory-intensive.md) - Handling data processing and machine learning
 - [**Multi-Job Workflows**](./multi-job.md) - Collecting metrics across multiple jobs
 
