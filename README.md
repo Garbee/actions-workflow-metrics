@@ -53,7 +53,9 @@ If no alerts were triggered, then this section is not rendered at all.
 
 > [!WARNING]
 > ⚠️ Memory utilization exceeded 85% (86.8%)
+> 
 > 🔥 Sustained CPU usage above 90% for more than 10 seconds (92.0%)
+>
 > 💾 Disk usage exceeded 85% (85.2%)
 
 #### Metrics
