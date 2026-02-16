@@ -30,10 +30,17 @@ jobs:
           persist-credentials: false
       - name: Start Workflow Telemetry
         uses: ./
-      - name: Install actionlint
-        run: go install github.com/rhysd/actionlint/cmd/actionlint@latest
-      - name: Add GOPATH to PATH
-        run: echo "$HOME/go/bin" >> "$GITHUB_PATH"
+      - name: Install Actionlint
+        env:
+          TMP_DIR: ${{ runner.temp }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tarball="$TMP_DIR/actionlint.tar.gz"
+          gh release download --repo rhysd/actionlint --pattern "actionlint_*_linux_amd64.tar.gz" --output "$tarball"
+          tar -xzf "$tarball" -C "$TMP_DIR"
+          install -D "$TMP_DIR/actionlint" /usr/local/bin
+          rm "$tarball" "$TMP_DIR/actionlint"
       - name: Check Workflow Files
         run: actionlint -format "$(cat .github/formatters/actionlint-sarif.gotmpl)" .github/workflows/*.yml > actionlint.sarif
       - name: Upload SARIF File

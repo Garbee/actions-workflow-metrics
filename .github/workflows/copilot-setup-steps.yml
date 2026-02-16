@@ -54,9 +54,16 @@ jobs:
       - name: Install Dependencies
         run: npm ci
       - name: Install Actionlint
-        run: go install github.com/rhysd/actionlint/cmd/actionlint@latest
-      - name: Add GOPATH to PATH
-        run: echo "$HOME/go/bin" >> "$GITHUB_PATH"
+        env:
+          TMP_DIR: ${{ runner.temp }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tarball="$TMP_DIR/actionlint.tar.gz"
+          gh release download --repo rhysd/actionlint --pattern "actionlint_*_linux_amd64.tar.gz" --output "$tarball"
+          tar -xzf "$tarball" -C "$TMP_DIR"
+          install -D "$TMP_DIR/actionlint" /usr/local/bin
+          rm "$tarball" "$TMP_DIR/actionlint"
       - name: Install Zizmor
         env:
           TMP_DIR: ${{ runner.temp }}
