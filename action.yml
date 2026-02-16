@@ -1,4 +1,4 @@
-name: "actions-workflow-metrics"
+name: "runner-resource-usage"
 author: "Jonathan Garbee"
 description: "A GitHub Action for collecting system metrics during workflows"
 branding:
