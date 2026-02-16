@@ -202,6 +202,8 @@ The `runner.debug` context is documented in the [GitHub Actions contexts referen
   - [Basic Monitoring](docs/examples/basic-monitoring.md) - Simple setup for general workflows
   - [Debug Mode Only](docs/examples/debug-mode.md) - Conditional metrics collection on demand
   - [Build Optimization](docs/examples/build-optimization.md) - Identifying and resolving bottlenecks
+  - [Memory-Intensive Workflows](docs/examples/memory-intensive.md) - Handling data processing and ML
+  - [Multi-Job Workflows](docs/examples/multi-job.md) - Comparing metrics across jobs
 - **[Architecture](docs/architecture.md)** - Technical implementation details
 
 ### Getting Help
