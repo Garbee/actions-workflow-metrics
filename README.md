@@ -126,6 +126,52 @@ The action will automatically:
 - Display metrics with timestamps in clear tables
 - Generate alerts for threshold violations
 
+### Conditional Collection with Debug Mode
+
+For teams that want metric collection available but not always running, you can conditionally enable the action using the `runner.debug` context. This allows you to leave the action in your workflow without incurring the performance overhead on every run.
+
+```yaml
+name: Example Workflow
+
+on: [push]
+
+jobs:
+  example:
+    runs-on: ubuntu-latest
+    steps:
+      # Only collect metrics when debug mode is enabled
+      - name: Start Workflow Telemetry
+        if: ${{ runner.debug == '1' }}
+        uses: garbee/runner-resource-usage@v1
+
+      # Regular workflow steps
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Run tests
+        run: npm test
+
+      # ... other steps
+```
+
+**Enabling debug mode:**
+
+When you need to collect metrics, enable debug mode by:
+
+1. Go to your failed or completed workflow run
+2. Click "Re-run jobs" in the top-right corner
+3. Check the "Enable debug logging" checkbox
+4. Click "Re-run jobs"
+
+This approach provides several benefits:
+
+- **No re-instrumentation needed**: The action stays in your workflow, ready to use when needed
+- **Performance optimization**: Metrics collection only runs when you need it, avoiding overhead on regular runs
+- **On-demand debugging**: Enable collection instantly when investigating slow builds or resource issues
+- **Team flexibility**: Any team member can enable metrics collection without modifying the workflow file
+
+The `runner.debug` context is documented in the [GitHub Actions contexts reference](https://docs.github.com/en/actions/learn-github-actions/contexts#runner-context).
+
 ### Configuration Options
 
 | Input              | Description                                         | Required | Default |
