@@ -170,7 +170,7 @@ This approach provides several benefits:
 - **On-demand debugging**: Enable collection instantly when investigating slow builds or resource issues
 - **Team flexibility**: Any team member can enable metrics collection without modifying the workflow file
 
-The `runner.debug` context is documented in the [GitHub Actions contexts reference](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#runner-context).
+The `runner.debug` context is documented in the [GitHub Actions contexts reference](https://docs.github.com/en/actions/learn-github-actions/contexts#runner-context).
 
 ### Configuration Options
 
