@@ -30,8 +30,6 @@ jobs:
           persist-credentials: false
       - name: Start Workflow Telemetry
         uses: ./
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install actionlint
         run: go install github.com/rhysd/actionlint/cmd/actionlint@latest
       - name: Add GOPATH to PATH

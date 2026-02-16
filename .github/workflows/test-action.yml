@@ -15,14 +15,12 @@ concurrency:
 
 permissions:
   contents: read # To clone the repository
-  actions: read # To retrieve information about the workflow run and jobs
 
 jobs:
   test-basic:
     name: Test Basic Usage (${{ matrix.os }})
     permissions:
       contents: read # To clone the repository
-      actions: read # To retrieve information about the workflow run and jobs
     strategy:
       fail-fast: false
       matrix:
@@ -41,8 +39,6 @@ jobs:
 
       - name: Start Workflow Telemetry
         uses: ./
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
@@ -59,7 +55,6 @@ jobs:
     name: Test with Resources Under Load (${{ matrix.os }})
     permissions:
       contents: read # To clone the repository
-      actions: read # To retrieve information about the workflow run and jobs
     strategy:
       fail-fast: false
       matrix:
@@ -79,7 +74,6 @@ jobs:
       - name: Start Workflow Telemetry
         uses: ./
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           interval_seconds: "1"
           memory_alert_threshold: "5"
           cpu_alert_threshold: "10"

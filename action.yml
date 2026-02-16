@@ -9,9 +9,6 @@ inputs:
     description: "Interval between metrics collection in seconds"
     default: "5"
     required: false
-  github-token:
-    description: "GitHub token for fetching workflow step information"
-    required: true
   memory_alert_threshold:
     description: "Memory utilization threshold percentage for alerts (0-100)"
     default: "80"

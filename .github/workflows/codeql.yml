@@ -35,8 +35,6 @@ jobs:
           persist-credentials: false
       - name: Start Workflow Telemetry
         uses: ./
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Initialize CodeQL
         uses: github/codeql-action/init@9e907b5e64f6b83e7804b09294d44122997950d6 # v4.32.3
         with:
