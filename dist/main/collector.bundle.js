@@ -19052,7 +19052,12 @@ function getMacOsCpuLoad() {
 function getMacOsMemory() {
   const output = execSync("vm_stat", { encoding: "utf-8" });
   const lines = output.split("\n");
-  const pageSize = 4096;
+  let pageSize = 4096;
+  const pageSizeLine = lines[0];
+  const pageSizeMatch = pageSizeLine.match(/page size of (\d+) bytes/);
+  if (pageSizeMatch) {
+    pageSize = parseInt(pageSizeMatch[1], 10);
+  }
   let pagesActive = 0;
   let pagesFree = 0;
   let pagesInactive = 0;
@@ -19091,10 +19096,12 @@ function getMacOsDiskInfo() {
 }
 function getWindowsCpuLoad() {
   try {
-    const output = execSync("wmic cpu get loadpercentage", { encoding: "utf-8" });
-    const lines = output.split("\n").filter((line) => line.trim() && !line.includes("LoadPercentage"));
-    if (lines.length > 0) {
-      const load = parseInt(lines[0].trim(), 10);
+    const output = execSync(
+      'powershell -Command "Get-CimInstance -ClassName Win32_Processor | Select-Object -ExpandProperty LoadPercentage"',
+      { encoding: "utf-8" }
+    );
+    const load = parseInt(output.trim(), 10);
+    if (!isNaN(load)) {
       const currentLoadUser = load * 0.7;
       const currentLoadSystem = load * 0.3;
       return { currentLoadUser, currentLoadSystem };
@@ -19106,13 +19113,14 @@ function getWindowsCpuLoad() {
 }
 function getWindowsMemory() {
   try {
-    const totalOutput = execSync("wmic computersystem get totalphysicalmemory", { encoding: "utf-8" });
-    const freeOutput = execSync("wmic os get freephysicalmemory", { encoding: "utf-8" });
-    const totalLines = totalOutput.split("\n").filter((line) => line.trim() && !line.includes("TotalPhysicalMemory"));
-    const freeLines = freeOutput.split("\n").filter((line) => line.trim() && !line.includes("FreePhysicalMemory"));
-    if (totalLines.length > 0 && freeLines.length > 0) {
-      const total = parseInt(totalLines[0].trim(), 10);
-      const freeKB = parseInt(freeLines[0].trim(), 10);
+    const output = execSync(
+      'powershell -Command "$os = Get-CimInstance -ClassName Win32_OperatingSystem; $cs = Get-CimInstance -ClassName Win32_ComputerSystem; Write-Output \\"$($cs.TotalPhysicalMemory)|$($os.FreePhysicalMemory)\\""',
+      { encoding: "utf-8" }
+    );
+    const parts = output.trim().split("|");
+    if (parts.length === 2) {
+      const total = parseInt(parts[0], 10);
+      const freeKB = parseInt(parts[1], 10);
       const free = freeKB * 1024;
       const active = total - free;
       return { active, available: free };
@@ -19124,24 +19132,29 @@ function getWindowsMemory() {
 }
 function getWindowsDiskInfo() {
   try {
-    const output = execSync("wmic logicaldisk get caption,size,freespace", { encoding: "utf-8" });
-    const lines = output.split("\n").slice(1);
+    const output = execSync(
+      'powershell -Command "Get-CimInstance -ClassName Win32_LogicalDisk -Filter \\"DriveType=3\\" | Select-Object DeviceID, Size, FreeSpace | ForEach-Object { \\"$($_.DeviceID)|$($_.Size)|$($_.FreeSpace)\\" }"',
+      { encoding: "utf-8" }
+    );
+    const lines = output.split("\n");
     const disks = [];
     for (const line of lines) {
       if (!line.trim()) continue;
-      const parts = line.trim().split(/\s+/);
+      const parts = line.trim().split("|");
       if (parts.length < 3) continue;
       const mount = parts[0];
-      const freeSpace = parseInt(parts[1], 10);
-      const size = parseInt(parts[2], 10);
+      const size = parseInt(parts[1], 10);
+      const freeSpace = parseInt(parts[2], 10);
       const used = size - freeSpace;
-      disks.push({
-        fs: mount,
-        mount,
-        size,
-        used,
-        available: freeSpace
-      });
+      if (!isNaN(size) && !isNaN(freeSpace)) {
+        disks.push({
+          fs: mount,
+          mount,
+          size,
+          used,
+          available: freeSpace
+        });
+      }
     }
     return disks;
   } catch (error49) {
