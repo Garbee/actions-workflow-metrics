@@ -24,7 +24,7 @@ Examples:
 - `feat(metrics): add memory pressure tracking`
 - `fix(collector): prevent memory leak in long-running processes`
 - `docs(readme): update installation instructions`
-- `chore(deps): update systeminformation to v5.22.0`
+- `refactor(metrics): replace systeminformation with native OS commands`
 
 See `.github/copilot-instructions.md` for complete guidelines.
 
@@ -64,8 +64,9 @@ npm test                       # Run all tests
 ### Key Components
 
 - **src/lib.ts**: Shared utilities and data schemas for metrics collection.
+- **src/system-info.ts**: Native system information collector for CPU, memory, and disk metrics. Detects OS and runs platform-specific commands (Linux: `/proc/stat`, `/proc/meminfo`, `df`; macOS: `top`, `vm_stat`, `df`; Windows: `wmic`).
 - **src/main/metrics.ts**: Collects CPU (user/system 0-100%) and memory (active/available in MB).
-  Uses `systeminformation`. Starts collection in constructor with drift-compensated `setTimeout`.
+  Uses native OS commands via `system-info.ts`. Starts collection in constructor with drift-compensated `setTimeout`.
   Stores data in memory only; calls `saveState()` on stop.
 - **src/main/collector.ts**: Simple background process that creates a Metrics instance and keeps running.
   Ensures `stop()` is called on SIGTERM/SIGINT to save metrics state.
@@ -102,7 +103,7 @@ before(async () => {
   mock.timers.enable({ apis: ['setTimeout', 'Date'] });
 
   // Mock other modules
-  mockModule = mock.module("systeminformation", { /* ... */ });
+  mockModule = mock.module("../system-info.ts", { /* ... */ });
 
   // Import after mocking
   ({ Metrics } = await import("./metrics.ts"));
@@ -119,7 +120,7 @@ for (let i = 0; i < 5; i++) {
 
 ```typescript
 // Mock the module before importing
-mock.module("systeminformation", {
+mock.module("../system-info.ts", {
   namedExports: {
     currentLoad: async () =>
       Promise.resolve({

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { getInput } from "@actions/core";
 import { context, getOctokit } from "@actions/github";
-import { currentLoad, mem, fsSize } from "systeminformation";
+import { currentLoad, mem, fsSize } from "../system-info.ts";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Renderer } from "./renderer.ts";

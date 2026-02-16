@@ -1,6 +1,5 @@
 import { describe, it, beforeEach, mock, before, after, afterEach } from "node:test";
 import * as assert from "node:assert/strict";
-import type { Systeminformation } from "systeminformation";
 import type { z } from "zod";
 import {
   type cpuLoadPercentageSchema,
@@ -33,42 +32,36 @@ describe("Metrics", () => {
       rootMountPoint = '/';
     }
 
-    // Mock systeminformation module
-    mockModule = mock.module("systeminformation", {
+    // Mock system-info module
+    mockModule = mock.module("../system-info.ts", {
       namedExports: {
-        currentLoad: async (): Promise<Systeminformation.CurrentLoadData> =>
+        currentLoad: async () =>
           Promise.resolve({
             currentLoadUser: 25.5,
             currentLoadSystem: 10.3,
-          } as Systeminformation.CurrentLoadData),
-        mem: async (): Promise<Systeminformation.MemData> =>
+          }),
+        mem: async () =>
           Promise.resolve({
             active: 4096 * 1024 * 1024, // 4096 MB in bytes
             available: 8192 * 1024 * 1024, // 8192 MB in bytes
-          } as Systeminformation.MemData),
-        fsSize: async (): Promise<Systeminformation.FsSizeData[]> =>
+          }),
+        fsSize: async () =>
           Promise.resolve([
             {
               fs: "/dev/root",
-              type: "ext4",
               size: 100 * 1024 * 1024 * 1024, // 100 GB
               used: 30 * 1024 * 1024 * 1024, // 30 GB
               available: 70 * 1024 * 1024 * 1024, // 70 GB
-              use: 30,
               mount: rootMountPoint,
-              rw: true,
             },
             {
               fs: "/dev/sda1",
-              type: "ext4",
               size: 50 * 1024 * 1024 * 1024, // 50 GB
               used: 20 * 1024 * 1024 * 1024, // 20 GB
               available: 30 * 1024 * 1024 * 1024, // 30 GB
-              use: 40,
               mount: "/data",
-              rw: true,
             },
-          ] as Systeminformation.FsSizeData[]),
+          ]),
       },
     });
 

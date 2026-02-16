@@ -1,5 +1,5 @@
 import { setFailed } from "@actions/core";
-import { currentLoad, mem, fsSize } from "systeminformation";
+import { currentLoad, mem, fsSize } from "../system-info.ts";
 import { writeFile } from "node:fs/promises";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";

@@ -57,7 +57,7 @@ fix(collector): prevent memory leak in long-running processes
 docs(readme): update installation instructions
 refactor(renderer): simplify chart generation logic
 test(metrics): add tests for drift compensation
-chore(deps): update systeminformation to v5.22.0
+refactor(metrics): replace systeminformation with native OS commands
 ci(workflow): add Node.js 24 to test matrix
 perf(post): optimize metrics file reading
 ```

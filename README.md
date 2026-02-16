@@ -237,7 +237,7 @@ src/
 
 1. `src/main/index.ts` is executed
 2. Node.js spawns `src/main/collector.ts` as a detached background process
-3. `Metrics` class collects CPU/memory/disk information every 5 seconds using `systeminformation` library
+3. `Metrics` class collects CPU/memory/disk information every 5 seconds using native OS commands
 4. Metrics data is stored in memory only (no disk writes during collection)
 5. On process termination (SIGTERM/SIGINT), metrics are saved to GitHub Actions state
 
