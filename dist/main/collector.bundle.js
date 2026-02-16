@@ -18964,6 +18964,7 @@ function error(message, properties = {}) {
 
 // src/system-info.ts
 import { execSync } from "node:child_process";
+import { freemem, totalmem } from "node:os";
 async function currentLoad() {
   const platform2 = process.platform;
   if (platform2 === "linux") {
@@ -18976,15 +18977,10 @@ async function currentLoad() {
   throw new Error(`Unsupported platform: ${platform2}`);
 }
 async function mem() {
-  const platform2 = process.platform;
-  if (platform2 === "linux") {
-    return getLinuxMemory();
-  } else if (platform2 === "darwin") {
-    return getMacOsMemory();
-  } else if (platform2 === "win32") {
-    return getWindowsMemory();
-  }
-  throw new Error(`Unsupported platform: ${platform2}`);
+  const available = freemem();
+  const total = totalmem();
+  const active = total - available;
+  return { active, available };
 }
 async function fsSize() {
   const platform2 = process.platform;
@@ -19008,21 +19004,6 @@ function getLinuxCpuLoad() {
   const currentLoadUser = total > 0 ? user / total * 100 : 0;
   const currentLoadSystem = total > 0 ? system / total * 100 : 0;
   return { currentLoadUser, currentLoadSystem };
-}
-function getLinuxMemory() {
-  const meminfo = execSync("cat /proc/meminfo", { encoding: "utf-8" });
-  const lines = meminfo.split("\n");
-  let memTotal = 0;
-  let memAvailable = 0;
-  for (const line of lines) {
-    if (line.startsWith("MemTotal:")) {
-      memTotal = parseInt(line.split(/\s+/)[1], 10) * 1024;
-    } else if (line.startsWith("MemAvailable:")) {
-      memAvailable = parseInt(line.split(/\s+/)[1], 10) * 1024;
-    }
-  }
-  const active = memTotal - memAvailable;
-  return { active, available: memAvailable };
 }
 function getLinuxDiskInfo() {
   const output = execSync("df -k", { encoding: "utf-8" });
@@ -19048,34 +19029,6 @@ function getMacOsCpuLoad() {
   const currentLoadUser = userMatch ? parseFloat(userMatch[1]) : 0;
   const currentLoadSystem = sysMatch ? parseFloat(sysMatch[1]) : 0;
   return { currentLoadUser, currentLoadSystem };
-}
-function getMacOsMemory() {
-  const output = execSync("vm_stat", { encoding: "utf-8" });
-  const lines = output.split("\n");
-  let pageSize = 4096;
-  const pageSizeLine = lines[0];
-  const pageSizeMatch = pageSizeLine.match(/page size of (\d+) bytes/);
-  if (pageSizeMatch) {
-    pageSize = parseInt(pageSizeMatch[1], 10);
-  }
-  let pagesActive = 0;
-  let pagesFree = 0;
-  let pagesInactive = 0;
-  let pagesWiredDown = 0;
-  for (const line of lines) {
-    if (line.includes("Pages active:")) {
-      pagesActive = parseInt(line.split(":")[1].trim().replace(".", ""), 10);
-    } else if (line.includes("Pages free:")) {
-      pagesFree = parseInt(line.split(":")[1].trim().replace(".", ""), 10);
-    } else if (line.includes("Pages inactive:")) {
-      pagesInactive = parseInt(line.split(":")[1].trim().replace(".", ""), 10);
-    } else if (line.includes("Pages wired down:")) {
-      pagesWiredDown = parseInt(line.split(":")[1].trim().replace(".", ""), 10);
-    }
-  }
-  const active = (pagesActive + pagesWiredDown) * pageSize;
-  const available = (pagesFree + pagesInactive) * pageSize;
-  return { active, available };
 }
 function getMacOsDiskInfo() {
   const output = execSync("df -k", { encoding: "utf-8" });
@@ -19110,25 +19063,6 @@ function getWindowsCpuLoad() {
     console.warn("Failed to get CPU load on Windows:", error49);
   }
   return { currentLoadUser: 0, currentLoadSystem: 0 };
-}
-function getWindowsMemory() {
-  try {
-    const output = execSync(
-      'powershell -Command "$os = Get-CimInstance -ClassName Win32_OperatingSystem; $cs = Get-CimInstance -ClassName Win32_ComputerSystem; Write-Output \\"$($cs.TotalPhysicalMemory)|$($os.FreePhysicalMemory)\\""',
-      { encoding: "utf-8" }
-    );
-    const parts = output.trim().split("|");
-    if (parts.length === 2) {
-      const total = parseInt(parts[0], 10);
-      const freeKB = parseInt(parts[1], 10);
-      const free = freeKB * 1024;
-      const active = total - free;
-      return { active, available: free };
-    }
-  } catch (error49) {
-    console.warn("Failed to get memory info on Windows:", error49);
-  }
-  return { active: 0, available: 0 };
 }
 function getWindowsDiskInfo() {
   try {

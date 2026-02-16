@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import { freemem, totalmem } from "node:os";
 
 /**
  * Native system information collector that replaces systeminformation package.
@@ -44,19 +45,14 @@ export async function currentLoad(): Promise<CpuLoad> {
 /**
  * Get memory information.
  * Returns active (used) and available memory in bytes.
+ * Uses Node.js native os.freemem() and os.totalmem() for cross-platform compatibility.
  */
 export async function mem(): Promise<MemoryInfo> {
-  const platform = process.platform;
+  const available = freemem();
+  const total = totalmem();
+  const active = total - available;
 
-  if (platform === "linux") {
-    return getLinuxMemory();
-  } else if (platform === "darwin") {
-    return getMacOsMemory();
-  } else if (platform === "win32") {
-    return getWindowsMemory();
-  }
-
-  throw new Error(`Unsupported platform: ${platform}`);
+  return { active, available };
 }
 
 /**
@@ -99,27 +95,6 @@ function getLinuxCpuLoad(): CpuLoad {
   return { currentLoadUser, currentLoadSystem };
 }
 
-function getLinuxMemory(): MemoryInfo {
-  // Read /proc/meminfo
-  const meminfo = execSync("cat /proc/meminfo", { encoding: "utf-8" });
-  const lines = meminfo.split("\n");
-
-  let memTotal = 0;
-  let memAvailable = 0;
-
-  for (const line of lines) {
-    if (line.startsWith("MemTotal:")) {
-      memTotal = parseInt(line.split(/\s+/)[1], 10) * 1024; // Convert KB to bytes
-    } else if (line.startsWith("MemAvailable:")) {
-      memAvailable = parseInt(line.split(/\s+/)[1], 10) * 1024; // Convert KB to bytes
-    }
-  }
-
-  const active = memTotal - memAvailable;
-
-  return { active, available: memAvailable };
-}
-
 function getLinuxDiskInfo(): DiskInfo[] {
   // Use df to get disk information
   const output = execSync("df -k", { encoding: "utf-8" });
@@ -159,42 +134,6 @@ function getMacOsCpuLoad(): CpuLoad {
   const currentLoadSystem = sysMatch ? parseFloat(sysMatch[1]) : 0;
 
   return { currentLoadUser, currentLoadSystem };
-}
-
-function getMacOsMemory(): MemoryInfo {
-  // Use vm_stat to get memory information on macOS
-  const output = execSync("vm_stat", { encoding: "utf-8" });
-  const lines = output.split("\n");
-
-  // Get actual page size from the first line: "Mach Virtual Memory Statistics: (page size of 16384 bytes)"
-  let pageSize = 4096; // Default fallback
-  const pageSizeLine = lines[0];
-  const pageSizeMatch = pageSizeLine.match(/page size of (\d+) bytes/);
-  if (pageSizeMatch) {
-    pageSize = parseInt(pageSizeMatch[1], 10);
-  }
-
-  let pagesActive = 0;
-  let pagesFree = 0;
-  let pagesInactive = 0;
-  let pagesWiredDown = 0;
-
-  for (const line of lines) {
-    if (line.includes("Pages active:")) {
-      pagesActive = parseInt(line.split(":")[1].trim().replace(".", ""), 10);
-    } else if (line.includes("Pages free:")) {
-      pagesFree = parseInt(line.split(":")[1].trim().replace(".", ""), 10);
-    } else if (line.includes("Pages inactive:")) {
-      pagesInactive = parseInt(line.split(":")[1].trim().replace(".", ""), 10);
-    } else if (line.includes("Pages wired down:")) {
-      pagesWiredDown = parseInt(line.split(":")[1].trim().replace(".", ""), 10);
-    }
-  }
-
-  const active = (pagesActive + pagesWiredDown) * pageSize;
-  const available = (pagesFree + pagesInactive) * pageSize;
-
-  return { active, available };
 }
 
 function getMacOsDiskInfo(): DiskInfo[] {
@@ -247,35 +186,6 @@ function getWindowsCpuLoad(): CpuLoad {
   }
 
   return { currentLoadUser: 0, currentLoadSystem: 0 };
-}
-
-function getWindowsMemory(): MemoryInfo {
-  // Use PowerShell Get-CimInstance to get memory information on Windows
-  // wmic is deprecated and not available on Windows Server 2025
-  try {
-    const output = execSync(
-      'powershell -Command "' +
-      '$os = Get-CimInstance -ClassName Win32_OperatingSystem; ' +
-      '$cs = Get-CimInstance -ClassName Win32_ComputerSystem; ' +
-      'Write-Output \\"$($cs.TotalPhysicalMemory)|$($os.FreePhysicalMemory)\\""',
-      { encoding: "utf-8" }
-    );
-
-    const parts = output.trim().split("|");
-    if (parts.length === 2) {
-      const total = parseInt(parts[0], 10);
-      const freeKB = parseInt(parts[1], 10);
-      const free = freeKB * 1024; // Convert KB to bytes
-
-      const active = total - free;
-
-      return { active, available: free };
-    }
-  } catch (error) {
-    console.warn("Failed to get memory info on Windows:", error);
-  }
-
-  return { active: 0, available: 0 };
 }
 
 function getWindowsDiskInfo(): DiskInfo[] {
