@@ -1,4 +1,4 @@
-# actions-workflow-metrics
+# runner-resource-usage
 
 A GitHub Action for collecting system metrics during workflows.
 
@@ -94,9 +94,9 @@ jobs:
   example:
     runs-on: ubuntu-latest
     steps:
-      # Run actions-workflow-metrics at the beginning of the workflow
+      # Run runner-resource-usage at the beginning of the workflow
       - name: Start Workflow Telemetry
-        uses: garbee/actions-workflow-metrics@v1
+        uses: garbee/runner-resource-usage@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
