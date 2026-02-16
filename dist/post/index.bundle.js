@@ -104239,10 +104239,15 @@ async function currentLoad() {
   throw new Error(`Unsupported platform: ${platform2}`);
 }
 async function mem() {
-  const available = freemem();
-  const total = totalmem();
-  const active = total - available;
-  return { active, available };
+  const platform2 = process.platform;
+  if (platform2 === "linux") {
+    return getLinuxMemory();
+  } else if (platform2 === "darwin") {
+    return getMacOsMemory();
+  } else if (platform2 === "win32") {
+    return getWindowsMemory();
+  }
+  throw new Error(`Unsupported platform: ${platform2}`);
 }
 async function fsSize() {
   const platform2 = process.platform;
@@ -104254,6 +104259,59 @@ async function fsSize() {
     return getWindowsDiskInfo();
   }
   throw new Error(`Unsupported platform: ${platform2}`);
+}
+function getLinuxMemory() {
+  const meminfo = execSync("cat /proc/meminfo", { encoding: "utf-8" });
+  let memTotal = 0;
+  let memAvailable = 0;
+  let memActive = 0;
+  for (const line of meminfo.split("\n")) {
+    if (line.startsWith("MemTotal:")) {
+      memTotal = parseInt(line.split(/\s+/)[1], 10) * 1024;
+    } else if (line.startsWith("MemAvailable:")) {
+      memAvailable = parseInt(line.split(/\s+/)[1], 10) * 1024;
+    } else if (line.startsWith("Active:")) {
+      memActive = parseInt(line.split(/\s+/)[1], 10) * 1024;
+    }
+  }
+  return { active: memActive, available: memAvailable };
+}
+function getMacOsMemory() {
+  const output = execSync("vm_stat", { encoding: "utf-8" });
+  const lines = output.split("\n");
+  const pageSizeMatch = lines[0].match(/page size of (\d+) bytes/);
+  if (!pageSizeMatch) {
+    throw new Error("Could not parse page size from vm_stat");
+  }
+  const pageSize = parseInt(pageSizeMatch[1], 10);
+  let pagesActive = 0;
+  let pagesFree = 0;
+  let pagesInactive = 0;
+  let pagesSpeculative = 0;
+  let pagesWiredDown = 0;
+  let pagesPurgeable = 0;
+  for (const line of lines.slice(1)) {
+    if (!line.trim()) continue;
+    const match = line.match(/^(.+?):\s+(\d+)\./);
+    if (!match) continue;
+    const key = match[1].trim();
+    const value = parseInt(match[2], 10);
+    if (key === "Pages active") pagesActive = value;
+    else if (key === "Pages free") pagesFree = value;
+    else if (key === "Pages inactive") pagesInactive = value;
+    else if (key === "Pages speculative") pagesSpeculative = value;
+    else if (key === "Pages wired down") pagesWiredDown = value;
+    else if (key === "Pages purgeable") pagesPurgeable = value;
+  }
+  const active = (pagesActive + pagesWiredDown) * pageSize;
+  const available = (pagesFree + pagesInactive + pagesSpeculative + pagesPurgeable) * pageSize;
+  return { active, available };
+}
+function getWindowsMemory() {
+  const available = freemem();
+  const total = totalmem();
+  const active = total - available;
+  return { active, available };
 }
 function getLinuxCpuLoad() {
   const stat2 = execSync("cat /proc/stat | head -1", { encoding: "utf-8" });
@@ -104329,7 +104387,7 @@ function getWindowsCpuLoad() {
 function getWindowsDiskInfo() {
   try {
     const output = execSync(
-      'powershell -Command "Get-CimInstance -ClassName Win32_LogicalDisk -Filter \\"DriveType=3\\" | Select-Object DeviceID, Size, FreeSpace | ForEach-Object { \\"$($_.DeviceID)|$($_.Size)|$($_.FreeSpace)\\" }"',
+      'powershell -Command "Get-CimInstance -ClassName Win32_LogicalDisk -Filter \\"DriveType=3\\" | Select-Object DeviceID, Size, FreeSpace | ForEach-Object { \\"{0}|{1}|{2}\\" -f $_.DeviceID, $_.Size, $_.FreeSpace }"',
       { encoding: "utf-8" }
     );
     const lines = output.split("\n");
