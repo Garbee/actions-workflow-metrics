@@ -44,11 +44,26 @@ For comprehensive monitoring needs, consider enterprise solutions:
 
 ## Output Example
 
-The action outputs the following tables:
+The output rendered into a step summary contains the metrics collected and if any alerts were triggered those are rendered as well.
 
-### CPU Usage
+### Alerts
 
-Shows CPU utilization over time with timestamps. Metrics are displayed in collapsible sections.
+A line entry in the alert area is added for each resource that triggered an alert.
+If no alerts were triggered, then this section is not rendered at all.
+
+> [!WARNING]
+> ⚠️ Memory utilization exceeded 85% (86.8%)
+> 🔥 Sustained CPU usage above 90% for more than 10 seconds (92.0%)
+> 💾 Disk usage exceeded 85% (85.2%)
+
+#### Metrics
+
+> [!NOTE]
+> Metrics are displayed in collapsible sections.
+
+#### CPU Usage
+
+Shows CPU utilization over time with timestamps.
 
 | Timestamp | Used | Available |
 |-----------|------|-----------|
@@ -56,7 +71,7 @@ Shows CPU utilization over time with timestamps. Metrics are displayed in collap
 | 2026-02-16T11:25:35.456Z | 23.78% | 76.22% |
 | 2026-02-16T11:25:40.789Z | 8.12% | 91.88% |
 
-### Memory Usage
+#### Memory Usage
 
 Shows memory utilization over time with timestamps.
 
@@ -66,7 +81,7 @@ Shows memory utilization over time with timestamps.
 | 2026-02-16T11:25:35.456Z | 2048.75 MB | 13941.73 MB |
 | 2026-02-16T11:25:40.789Z | 1536.25 MB | 14454.23 MB |
 
-### Disk Usage
+#### Disk Usage
 
 Shows disk usage over time with timestamps.
 
