@@ -81,6 +81,7 @@ export function parseMacOsVmStat(vmStatOutput: string, totalMemory: number): Mem
   const lines = vmStatOutput.split('\n');
 
   const pageSizeMatch = lines[0]?.match(/page size of (\d+) bytes/);
+  // Default to 16KB (Apple Silicon); Intel Macs use 4KB but are being phased out
   const pageSize = pageSizeMatch ? parseInt(pageSizeMatch[1], 10) : 16384;
 
   const getPageCount = (key: string): number => {
@@ -105,12 +106,16 @@ export function parseMacOsVmStat(vmStatOutput: string, totalMemory: number): Mem
 
 /**
  * Get macOS memory info by parsing vm_stat output.
- * Falls back to os.totalmem()/2 split if vm_stat fails.
+ * Falls back to reporting all memory as used if vm_stat fails.
  */
 export function getMacOsMemory(): MemoryInfo {
   const total = totalmem();
   try {
-    const vmStatOutput = execSync('vm_stat', { encoding: 'utf-8', timeout: 5000 });
+    const vmStatOutput = execSync('vm_stat', {
+      encoding: 'utf-8',
+      timeout: 5000,
+      maxBuffer: 1024 * 1024,
+    });
     return parseMacOsVmStat(vmStatOutput, total);
   } catch {
     return { active: total, available: 0 };

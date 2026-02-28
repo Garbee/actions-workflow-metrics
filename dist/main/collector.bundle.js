@@ -50840,7 +50840,11 @@ function parseMacOsVmStat(vmStatOutput, totalMemory) {
 function getMacOsMemory() {
   const total = totalmem();
   try {
-    const vmStatOutput = execSync("vm_stat", { encoding: "utf-8", timeout: 5e3 });
+    const vmStatOutput = execSync("vm_stat", {
+      encoding: "utf-8",
+      timeout: 5e3,
+      maxBuffer: 1024 * 1024
+    });
     return parseMacOsVmStat(vmStatOutput, total);
   } catch {
     return { active: total, available: 0 };
