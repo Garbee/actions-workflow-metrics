@@ -115,7 +115,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Run tests
-        run: npm test
+        run: pnpm test
 
       # ... other steps
 ```
@@ -149,7 +149,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Run tests
-        run: npm test
+        run: pnpm test
 
       # ... other steps
 ```
@@ -196,7 +196,7 @@ The `runner.debug` context is documented in the [GitHub Actions contexts referen
 ### 1. Install Dependencies
 
 ```bash
-npm ci
+pnpm ci
 ```
 
 This automatically runs gitleaks on commit.
@@ -206,10 +206,10 @@ It checks for sensitive information like API keys or tokens.
 
 ```bash
 # Bundle for operation in a workflow
-npm run build
+pnpm build
 
 # Run unit tests (Node test runner)
-npm test
+pnpm test
 ```
 
 ## Project Structure

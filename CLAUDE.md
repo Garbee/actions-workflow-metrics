@@ -38,8 +38,8 @@ When updating one, update the other accordingly. Note that action.yml's descript
 Requires Node.js 24.x.
 
 ```bash
-npm ci                         # Install dependencies
-npm test                       # Run all tests
+pnpm install   # Install dependencies
+pnpm test      # Run all tests
 ```
 
 ## Architecture
