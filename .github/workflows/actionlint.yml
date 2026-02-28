@@ -45,7 +45,7 @@ jobs:
         run: actionlint -format "$(cat .github/formatters/actionlint-sarif.gotmpl)" .github/workflows/*.yml > actionlint.sarif
       - name: Upload SARIF File
         if: ${{ always() }} # Ensure this runs even if the actionlint step fails, so we get results in the Security tab.
-        uses: github/codeql-action/upload-sarif@45cbd0c69e560cd9e7cd7f8c32362050c9b7ded2 # v4.32.2
+        uses: github/codeql-action/upload-sarif@89a39a4e59826350b863aa6b6252a07ad50cf83e # v4.32.4
         with:
           sarif_file: actionlint.sarif
           category: actionlint
