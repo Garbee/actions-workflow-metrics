@@ -14,6 +14,8 @@ describe("Metrics", () => {
   let mockModule;
   let mockFsModule;
   let mockFsSyncModule;
+  let mockChildProcessModule;
+  let mockOsModule;
   const metricsInstances: any[] = [];
   const fileWrites: Map<string, string> = new Map();
   let writeCount = 0; // Track total number of writes
@@ -113,6 +115,34 @@ describe("Metrics", () => {
       },
     });
 
+    // Mock node:child_process and node:os so getMacOsMemory() returns
+    // controlled values on macOS (4096 MB active, 8192 MB available)
+    const mockTotalMemory = (4096 + 8192) * 1024 * 1024;
+    // Pages free: 524288 pages * 16384 bytes = 8192 MB
+    const mockVmStatOutput = `Mach Virtual Memory Statistics: (page size of 16384 bytes)
+Pages free:                              524288.
+Pages active:                            262144.
+Pages inactive:                               0.
+Pages speculative:                            0.
+Pages throttled:                              0.
+Pages wired down:                             0.
+Pages purgeable:                              0.`;
+
+    mockChildProcessModule = mock.module("node:child_process", {
+      namedExports: {
+        execSync: () => mockVmStatOutput,
+      },
+    });
+
+    // Spread real os module exports so @actions/core still gets EOL etc.
+    const realOs = await import("node:os");
+    mockOsModule = mock.module("node:os", {
+      namedExports: {
+        ...realOs,
+        totalmem: () => mockTotalMemory,
+      },
+    });
+
     ({ Metrics } = await import("./metrics.ts"));
   })
 
@@ -134,6 +164,8 @@ describe("Metrics", () => {
     mockModule.restore();
     mockFsModule.restore();
     mockFsSyncModule.restore();
+    mockChildProcessModule.restore();
+    mockOsModule.restore();
     mock.timers.reset();
   })
 
