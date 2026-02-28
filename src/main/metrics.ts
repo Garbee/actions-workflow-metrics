@@ -4,7 +4,7 @@ import { writeFile } from "node:fs/promises";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { z } from "zod";
-import { metricsDataSchema, bytesPerMB, bytesPerGB, getRootMountPoint } from "../lib.ts";
+import { metricsDataSchema, bytesPerMB, bytesPerGB, getRootMountPoint, getMacOsMemory } from "../lib.ts";
 
 export class Metrics {
   private readonly data: z.TypeOf<typeof metricsDataSchema>;
@@ -89,12 +89,23 @@ export class Metrics {
         system: currentLoadSystem,
       });
 
-      const { active, available }: { active: number; available: number } =
-        await mem();
+      let memActive: number;
+      let memAvailable: number;
+
+      if (process.platform === 'darwin') {
+        const macMem = getMacOsMemory();
+        memActive = macMem.active;
+        memAvailable = macMem.available;
+      } else {
+        const memData = await mem();
+        memActive = memData.active;
+        memAvailable = memData.available;
+      }
+
       this.data.memoryUsageMBs.push({
         unixTimeMs,
-        used: active / bytesPerMB,
-        free: available / bytesPerMB,
+        used: memActive / bytesPerMB,
+        free: memAvailable / bytesPerMB,
       });
 
       const disks = await fsSize();
