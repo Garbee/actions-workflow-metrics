@@ -1,12 +1,11 @@
 import { describe, it, beforeEach, mock, before, after, afterEach } from "node:test";
 import * as assert from "node:assert/strict";
 import type { Systeminformation } from "systeminformation";
-import type { z } from "zod";
 import {
-  type cpuLoadPercentageSchema,
-  metricsDataSchema,
-  type memoryUsageMBSchema,
-  type diskUsageGBSchema,
+  type CpuLoadPercentage,
+  type MetricsData,
+  type MemoryUsageMB,
+  type DiskUsageGB,
 } from "../lib.ts";
 
 describe("Metrics", () => {
@@ -156,7 +155,7 @@ describe("Metrics", () => {
 
   it("should initialize with empty data arrays", () => {
     const metrics = createMetrics();
-    const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
+    const data: MetricsData = JSON.parse(metrics.get());
 
     assert.ok(data.cpuLoadPercentages);
     assert.ok(data.memoryUsageMBs);
@@ -177,7 +176,7 @@ describe("Metrics", () => {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
-    const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
+    const data: MetricsData = JSON.parse(metrics.get());
 
     // Verify CPU metrics are collected
     assert.ok(data.cpuLoadPercentages.length > 0);
@@ -207,7 +206,7 @@ describe("Metrics", () => {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
-    const cpuData: z.TypeOf<typeof cpuLoadPercentageSchema> = JSON.parse(
+    const cpuData: CpuLoadPercentage = JSON.parse(
       metrics.get(),
     ).cpuLoadPercentages[0];
 
@@ -227,7 +226,7 @@ describe("Metrics", () => {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
-    const memData: z.TypeOf<typeof memoryUsageMBSchema> = JSON.parse(
+    const memData: MemoryUsageMB = JSON.parse(
       metrics.get(),
     ).memoryUsageMBs[0];
 
@@ -248,7 +247,7 @@ describe("Metrics", () => {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
-    const diskData: z.TypeOf<typeof diskUsageGBSchema> = JSON.parse(
+    const diskData: DiskUsageGB = JSON.parse(
       metrics.get(),
     ).diskUsageGBs[0];
 
@@ -272,7 +271,7 @@ describe("Metrics", () => {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
-    const initialData: z.TypeOf<typeof metricsDataSchema> = JSON.parse(
+    const initialData: MetricsData = JSON.parse(
       metrics.get(),
     );
     const initialCpuCount: number = initialData.cpuLoadPercentages.length;
@@ -291,7 +290,7 @@ describe("Metrics", () => {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
-    const updatedData: z.TypeOf<typeof metricsDataSchema> = JSON.parse(
+    const updatedData: MetricsData = JSON.parse(
       metrics.get(),
     );
     const updatedCpuCount: number = updatedData.cpuLoadPercentages.length;
@@ -321,7 +320,7 @@ describe("Metrics", () => {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
-    const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
+    const data: MetricsData = JSON.parse(metrics.get());
 
     // Verify at least 2 data points exist
     assert.ok(data.cpuLoadPercentages.length >= 2);
@@ -364,7 +363,7 @@ describe("Metrics", () => {
       await new Promise(resolve => queueMicrotask(resolve));
     }
 
-    const finalData: z.TypeOf<typeof metricsDataSchema> = JSON.parse(
+    const finalData: MetricsData = JSON.parse(
       metrics.get(),
     );
 
@@ -438,7 +437,7 @@ describe("Metrics", () => {
     assert.strictEqual(writeCount, 5, "Fifth collection should write");
 
     // Verify data is collected correctly with immediate writes
-    const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
+    const data: MetricsData = JSON.parse(metrics.get());
     assert.strictEqual(data.cpuLoadPercentages.length, 5, "Should have 5 CPU data points");
     assert.strictEqual(data.memoryUsageMBs.length, 5, "Should have 5 memory data points");
     assert.strictEqual(data.diskUsageGBs.length, 5, "Should have 5 disk data points");
@@ -471,7 +470,7 @@ describe("Metrics", () => {
     const writtenContent = fileWrites.get(stateFilePath);
     assert.ok(writtenContent, "Should have written content");
 
-    const writtenData: z.TypeOf<typeof metricsDataSchema> = JSON.parse(writtenContent);
+    const writtenData: MetricsData = JSON.parse(writtenContent);
     assert.strictEqual(writtenData.cpuLoadPercentages.length, 1, "Written data should have 1 CPU data point");
   });
 
@@ -507,7 +506,7 @@ describe("Metrics", () => {
     assert.strictEqual(writeCount, 10, "Should have 10 writes after 10 collections");
 
     // Verify all 10 data points are in memory
-    const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
+    const data: MetricsData = JSON.parse(metrics.get());
     assert.strictEqual(data.cpuLoadPercentages.length, 10, "Should have 10 CPU data points");
   });
 
@@ -521,7 +520,7 @@ describe("Metrics", () => {
         await new Promise(resolve => queueMicrotask(resolve));
       }
 
-      const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
+      const data: MetricsData = JSON.parse(metrics.get());
       
       // Should have disk data from the root mount point for the current platform
       assert.ok(data.diskUsageGBs.length > 0, "Should have disk data");

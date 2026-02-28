@@ -1,12 +1,11 @@
-import type { z } from "zod";
-import type { Alert, diskUsageGBSchema } from "../lib.js";
+import type { Alert, DiskUsageGB } from "../lib.js";
 
 export class Renderer {
   render(
     alerts: Alert[] = [],
     cpuLoadPercentages: Array<{ unixTimeMs: number; user: number; system: number }> = [],
     memoryUsageMBs: Array<{ unixTimeMs: number; used: number; free: number }> = [],
-    diskUsageGBs: z.TypeOf<typeof diskUsageGBSchema>[] = [],
+    diskUsageGBs: DiskUsageGB[] = [],
     thresholds: { cpu: number; memory: number; disk: number } = { cpu: 85, memory: 80, disk: 90 },
   ): string {
     const alertsSection = this.generateAlertsSection(alerts);
@@ -104,7 +103,7 @@ ${rows.join("\n")}
   }
 
   private generateDiskUsageSection(
-    diskUsageGBs: z.TypeOf<typeof diskUsageGBSchema>[],
+    diskUsageGBs: DiskUsageGB[],
   ): string {
     if (diskUsageGBs.length === 0) {
       return "";

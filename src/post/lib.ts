@@ -1,21 +1,18 @@
-import { z } from "zod";
 import { getInput } from "@actions/core";
 import { context, getOctokit } from "@actions/github";
 import { currentLoad, mem, fsSize } from "systeminformation";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Renderer } from "./renderer.ts";
-import { metricsDataSchema, stepMarkerSchema, bytesPerMB, bytesPerGB, getRootMountPoint, type Alert } from "../lib.ts";
+import { bytesPerMB, bytesPerGB, getRootMountPoint, type Alert, type MetricsData } from "../lib.ts";
 
-export async function getMetricsData(): Promise<
-  z.TypeOf<typeof metricsDataSchema>
-> {
+export async function getMetricsData(): Promise<MetricsData> {
   try {
     // Read from state file in GitHub state directory
     const githubStateFile = process.env.GITHUB_STATE;
     const runId = process.env.GITHUB_RUN_ID || "local";
     const job = process.env.GITHUB_JOB || "default";
-    
+
     let stateFile: string;
     if (githubStateFile) {
       // Use the directory containing the GitHub state file
@@ -26,9 +23,9 @@ export async function getMetricsData(): Promise<
       const runnerTemp = process.env.RUNNER_TEMP || process.env.TMPDIR || '/tmp';
       stateFile = join(runnerTemp, `metrics-state-${runId}-${job}.json`);
     }
-    
+
     const content = await readFile(stateFile, "utf-8");
-    return metricsDataSchema.parse(JSON.parse(content));
+    return JSON.parse(content) as MetricsData;
   } catch (error) {
     throw new Error(
       `Failed to read metrics from state file: ${error instanceof Error ? error.message : String(error)}`,
@@ -36,7 +33,7 @@ export async function getMetricsData(): Promise<
   }
 }
 
-export async function collectFinalMetrics(): Promise<z.TypeOf<typeof metricsDataSchema>> {
+export async function collectFinalMetrics(): Promise<MetricsData> {
   try {
     // Read existing metrics from state
     const metricsData = await getMetricsData();
@@ -92,7 +89,7 @@ export async function collectFinalMetrics(): Promise<z.TypeOf<typeof metricsData
  * Detects threshold violations in metrics data and generates alerts.
  */
 export function detectAlerts(
-  metricsData: z.TypeOf<typeof metricsDataSchema>,
+  metricsData: MetricsData,
 ): Alert[] {
   const alerts: Alert[] = [];
 
@@ -185,7 +182,7 @@ export function detectAlerts(
 }
 
 export function render(
-  metricsData: z.TypeOf<typeof metricsDataSchema>,
+  metricsData: MetricsData,
   alerts: Alert[] = [],
 ): string {
   // Get thresholds from inputs
