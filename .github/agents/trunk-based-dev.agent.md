@@ -466,11 +466,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: 'npm'
-      - run: npm ci
-      - run: npm test
-      - run: npm run build
-      
+          cache: 'pnpm'
+      - run: pnpm ci
+      - run: pnpm test
+      - run: pnpm build
+
   dist-check:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -478,8 +478,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify dist/ is up to date
         run: |
-          npm ci
-          npm run build
+          pnpm ci
+          pnpm build
           git diff --exit-code dist/
 ```
 

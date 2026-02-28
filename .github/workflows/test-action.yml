@@ -40,16 +40,20 @@ jobs:
       - name: Start Workflow Telemetry
         uses: ./
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
+
       - name: Setup Node.js
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
-          node-version: "24"
+          node-version-file: .node-version
+          cache: pnpm
 
       - name: Install Dependencies
-        run: npm ci
+        run: pnpm install
 
       - name: Run Tests
-        run: npm test
+        run: pnpm test
 
   test-resource-load:
     name: Test with Resources Under Load (${{ matrix.os }})
@@ -87,7 +91,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "Starting CPU-intensive activity for 15 seconds..."
-          
+
           # Create test file based on OS
           if [[ "$RUNNER_OS" == "Windows" ]]; then
             echo "Creating 5GB test file on Windows..."
@@ -134,7 +138,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "Starting memory-intensive activity for 15 seconds..."
-          
+
           # Determine memory allocation size based on OS
           # macOS runners have less memory available, so we allocate less
           if [[ "$RUNNER_OS" == "macOS" ]]; then
@@ -144,7 +148,7 @@ jobs:
             export ARRAY_COUNT=50
             echo "Running on $RUNNER_OS - allocating ~500MB of memory"
           fi
-          
+
           node -e "
           const arrays = [];
           const startTime = Date.now();
