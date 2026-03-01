@@ -28,7 +28,7 @@ sequenceDiagram
     Main-->>User: Exit immediately
     
     Collector->>Collector: Start collection loop
-    loop Every 1 second (default)
+    loop Every 5 seconds (default)
         Collector->>Collector: Collect CPU, Memory, Disk metrics
         Collector->>State: Write metrics to state file
     end
@@ -54,7 +54,7 @@ For accessibility, here is a text description of the execution flow diagram abov
 
 1. **Main Action Execution**: The workflow executes the main action (`dist/main/index.js`), which immediately spawns a collector process as a detached background process and exits.
 
-2. **Collector Process**: The collector process (`dist/main/collector.js`) creates a Metrics instance and starts a collection loop that runs every 1 second (by default). During each cycle, it:
+2. **Collector Process**: The collector process (`dist/main/collector.js`) creates a Metrics instance and starts a collection loop that runs every 5 seconds (by default). During each cycle, it:
    - Collects CPU, memory, and disk usage metrics using the `systeminformation` library
    - Stores the metrics in memory
    - Writes the metrics to state file immediately after collection
@@ -93,7 +93,7 @@ A simple background process that:
 
 The core metrics collection component:
 - **Initialization**: Starts async collection in the constructor
-- **Periodic Collection**: Collects metrics every 1 second (default) using drift-compensated timers
+- **Periodic Collection**: Collects metrics every 5 seconds (default) using drift-compensated timers
 - **Data Collection**: Uses `systeminformation` library to gather:
   - CPU usage (user and system, 0-100%)
   - Memory usage (active and available in MB)
@@ -263,7 +263,7 @@ The action is designed for Node.js 24+ with:
 ### CPU Impact
 - Collection process uses minimal CPU (< 1% typical)
 - `systeminformation` library is efficient
-- 1-second interval provides high-resolution data with minimal overhead
+- 5-second default interval provides good resolution with minimal overhead
 
 ### Disk I/O
 

@@ -191,6 +191,30 @@ The `runner.debug` context is documented in the [GitHub Actions contexts referen
 > [!NOTE]
 > Metrics are displayed with timestamps rather than correlated with specific workflow steps. You can manually correlate metrics with your workflow steps by matching timestamps with the execution times shown in your workflow run logs.
 
+## Documentation
+
+### Quick Links
+
+- **[Quick Reference](docs/quick-reference.md)** - Fast lookup for common configurations and scenarios
+- **[FAQ](docs/faq.md)** - Frequently asked questions and answers
+- **[Troubleshooting Guide](docs/troubleshooting.md)** - Solutions to common issues
+- **[Examples](docs/examples/)** - Real-world usage scenarios:
+  - [Basic Monitoring](docs/examples/basic-monitoring.md) - Simple setup for general workflows
+  - [Debug Mode Only](docs/examples/debug-mode.md) - Conditional metrics collection on demand
+  - [Build Optimization](docs/examples/build-optimization.md) - Identifying and resolving bottlenecks
+  - [Memory-Intensive Workflows](docs/examples/memory-intensive.md) - Handling data processing and ML
+  - [Multi-Job Workflows](docs/examples/multi-job.md) - Comparing metrics across jobs
+- **[Architecture](docs/architecture.md)** - Technical implementation details
+
+### Getting Help
+
+If you encounter issues:
+
+1. Check the [FAQ](docs/faq.md) for common questions
+2. Review the [Troubleshooting Guide](docs/troubleshooting.md) for solutions
+3. Search [existing issues](https://github.com/Garbee/runner-resource-usage/issues)
+4. Open a new issue with details about your problem
+
 ## Development Setup
 
 ### 1. Install Dependencies
