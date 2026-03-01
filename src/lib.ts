@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 export const bytesPerMB: number = 1024 * 1024;
 export const bytesPerGB: number = 1024 * 1024 * 1024;
 
@@ -9,7 +7,7 @@ export const bytesPerGB: number = 1024 * 1024 * 1024;
  */
 export function getRootMountPoint(): string {
   const platform = process.platform;
-  
+
   if (platform === 'win32') {
     return 'C:';
   } else if (platform === 'darwin') {
@@ -20,45 +18,43 @@ export function getRootMountPoint(): string {
   }
 }
 
-export const cpuLoadPercentageSchema = z.object({
-  unixTimeMs: z.number(),
-  user: z.number().nonnegative().max(100),
-  system: z.number().nonnegative().max(100),
-});
-export const cpuLoadPercentagesSchema = z.array(cpuLoadPercentageSchema);
-export const memoryUsageMBSchema = z.object({
-  unixTimeMs: z.number(),
-  used: z.number().nonnegative(),
-  free: z.number().nonnegative(),
-});
-export const memoryUsageMBsSchema = z.array(memoryUsageMBSchema);
-export const diskUsageGBSchema = z.object({
-  unixTimeMs: z.number(),
-  used: z.number().nonnegative(),
-  available: z.number().nonnegative(),
-  size: z.number().nonnegative(),
-});
-export const diskUsageGBsSchema = z.array(diskUsageGBSchema);
-export const stepMarkerSchema = z.object({
-  unixTimeMs: z.number(),
-  stepName: z.string(),
-  status: z.enum(["start", "end"]),
-});
-export const stepMarkersSchema = z.array(stepMarkerSchema);
-export const metricsDataSchema = z.object({
-  cpuLoadPercentages: cpuLoadPercentagesSchema,
-  memoryUsageMBs: memoryUsageMBsSchema,
-  diskUsageGBs: diskUsageGBsSchema,
-  stepMarkers: stepMarkersSchema,
-});
+export interface CpuLoadPercentage {
+  unixTimeMs: number;
+  user: number;
+  system: number;
+}
 
-export const alertSchema = z.object({
-  type: z.enum(["memory", "cpu", "disk"]),
-  message: z.string(),
-  timespan: z.number().optional(), // Single timestamp when alert occurred
-  timespans: z.array(z.number()).optional(), // Multiple timestamps for sustained alerts
-  value: z.number(),
-  threshold: z.number(),
-});
+export interface MemoryUsageMB {
+  unixTimeMs: number;
+  used: number;
+  free: number;
+}
 
-export type Alert = z.infer<typeof alertSchema>;
+export interface DiskUsageGB {
+  unixTimeMs: number;
+  used: number;
+  available: number;
+  size: number;
+}
+
+export interface StepMarker {
+  unixTimeMs: number;
+  stepName: string;
+  status: "start" | "end";
+}
+
+export interface MetricsData {
+  cpuLoadPercentages: CpuLoadPercentage[];
+  memoryUsageMBs: MemoryUsageMB[];
+  diskUsageGBs: DiskUsageGB[];
+  stepMarkers: StepMarker[];
+}
+
+export interface Alert {
+  type: "memory" | "cpu" | "disk";
+  message: string;
+  timespan?: number; // Single timestamp when alert occurred
+  timespans?: number[]; // Multiple timestamps for sustained alerts
+  value: number;
+  threshold: number;
+}

@@ -3,11 +3,11 @@ import { currentLoad, mem, fsSize } from "systeminformation";
 import { writeFile } from "node:fs/promises";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { z } from "zod";
-import { metricsDataSchema, bytesPerMB, bytesPerGB, getRootMountPoint } from "../lib.ts";
+import type { MetricsData } from "../lib.ts";
+import { bytesPerMB, bytesPerGB, getRootMountPoint } from "../lib.ts";
 
 export class Metrics {
-  private readonly data: z.TypeOf<typeof metricsDataSchema>;
+  private readonly data: MetricsData;
   private readonly intervalMs: number;
   private readonly stateFile: string;
   private timeoutId: NodeJS.Timeout | null = null;

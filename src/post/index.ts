@@ -4,12 +4,11 @@ import { DefaultArtifactClient } from "@actions/artifact";
 import { info, setFailed, summary } from "@actions/core";
 import { context } from "@actions/github";
 import { getMetricsData, render, collectFinalMetrics, detectAlerts } from "./lib.ts";
-import type { z } from "zod";
-import type { metricsDataSchema } from "../lib.ts";
+import type { MetricsData } from "../lib.ts";
 
 async function index(): Promise<void> {
   const maxRetryCount: number = 10;
-  let metricsData: z.TypeOf<typeof metricsDataSchema>;
+  let metricsData: MetricsData;
 
   // Collect one final set of metrics and get the complete data
   metricsData = await collectFinalMetrics();
