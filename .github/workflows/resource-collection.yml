@@ -1,0 +1,44 @@
+name: Resource Collection
+
+on:
+  workflow_dispatch:
+  push: # Temp while testing the script heavily.
+
+concurrency:
+  group: resource-collection
+  cancel-in-progress: true
+
+permissions:
+  contents: read # Required to clone the repository
+
+jobs:
+  collect-resources:
+    strategy:
+      matrix:
+        os:
+          - runner: ubuntu-24.04
+            name: Linux
+          - runner: ubuntu-24.04-arm
+            name: Linux ARM
+          - runner: windows-2025
+            name: Windows
+          - runner: windows-11-arm
+            name: Windows ARM
+          - runner: macos-26
+            name: macOS
+          - runner: macos-26-intel
+            name: macOS Intel
+    runs-on: ${{ matrix.os.runner }}
+    name: Collect resources on ${{ matrix.os.name }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Setup Node
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      - name: Collect resources
+        run: node ./scripts/resource-collection.ts

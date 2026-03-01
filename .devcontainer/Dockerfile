@@ -71,7 +71,8 @@ apt-get update
 apt-get install -y --no-install-recommends \
   gh \
   git \
-  sudo
+  sudo-rs \
+  ssh
 
 # Setup sudo access
 echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu
